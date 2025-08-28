@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const bcrypt = require('bcryptjs');
+const { validationResult } = require('express-validator');
 
 console.log('🆕 NUEVO CONTROLADOR CARGADO - SIN CACHE');
 
@@ -94,9 +96,19 @@ exports.obtenerUsuarios = async (req, res) => {
   }
 };
 
-// Crear un nuevo usuario
+// 🔒 Crear un nuevo usuario (CON SEGURIDAD)
 exports.crearUsuario = async (req, res) => {
     console.log('🔍 Datos recibidos en crearUsuario:', req.body);
+    
+    // ✅ Validar errores de entrada
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Datos de entrada inválidos',
+            errors: errors.array()
+        });
+    }
     
     const { nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, password, tipo_documento, numero_documento } = req.body;
     
@@ -106,71 +118,120 @@ exports.crearUsuario = async (req, res) => {
     
     if (!nombre || !apellido || !correo || !rol || !password) {
         console.log('❌ Validación fallida - campos faltantes');
-        return res.status(400).json({ msg: 'Nombre, apellido, correo, rol y contraseña son requeridos.' });
+        return res.status(400).json({ 
+            success: false,
+            msg: 'Nombre, apellido, correo, rol y contraseña son requeridos.' 
+        });
     }
     
     try {
-        // Verificar si el email ya existe
+        // 🛡️ PROTECCIÓN SQL INJECTION: usar prepared statements
         const [existing] = await db.query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
         if (existing.length > 0) {
             console.log('❌ Email ya existe:', correo);
-            return res.status(400).json({ msg: 'El correo electrónico ya está registrado.' });
+            return res.status(400).json({ 
+                success: false,
+                msg: 'El correo electrónico ya está registrado.' 
+            });
         }
 
+        // 🔐 HASH SEGURO de contraseña
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
         console.log('💾 Insertando usuario en la base de datos...');
-        // Insertar usuario usando los campos correctos de la tabla
+        // 🛡️ PROTECCIÓN SQL INJECTION: prepared statement con parámetros
         const [result] = await db.query(
             'INSERT INTO usuarios (nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, contraseña_hash, tipo_documento, numero_documento, fecha_registro, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), "activo")', 
-            [nombre, apellido, correo, telefono || null, direccion || null, rol, fecha_nacimiento || null, password, tipo_documento || 'CC', numero_documento || null]
+            [nombre, apellido, correo, telefono || null, direccion || null, rol, fecha_nacimiento || null, hashedPassword, tipo_documento || 'CC', numero_documento || null]
         );
         
         console.log('✅ Usuario creado con ID:', result.insertId);
         res.status(201).json({ 
+            success: true,
             msg: 'Usuario creado exitosamente.',
             id: result.insertId 
         });
     } catch (err) {
         console.error('❌ Error al crear usuario:', err);
-        res.status(500).json({ msg: 'Error al crear usuario.' });
+        res.status(500).json({ 
+            success: false,
+            msg: 'Error interno del servidor al crear usuario.' 
+        });
     }
 };
 
-// Actualizar un usuario existente
+// 🔒 Actualizar un usuario existente (CON SEGURIDAD)
 exports.actualizarUsuario = async (req, res) => {
     const { id } = req.params;
+    
+    // ✅ Validar errores de entrada
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Datos de entrada inválidos',
+            errors: errors.array()
+        });
+    }
+    
+    // 🛡️ VALIDACIÓN ID: debe ser número entero positivo
+    const userId = parseInt(id);
+    if (!userId || userId <= 0) {
+        return res.status(400).json({ 
+            success: false,
+            msg: 'ID de usuario inválido.' 
+        });
+    }
+    
     const { nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, password, tipo_documento, numero_documento } = req.body;
     
     if (!nombre || !apellido || !correo || !rol) {
-        return res.status(400).json({ msg: 'Nombre, apellido, correo y rol son requeridos.' });
+        return res.status(400).json({ 
+            success: false,
+            msg: 'Nombre, apellido, correo y rol son requeridos.' 
+        });
     }
     
     try {
-        // Verificar si el email ya existe en otro usuario
-        const [existing] = await db.query('SELECT id FROM usuarios WHERE correo = ? AND id != ?', [correo, id]);
+        // 🛡️ PROTECCIÓN SQL INJECTION: prepared statement
+        const [existing] = await db.query('SELECT id FROM usuarios WHERE correo = ? AND id != ?', [correo, userId]);
         if (existing.length > 0) {
             console.log('❌ Email ya existe en otro usuario:', correo);
-            return res.status(400).json({ msg: 'El correo electrónico ya está registrado por otro usuario.' });
+            return res.status(400).json({ 
+                success: false,
+                msg: 'El correo electrónico ya está registrado por otro usuario.' 
+            });
         }
 
         let query, params;
         if (password) {
-            // Si se proporciona nueva contraseña, actualizarla también
+            // 🔐 HASH SEGURO de nueva contraseña
+            const saltRounds = 12;
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            
             query = 'UPDATE usuarios SET nombre = ?, apellido = ?, correo = ?, telefono = ?, direccion = ?, rol = ?, fecha_nacimiento = ?, contraseña_hash = ?, tipo_documento = ?, numero_documento = ? WHERE id = ?';
-            params = [nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, password, tipo_documento || 'CC', numero_documento, id];
+            params = [nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, hashedPassword, tipo_documento || 'CC', numero_documento, userId];
         } else {
-            // Si no se proporciona contraseña, mantener la actual
             query = 'UPDATE usuarios SET nombre = ?, apellido = ?, correo = ?, telefono = ?, direccion = ?, rol = ?, fecha_nacimiento = ?, tipo_documento = ?, numero_documento = ? WHERE id = ?';
-            params = [nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, tipo_documento || 'CC', numero_documento, id];
+            params = [nombre, apellido, correo, telefono, direccion, rol, fecha_nacimiento, tipo_documento || 'CC', numero_documento, userId];
         }
         
+        // 🛡️ PROTECCIÓN SQL INJECTION: usar prepared statement
         const [result] = await db.query(query, params);
         
         if (result.affectedRows === 0) {
-            return res.status(404).json({ msg: 'Usuario no encontrado.' });
+            return res.status(404).json({ 
+                success: false,
+                msg: 'Usuario no encontrado.' 
+            });
         }
         
-        console.log('✅ Usuario actualizado:', id);
-        res.json({ msg: 'Usuario actualizado exitosamente.' });
+        console.log('✅ Usuario actualizado:', userId);
+        res.json({ 
+            success: true,
+            msg: 'Usuario actualizado exitosamente.' 
+        });
     } catch (err) {
         console.error('❌ Error al actualizar usuario:', err);
         res.status(500).json({ msg: 'Error al actualizar usuario.' });

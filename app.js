@@ -1,6 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 
+// 🛡️ IMPORTAR MIDDLEWARES DE SEGURIDAD
+const { 
+    securityHeaders, 
+    generalLimiter, 
+    sanitizeInput, 
+    securityLogger 
+} = require('./Backend/middleware/securityMiddleware');
+
 // Importar rutas correctamente desde la carpeta Backend/routes
 console.log('🔄 Cargando authRoutes...');
 const authRoutes = require('./Backend/routes/authRoutes');
@@ -66,8 +74,36 @@ console.log('✅ Rutas de performance cargadas');
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// 🛡️ APLICAR MIDDLEWARES DE SEGURIDAD (ORDEN IMPORTA)
+console.log('🛡️ Aplicando middlewares de seguridad...');
+
+// 1. Security Headers (debe ser PRIMERO)
+app.use(securityHeaders);
+
+// 2. Rate Limiting (protección DDoS)
+app.use(generalLimiter);
+
+// 3. Security Logger (monitoreo de actividad sospechosa)
+app.use(securityLogger);
+
+// 4. CORS configurado
+app.use(cors({
+    origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://127.0.0.1:5500'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+}));
+
+// 5. Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 6. Input Sanitization (DESPUÉS de body parsing)
+app.use(sanitizeInput);
+
+console.log('✅ Middlewares de seguridad aplicados correctamente');
+
+// Middlewares adicionales
 // Log global para debug
 app.use((req, res, next) => {
   console.log(`🌍 GLOBAL REQUEST: ${req.method} ${req.url}`);

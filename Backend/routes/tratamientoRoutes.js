@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const tratamientoController = require('../controllers/tratamientoController');
-const authMiddleware = require('../middleware/authMiddleware');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 // Rutas para tipos de tratamientos (no requieren autenticación específica)
 router.get('/', tratamientoController.listarTratamientos);
