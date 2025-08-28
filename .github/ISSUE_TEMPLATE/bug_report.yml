@@ -1,0 +1,121 @@
+name: 🐛 Reporte de Bug
+description: Reportar un error en Clinikdent
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por reportar este bug! Por favor completa la información para ayudarnos a solucionarlo.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Descripción del Bug
+      description: Describe claramente qué está pasando
+      placeholder: El sistema no permite...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 🔄 Pasos para Reproducir
+      description: Pasos detallados para reproducir el error
+      placeholder: |
+        1. Ir a '...'
+        2. Hacer clic en '...'
+        3. Completar el campo '...'
+        4. Ver el error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Comportamiento Esperado
+      description: Qué esperabas que pasara
+      placeholder: El sistema debería...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Comportamiento Actual
+      description: Qué está pasando realmente
+      placeholder: En cambio, el sistema...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 🏥 Módulo Afectado
+      description: ¿En qué parte del sistema ocurre?
+      options:
+        - Autenticación/Login
+        - Dashboard Admin
+        - Dashboard Paciente
+        - Dashboard Odontólogo
+        - Gestión de Citas
+        - Inventario
+        - Proveedores
+        - Pagos
+        - Reportes
+        - Otro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🚨 Severidad
+      description: Qué tan crítico es este bug
+      options:
+        - Crítico (Sistema no funciona)
+        - Alto (Funcionalidad principal afectada)
+        - Medio (Funcionalidad secundaria afectada)
+        - Bajo (Problema cosmético/menor)
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 💻 Entorno
+      description: Información técnica del entorno
+      placeholder: |
+        - SO: Windows 11
+        - Navegador: Chrome 118
+        - Node.js: v18.17.0
+        - MySQL: 8.0
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 Screenshots
+      description: Si es posible, agrega capturas de pantalla del error
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📋 Logs/Errores
+      description: Cualquier mensaje de error o log relevante
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ Verificación
+      description: Confirma que has verificado lo siguiente
+      options:
+        - label: He buscado en issues existentes y este bug no ha sido reportado
+          required: true
+        - label: He probado con la última versión disponible
+          required: true
+        - label: He incluido toda la información necesaria
+          required: true

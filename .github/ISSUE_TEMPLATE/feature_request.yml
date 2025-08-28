@@ -1,0 +1,116 @@
+name: ✨ Solicitud de Feature
+description: Sugerir una nueva funcionalidad para Clinikdent
+title: "[FEATURE] "
+labels: ["enhancement", "needs-discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por sugerir mejoras para Clinikdent! Tu feedback es valioso para hacer el sistema mejor.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🎯 Problema/Necesidad
+      description: ¿Qué problema resolvería esta funcionalidad?
+      placeholder: Como [tipo de usuario], necesito [funcionalidad] para poder [objetivo]...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 💡 Solución Propuesta
+      description: Describe la solución que te gustaría ver
+      placeholder: Me gustaría que el sistema...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 Alternativas Consideradas
+      description: ¿Has pensado en otras formas de resolver esto?
+      placeholder: También podría implementarse como...
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 🏥 Módulo Relacionado
+      description: ¿A qué parte del sistema afectaría?
+      options:
+        - Autenticación/Login
+        - Dashboard Admin
+        - Dashboard Paciente
+        - Dashboard Odontólogo
+        - Gestión de Citas
+        - Inventario
+        - Proveedores
+        - Pagos
+        - Reportes
+        - Nuevo Módulo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: ⭐ Prioridad
+      description: ¿Qué tan importante es esta funcionalidad?
+      options:
+        - Crítica (Necesaria para usar el sistema)
+        - Alta (Muy importante para la operación)
+        - Media (Mejoraría significativamente la experiencia)
+        - Baja (Nice to have)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: 🔧 Complejidad Estimada
+      description: ¿Qué tan complejo crees que sería implementar esto?
+      options:
+        - Simple (Cambios menores)
+        - Moderada (Requiere algunos cambios)
+        - Compleja (Requiere cambios significativos)
+        - Muy Compleja (Requiere reingeniería)
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: 🎨 Mockups/Ejemplos
+      description: Si tienes ideas visuales, compártelas aquí
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: 📈 Beneficios Esperados
+      description: ¿Cómo mejoraría esto la experiencia del usuario?
+      placeholder: |
+        - Reduciría el tiempo de...
+        - Mejoraría la precisión de...
+        - Facilitaría el proceso de...
+
+  - type: checkboxes
+    id: userTypes
+    attributes:
+      label: 👥 Tipos de Usuario Beneficiados
+      description: ¿Qué roles se beneficiarían de esta funcionalidad?
+      options:
+        - label: Administradores
+        - label: Odontólogos
+        - label: Pacientes
+        - label: Personal de apoyo
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: ✅ Verificación
+      options:
+        - label: He buscado y esta funcionalidad no existe actualmente
+          required: true
+        - label: He considerado el impacto en otros usuarios
+          required: true
+        - label: Esta funcionalidad aporta valor al sistema
+          required: true
