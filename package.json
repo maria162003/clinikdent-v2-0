@@ -1,14 +1,31 @@
 {
-  "name": "clinkdent",
-  "version": "1.0.0",
-  "description": "Sistema para gestión de clínica odontológica",
-  "main": "backend/server.js",
+  "name": "clinikdent-v2",
+  "version": "2.0.0",
+  "description": "🦷 Sistema completo de gestión clínica odontológica - Node.js + MySQL",
+  "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "jest --detectOpenHandles --forceExit",
+    "test:unit": "jest tests/unit --detectOpenHandles",
+    "test:integration": "jest tests/integration --detectOpenHandles",
+    "test:api": "jest tests/api --detectOpenHandles",
+    "test:security": "jest tests/security --detectOpenHandles",
+    "test:performance": "jest tests/performance --detectOpenHandles",
+    "test:coverage": "jest --coverage --detectOpenHandles",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "security:audit": "npm audit",
+    "security:check": "node tests/security/security-scanner.js"
   },
-  "keywords": [],
-  "author": "Daniel Rayo",
-  "license": "ISC",
+  "keywords": ["clinica", "odontologia", "gestion", "mysql", "nodejs", "dental", "healthcare"],
+  "author": "Clinikdent Team <dev@clinikdent.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maria162003/clinikdent-v2-0.git"
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
@@ -24,6 +41,29 @@
     "nodemailer": "^7.0.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4",
+    "eslint": "^8.57.0",
+    "@types/jest": "^29.5.8",
+    "helmet": "^7.1.0",
+    "rate-limiter-flexible": "^5.0.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "Backend/**/*.js",
+      "public/js/**/*.js",
+      "!node_modules/**",
+      "!tests/**",
+      "!coverage/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"],
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/tests/**/*.spec.js"
+    ],
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"]
   }
 }
