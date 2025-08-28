@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Inventario y Pagos - Clinik Dent</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { margin: 5px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { font-size: 11px; overflow-x: auto; background: #f8f9fa; padding: 10px; border-radius: 4px; }
+        .stats { display: flex; gap: 20px; margin: 15px 0; }
+        .stat-card { background: #e9ecef; padding: 15px; border-radius: 4px; text-align: center; flex: 1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; font-weight: bold; }
+        .badge { padding: 4px 8px; border-radius: 4px; color: white; font-size: 10px; }
+        .bg-success { background: #28a745; }
+        .bg-warning { background: #ffc107; color: #212529; }
+        .bg-danger { background: #dc3545; }
+        .bg-info { background: #17a2b8; }
+        .bg-secondary { background: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test de Inventario y Pagos - Clinik Dent</h1>
+        
+        <div class="section">
+            <h2>🚀 Controles de Prueba</h2>
+            <button onclick="testInventario()">📦 Probar Inventario</button>
+            <button onclick="testPagos()">💰 Probar Pagos</button>
+            <button onclick="testBoth()">🔄 Probar Ambos</button>
+            <button onclick="clearResults()">🗑️ Limpiar</button>
+            <button onclick="showTables()">📊 Mostrar Tablas</button>
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-card">
+                <h3>📦 Inventario</h3>
+                <div id="inventarioCount">-</div>
+                <small>Items registrados</small>
+            </div>
+            <div class="stat-card">
+                <h3>💰 Pagos</h3>
+                <div id="pagosCount">-</div>
+                <small>Pagos registrados</small>
+            </div>
+            <div class="stat-card">
+                <h3>🏥 Sedes</h3>
+                <div id="sedesCount">-</div>
+                <small>Sedes activas</small>
+            </div>
+        </div>
+
+        <div id="results"></div>
+        <div id="tables"></div>
+    </div>
+
+    <script>
+        // Configurar usuario admin por defecto
+        const adminUser = { id: 4, nombre: 'Admin Test', rol: 'administrador' };
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        localStorage.setItem('userId', '4');
+        
+        function logResult(message, type = 'info', data = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            
+            let content = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            if (data && typeof data === 'object') {
+                if (Array.isArray(data)) {
+                    content += `<br><strong>Cantidad:</strong> ${data.length} elementos`;
+                    if (data.length > 0 && data.length <= 3) {
+                        content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    } else if (data.length > 0) {
+                        content += `<pre>${JSON.stringify(data.slice(0, 2), null, 2)}</pre>`;
+                    }
+                } else {
+                    content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } else if (data) {
+                content += `<br><strong>Datos:</strong> ${data}`;
+            }
+            
+            div.innerHTML = content;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        async function testAPI(url, name) {
+            try {
+                logResult(`🔄 Probando ${name}...`, 'info');
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'user-id': '4'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const count = Array.isArray(data) ? data.length : (typeof data === 'object' && data.length !== undefined ? data.length : 'N/A');
+                
+                logResult(`✅ ${name}: ${count} elementos`, 'success', data);
+                return data;
+                
+            } catch (error) {
+                logResult(`❌ Error en ${name}: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function testInventario() {
+            clearResults();
+            logResult('📦 Iniciando prueba de inventario...', 'info');
+            
+            const inventario = await testAPI('/api/inventario', 'Inventario');
+            if (inventario && Array.isArray(inventario)) {
+                document.getElementById('inventarioCount').textContent = inventario.length;
+                createInventarioTable(inventario);
+            }
+            
+            const sedes = await testAPI('/api/sedes', 'Sedes');
+            if (sedes && Array.isArray(sedes)) {
+                document.getElementById('sedesCount').textContent = sedes.length;
+            }
+            
+            document.getElementById('stats').style.display = 'flex';
+            logResult('🎯 Prueba de inventario completada', 'success');
+        }
+        
+        async function testPagos() {
+            clearResults();
+            logResult('💰 Iniciando prueba de pagos...', 'info');
+            
+            const pagos = await testAPI('/api/pagos', 'Pagos');
+            if (pagos) {
+                const pagosArray = pagos.pagos || pagos || [];
+                document.getElementById('pagosCount').textContent = Array.isArray(pagosArray) ? pagosArray.length : 0;
+                if (Array.isArray(pagosArray)) {
+                    createPagosTable(pagosArray);
+                }
+            }
+            
+            document.getElementById('stats').style.display = 'flex';
+            logResult('🎯 Prueba de pagos completada', 'success');
+        }
+        
+        async function testBoth() {
+            clearResults();
+            logResult('🔄 Iniciando prueba completa...', 'info');
+            await testInventario();
+            await testPagos();
+            logResult('🎯 Prueba completa finalizada', 'success');
+        }
+        
+        function createInventarioTable(inventario) {
+            if (!inventario || !Array.isArray(inventario) || inventario.length === 0) {
+                return;
+            }
+            
+            const tablesDiv = document.getElementById('tables');
+            const section = document.createElement('div');
+            section.className = 'section';
+            section.innerHTML = `
+                <h3>📦 Tabla de Inventario (${inventario.length} items)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Sede</th>
+                            <th>Stock</th>
+                            <th>Precio</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${inventario.slice(0, 10).map(item => `
+                            <tr>
+                                <td>${item.id}</td>
+                                <td>${item.equipo_nombre || item.nombre || 'N/A'}</td>
+                                <td><span class="badge bg-info">${item.equipo_categoria || item.categoria || 'N/A'}</span></td>
+                                <td>${item.sede_nombre || 'N/A'}</td>
+                                <td><span class="badge bg-primary">${item.cantidad || item.stock_actual || 0}</span></td>
+                                <td>$${(item.equipo_precio || item.precio_unitario || 0).toLocaleString()}</td>
+                                <td><span class="badge bg-success">Activo</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ${inventario.length > 10 ? `<p><em>Mostrando 10 de ${inventario.length} items</em></p>` : ''}
+            `;
+            tablesDiv.appendChild(section);
+        }
+        
+        function createPagosTable(pagos) {
+            if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
+                return;
+            }
+            
+            const tablesDiv = document.getElementById('tables');
+            const section = document.createElement('div');
+            section.className = 'section';
+            section.innerHTML = `
+                <h3>💰 Tabla de Pagos (${pagos.length} registros)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Paciente</th>
+                            <th>Concepto</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pagos.slice(0, 10).map((pago, index) => {
+                            const fecha = new Date(pago.fecha_pago || pago.created_at).toLocaleDateString();
+                            const monto = (pago.monto || pago.total || 0).toLocaleString();
+                            return `
+                                <tr>
+                                    <td>${pago.id || index + 1}</td>
+                                    <td>${fecha}</td>
+                                    <td>${pago.paciente || pago.paciente_nombre || 'N/A'}</td>
+                                    <td>${pago.concepto || pago.descripcion || 'Pago de servicios'}</td>
+                                    <td>$${monto}</td>
+                                    <td>${pago.metodo_pago || pago.metodo || 'Efectivo'}</td>
+                                    <td><span class="badge bg-success">${(pago.estado || 'COMPLETADO').toUpperCase()}</span></td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+                ${pagos.length > 10 ? `<p><em>Mostrando 10 de ${pagos.length} registros</em></p>` : ''}
+            `;
+            tablesDiv.appendChild(section);
+        }
+        
+        function showTables() {
+            const tablesDiv = document.getElementById('tables');
+            if (tablesDiv.children.length > 0) {
+                tablesDiv.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                logResult('⚠️ No hay tablas para mostrar. Ejecute primero las pruebas.', 'warning');
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('tables').innerHTML = '';
+        }
+        
+        // Auto-ejecutar al cargar
+        window.onload = function() {
+            logResult('🔧 Sistema de pruebas cargado', 'success');
+            logResult('👤 Usuario configurado: Admin Test (ID: 4)', 'info');
+        };
+    </script>
+</body>
+</html>

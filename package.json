@@ -1,0 +1,29 @@
+{
+  "name": "clinkdent",
+  "version": "1.0.0",
+  "description": "Sistema para gestión de clínica odontológica",
+  "main": "backend/server.js",
+  "scripts": {
+    "dev": "nodemon app.js"
+  },
+  "keywords": [],
+  "author": "Daniel Rayo",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "docker": "^1.0.0",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.14.3",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
