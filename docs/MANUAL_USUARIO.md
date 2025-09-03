@@ -1,4 +1,4 @@
-# 📋 Manual de Usuario - Clinikdent v2.0
+# 📋 Manual de Usuario - Clinikdent
 
 ## 🦷 Sistema de Gestión Clínica Odontológica
 
@@ -22,7 +22,7 @@
 
 ## 🎯 **INTRODUCCIÓN**
 
-Clinikdent v2.0 es un sistema integral de gestión clínica diseñado específicamente para consultorios y clínicas odontológicas. Permite gestionar pacientes, citas, tratamientos, inventario, pagos y generar reportes detallados.
+Clinikdent es un sistema integral de gestión clínica diseñado específicamente para consultorios y clínicas odontológicas. Permite gestionar pacientes, citas, tratamientos, inventario, pagos y generar reportes detallados.
 
 ### **Características Principales:**
 - ✅ Gestión completa de pacientes
