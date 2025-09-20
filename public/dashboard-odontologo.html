@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Odontólogo - Clinik Dent</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/dashboard-odontologo.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <img src="images/logo.jpg" alt="Logo" class="logo">
+            <h4>Clinik Dent</h4>
+            <button class="btn btn-outline-light d-md-none" id="sidebarToggle">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+        
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="bi bi-person-circle"></i>
+            </div>
+            <div class="user-details">
+                <h6 id="userName">Cargando...</h6>
+                <small class="text-muted">Odontólogo</small>
+            </div>
+        </div>
+
+        <ul class="nav nav-pills flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#dashboard" data-section="dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#agenda" data-section="agenda">
+                    <i class="bi bi-calendar3"></i>
+                    <span>Mi Agenda</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#pacientes" data-section="pacientes">
+                    <i class="bi bi-people"></i>
+                    <span>Mis Pacientes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#historiales" data-section="historiales">
+                    <i class="bi bi-file-medical"></i>
+                    <span>Historiales</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#miscitas" data-section="miscitas">
+                    <i class="bi bi-calendar-check"></i>
+                    <span>Mis Citas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#perfil" data-section="perfil">
+                    <i class="bi bi-person-gear"></i>
+                    <span>Mi Perfil</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#pagos" data-section="pagos">
+                    <i class="bi bi-credit-card"></i>
+                    <span>Mis Ingresos</span>
+                </a>
+            </li>
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="#" id="logoutBtn">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Cerrar Sesión</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="content-header">
+            <button class="btn btn-outline-secondary d-md-none me-3" id="sidebarToggleMobile">
+                <i class="bi bi-list"></i>
+            </button>
+            <h1 id="pageTitle">Dashboard</h1>
+            <div class="header-actions">
+                <!-- Notificaciones -->
+                <div class="dropdown me-2">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell"></i>
+                        <span class="badge bg-danger" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                        <h6 class="dropdown-header">Notificaciones</h6>
+                        <div id="notificationsContainer">
+                            <div class="dropdown-item text-muted">No hay notificaciones</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Cerrar sesión -->
+                <button class="btn btn-outline-secondary" id="logoutBtn">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Sections -->
+        <div class="content-body">
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="content-section active">
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Citas Hoy</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="citasHoy">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Pacientes Atendidos</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="pacientesAtendidos">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-person-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Citas Pendientes</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="citasPendientes">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-clock-history fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Agenda de Hoy</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="agendaHoy" class="timeline">
+                                    <!-- Se carga dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Próximos Pacientes</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="proximosPacientes" class="list-group list-group-flush">
+                                    <!-- Se carga dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Agenda Section -->
+            <section id="agenda-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mi Agenda</h2>
+                    <div class="d-flex gap-2">
+                        <input type="date" class="form-control" id="fechaAgenda" style="width: auto;">
+                        <button class="btn btn-primary" id="verAgendaBtn">
+                            <i class="bi bi-calendar-date me-1"></i>Ver Fecha
+                        </button>
+                        <button class="btn btn-outline-primary" id="verTodasCitasBtn">
+                            <i class="bi bi-calendar3 me-1"></i>Ver Todas
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-calendar-week me-2"></i>
+                                    Agenda de Citas
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="calendar" class="calendar-container">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="bi bi-calendar" style="font-size: 3rem;"></i>
+                                        <h5 class="mt-2">Cargando agenda...</h5>
+                                        <p>Por favor espere mientras se cargan las citas.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card shadow mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-clock me-2"></i>
+                                    Resumen del Día
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="resumen-item">
+                                    <span class="resumen-label">Total de citas:</span>
+                                    <span class="resumen-value" id="totalCitasDia">0</span>
+                                </div>
+                                <div class="resumen-item">
+                                    <span class="resumen-label">Confirmadas:</span>
+                                    <span class="resumen-value text-success" id="citasConfirmadas">0</span>
+                                </div>
+                                <div class="resumen-item">
+                                    <span class="resumen-label">Pendientes:</span>
+                                    <span class="resumen-value text-primary" id="citasPendientes">0</span>
+                                </div>
+                                <div class="resumen-item">
+                                    <span class="resumen-label">Completadas:</span>
+                                    <span class="resumen-value text-info" id="citasCompletadas">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card shadow">
+                            <div class="card-header bg-secondary text-white">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-calendar-event me-2"></i>
+                                    Acciones Rápidas
+                                </h6>
+                            </div>
+                            <div class="card-body d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm" onclick="dashboardOdontologo.verCitasHoy()">
+                                    <i class="bi bi-calendar-day me-1"></i>Citas de Hoy
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" onclick="dashboardOdontologo.verCitasManana()">
+                                    <i class="bi bi-calendar-plus me-1"></i>Citas de Mañana
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" onclick="dashboardOdontologo.verCitasSemana()">
+                                    <i class="bi bi-calendar-week me-1"></i>Esta Semana
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pacientes Section -->
+            <section id="pacientes-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mis Pacientes</h2>
+                    <div class="input-group w-auto">
+                        <input type="text" class="form-control" placeholder="Buscar paciente..." id="searchPaciente">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="pacientesTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Paciente</th>
+                                        <th>Teléfono</th>
+                                        <th>Última Cita</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se carga dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Historiales Section -->
+            <section id="historiales-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Historiales Clínicos</h2>
+                    <button class="btn btn-primary" id="nuevoHistorialBtn">
+                        <i class="bi bi-plus-circle"></i> Nuevo Historial
+                    </button>
+                </div>
+                
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="historialesTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Paciente</th>
+                                        <th>Fecha</th>
+                                        <th>Diagnóstico</th>
+                                        <th>Tratamiento</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se carga dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mis Citas Section -->
+            <section id="miscitas-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mis Citas</h2>
+                    <div>
+                        <button class="btn btn-outline-primary" onclick="dashboardOdontologo.loadMisCitas()">
+                            <i class="bi bi-arrow-clockwise"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Estadísticas de citas -->
+                <div id="misCitasStats" class="mb-4">
+                    <!-- Se cargan dinámicamente -->
+                </div>
+                
+                <!-- Filtros -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Estado</label>
+                                <select class="form-select" id="filtroEstadoCitas">
+                                    <option value="">Todos los estados</option>
+                                    <option value="programada">Programadas</option>
+                                    <option value="completada">Completadas</option>
+                                    <option value="cancelada">Canceladas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha desde</label>
+                                <input type="date" class="form-control" id="filtroFechaDesde">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha hasta</label>
+                                <input type="date" class="form-control" id="filtroFechaHasta">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Buscar paciente</label>
+                                <input type="text" class="form-control" id="buscarPacienteCitas" placeholder="Nombre del paciente...">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button class="btn btn-primary" onclick="alert('Filtrar citas próximamente')">
+                                    <i class="bi bi-funnel"></i> Aplicar Filtros
+                                </button>
+                                <button class="btn btn-outline-secondary ms-2" onclick="alert('Limpiar filtros próximamente')">
+                                    <i class="bi bi-x-circle"></i> Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabla de citas -->
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h6 class="m-0"><i class="bi bi-calendar-check"></i> Lista de Citas</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="misCitasTableContainer">
+                            <!-- Se carga dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mi Perfil Section -->
+            <section id="perfil-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mi Información Personal</h2>
+                    <button class="btn btn-outline-primary" onclick="dashboardOdontologo.loadMiPerfil()">
+                        <i class="bi bi-arrow-clockwise"></i> Actualizar
+                    </button>
+                </div>
+                
+                <div id="miPerfilContainer">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </section>
+
+            <!-- Mis Ingresos Section -->
+            <section id="pagos-section" class="content-section">
+                <div class="container-fluid">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-currency-dollar text-success"></i> Mis Ingresos y Comisiones</h2>
+                        <button class="btn btn-outline-success" id="exportarIngresosBtn">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Reporte
+                        </button>
+                    </div>
+                    
+                    <!-- Estadísticas Financieras -->
+                    <div class="row mb-4">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card text-white bg-success">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h4 class="card-title" id="totalIngresos">$0</h4>
+                                            <p class="card-text">Ingresos Totales</p>
+                                        </div>
+                                        <i class="bi bi-cash-stack fs-1 opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card text-white bg-warning">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h4 class="card-title" id="comisionesCobradas">$0</h4>
+                                            <p class="card-text">Comisiones Cobradas</p>
+                                        </div>
+                                        <i class="bi bi-percent fs-1 opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card text-white bg-info">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h4 class="card-title" id="comisionesPendientes">$0</h4>
+                                            <p class="card-text">Comisiones Pendientes</p>
+                                        </div>
+                                        <i class="bi bi-clock fs-1 opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card text-white bg-primary">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h4 class="card-title" id="totalFacturas">0</h4>
+                                            <p class="card-text">Total Facturas</p>
+                                        </div>
+                                        <i class="bi bi-receipt fs-1 opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gráficos -->
+                    <div class="row mb-4">
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Ingresos por Mes</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="chartIngresosMensuales" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabs para diferentes vistas -->
+                    <ul class="nav nav-tabs" id="pagosTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="comisiones-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#comisiones" type="button" role="tab">
+                                <i class="bi bi-percent"></i> Mis Comisiones
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="facturas-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#facturas" type="button" role="tab">
+                                <i class="bi bi-receipt"></i> Mis Facturas
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="pagosTabContent">
+                        <!-- Tab Comisiones -->
+                        <div class="tab-pane fade show active" id="comisiones" role="tabpanel">
+                            <div class="card mt-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Historial de Comisiones</h6>
+                                    <div>
+                                        <select class="form-select form-select-sm" id="filtroEstadoComision" style="width: auto;">
+                                            <option value="">Todos los estados</option>
+                                            <option value="pendiente">Pendientes</option>
+                                            <option value="pagada">Pagadas</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="comisionesContainer">
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando comisiones...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Facturas -->
+                        <div class="tab-pane fade" id="facturas" role="tabpanel">
+                            <div class="card mt-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Mis Facturas</h6>
+                                    <div>
+                                        <select class="form-select form-select-sm" id="filtroEstadoFactura" style="width: auto;">
+                                            <option value="">Todos los estados</option>
+                                            <option value="pendiente">Pendientes</option>
+                                            <option value="pagada">Pagadas</option>
+                                            <option value="vencida">Vencidas</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="facturasContainer">
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando facturas...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Modal Historial -->
+    <div class="modal fade" id="historialModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="historialModalTitle">Nuevo Historial Clínico</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="historialForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Paciente</label>
+                                <select class="form-select" id="historialPaciente" required>
+                                    <option value="">Seleccionar paciente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha</label>
+                                <input type="date" class="form-control" id="historialFecha" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Estado del Tratamiento</label>
+                                <select class="form-select" id="historialEstado" required>
+                                    <option value="">Seleccionar estado</option>
+                                    <option value="en_proceso">En Proceso</option>
+                                    <option value="completado">Completado</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="cancelado">Cancelado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <!-- Espacio para mantener el diseño -->
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Diagnóstico</label>
+                            <textarea class="form-control" rows="3" id="historialDiagnostico" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tratamiento Realizado</label>
+                            <textarea class="form-control" rows="3" id="historialTratamiento" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" rows="2" id="historialObservaciones"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveHistorialBtn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle de Factura -->
+    <div class="modal fade" id="detalleFacturaModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalle de Factura</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detalleFacturaModalContent">
+                    <!-- El contenido se carga dinámicamente -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Auth Middleware -->
+    <script src="js/auth-middleware.js"></script>
+    <!-- Custom JS -->
+    <script src="js/dashboard-odontologo.js"></script>
+</body>
+</html>

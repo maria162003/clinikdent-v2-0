@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagos y Facturación - Clinik Dent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .stats-card .stats-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .action-btn {
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin: 5px;
+            border: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .status-pendiente { background-color: #fff3cd; color: #856404; }
+        .status-completado { background-color: #d1edff; color: #0c63e4; }
+        .status-pagada { background-color: #d4edda; color: #155724; }
+        .status-vencida { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" onclick="checkUserRoleAndRedirect()">
+                <i class="fas fa-tooth"></i> Clinik Dent - Pagos y Facturación
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="checkUserRoleAndRedirect()">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Estadísticas rápidas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon"><i class="fas fa-dollar-sign"></i></div>
+                    <h4 id="totalIngresos">$0</h4>
+                    <p class="mb-0">Ingresos Totales</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon"><i class="fas fa-file-invoice"></i></div>
+                    <h4 id="facturasPendientes">0</h4>
+                    <p class="mb-0">Facturas Pendientes</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon"><i class="fas fa-chart-line"></i></div>
+                    <h4 id="ingresosMes">$0</h4>
+                    <p class="mb-0">Ingresos del Mes</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <div class="stats-icon"><i class="fas fa-users"></i></div>
+                    <h4 id="clientesActivos">0</h4>
+                    <p class="mb-0">Clientes Activos</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de acción principales -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="table-container">
+                    <h5 class="mb-3"><i class="fas fa-tools"></i> Acciones Rápidas</h5>
+                    <div class="row">
+                        <div class="col-md-2 col-sm-6">
+                            <button class="btn btn-success action-btn w-100" onclick="nuevaFactura()">
+                                <i class="fas fa-plus"></i><br>Nueva Factura
+                            </button>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <button class="btn btn-primary action-btn w-100" onclick="registrarPago()">
+                                <i class="fas fa-credit-card"></i><br>Registrar Pago
+                            </button>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <button class="btn btn-info action-btn w-100" onclick="configurarServicios()">
+                                <i class="fas fa-cogs"></i><br>Configurar Servicios
+                            </button>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <button class="btn btn-warning action-btn w-100" onclick="generarReporte()">
+                                <i class="fas fa-chart-bar"></i><br>Generar Reporte
+                            </button>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <button class="btn btn-secondary action-btn w-100" onclick="gestionarDescuentos()">
+                                <i class="fas fa-percent"></i><br>Descuentos
+                            </button>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <button class="btn btn-dark action-btn w-100" onclick="exportarDatos()">
+                                <i class="fas fa-download"></i><br>Exportar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs principales -->
+        <div class="row">
+            <div class="col-12">
+                <div class="table-container">
+                    <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="facturas-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#facturas" type="button">
+                                <i class="fas fa-file-invoice"></i> Facturas
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pagos-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#pagos" type="button">
+                                <i class="fas fa-credit-card"></i> Pagos
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="servicios-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#servicios" type="button">
+                                <i class="fas fa-tooth"></i> Servicios
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="reportes-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#reportes" type="button">
+                                <i class="fas fa-chart-pie"></i> Reportes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pagos-odontologos-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#pagos-odontologos" type="button">
+                                <i class="fas fa-user-md"></i> Pagos a Odontólogos
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="mainTabsContent">
+                        <!-- Tab Facturas -->
+                        <div class="tab-pane fade show active" id="facturas" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><i class="fas fa-file-invoice"></i> Gestión de Facturas</h5>
+                                <div>
+                                    <button class="btn btn-primary btn-sm" onclick="nuevaFactura()">
+                                        <i class="fas fa-plus"></i> Nueva Factura
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="filtrarFacturas()">
+                                        <i class="fas fa-filter"></i> Filtros
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="tablaFacturas">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Nº Factura</th>
+                                            <th>Fecha</th>
+                                            <th>Paciente</th>
+                                            <th>Servicios</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="text-center py-4">
+                                                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                                <p>Cargando facturas...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Pagos -->
+                        <div class="tab-pane fade" id="pagos" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><i class="fas fa-credit-card"></i> Historial de Pagos</h5>
+                                <div>
+                                    <button class="btn btn-primary btn-sm" onclick="registrarPago()">
+                                        <i class="fas fa-plus"></i> Registrar Pago
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="filtrarPagos()">
+                                        <i class="fas fa-filter"></i> Filtros
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="tablaPagos">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Paciente</th>
+                                            <th>Concepto</th>
+                                            <th>Monto</th>
+                                            <th>Método</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="text-center py-4">
+                                                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                                <p>Cargando pagos...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Servicios -->
+                        <div class="tab-pane fade" id="servicios" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><i class="fas fa-tooth"></i> Configuración de Servicios</h5>
+                                <button class="btn btn-primary btn-sm" onclick="nuevoServicio()">
+                                    <i class="fas fa-plus"></i> Nuevo Servicio
+                                </button>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="tablaServicios">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Servicio</th>
+                                            <th>Descripción</th>
+                                            <th>Precio</th>
+                                            <th>Duración</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                                <p>Cargando servicios...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Reportes -->
+                        <div class="tab-pane fade" id="reportes" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                                            <h5>Reporte de Ingresos</h5>
+                                            <p>Análisis detallado de ingresos por período</p>
+                                            <button class="btn btn-primary" onclick="generarReporteIngresos()">
+                                                Generar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                                            <h5>Exportar Facturas</h5>
+                                            <p>Exportar facturas en formato Excel</p>
+                                            <button class="btn btn-success" onclick="exportarFacturas()">
+                                                Exportar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-chart-pie fa-3x text-warning mb-3"></i>
+                                            <h5>Estadísticas</h5>
+                                            <p>Estadísticas de pagos y servicios</p>
+                                            <button class="btn btn-warning" onclick="verEstadisticas()">
+                                                Ver
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab Pagos a Odontólogos -->
+                        <div class="tab-pane fade" id="pagos-odontologos" role="tabpanel">
+                            <!-- Estadísticas de pagos a odontólogos -->
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-user-md fa-2x mb-2"></i>
+                                            <h4 id="totalOdontologos">0</h4>
+                                            <p class="mb-0">Odontólogos Activos</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-warning text-white">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-clock fa-2x mb-2"></i>
+                                            <h4 id="pagosPendientesOdontologos">$0</h4>
+                                            <p class="mb-0">Pagos Pendientes</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                            <h4 id="pagosMesOdontologos">$0</h4>
+                                            <p class="mb-0">Pagado Este Mes</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                                            <h4 id="totalComisionesOdontologos">$0</h4>
+                                            <p class="mb-0">Total Comisiones</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Lista de odontólogos y sus balances -->
+                            <div class="table-container">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5><i class="fas fa-users"></i> Resumen de Pagos por Odontólogo</h5>
+                                    <button class="btn btn-success action-btn" onclick="abrirModalPago()">
+                                        <i class="fas fa-plus"></i> Registrar Pago
+                                    </button>
+                                </div>
+                                
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Odontólogo</th>
+                                            <th>Total Comisiones</th>
+                                            <th>Total Pagado</th>
+                                            <th>Saldo Pendiente</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaOdontologos">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Cargando...</span>
+                                                </div>
+                                                <p class="mt-2">Cargando información de odontólogos...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- MODALES -->
+    
+    <!-- Modal Nueva Factura -->
+    <div class="modal fade" id="modalNuevaFactura" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus"></i> Nueva Factura</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNuevaFactura">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Paciente</label>
+                                <select class="form-control" id="pacienteFactura" required>
+                                    <option value="">Seleccionar paciente...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha</label>
+                                <input type="date" class="form-control" id="fechaFactura" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Servicios</label>
+                                <div id="serviciosFactura">
+                                    <div class="row align-items-end mb-2">
+                                        <div class="col-md-5">
+                                            <select class="form-control servicio-select">
+                                                <option value="">Seleccionar servicio...</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" class="form-control cantidad-input" 
+                                                   placeholder="Cant." value="1" min="1">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="number" class="form-control precio-input" 
+                                                   placeholder="Precio" step="0.01" min="0">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-outline-success w-100" 
+                                                    onclick="agregarServicioFactura()">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Observaciones</label>
+                                <textarea class="form-control" id="observacionesFactura" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Subtotal</label>
+                                <input type="number" class="form-control" id="subtotalFactura" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Total</label>
+                                <input type="number" class="form-control" id="totalFactura" readonly>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarFactura()">
+                        <i class="fas fa-save"></i> Guardar Factura
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registrar Pago -->
+    <div class="modal fade" id="modalRegistrarPago" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-credit-card"></i> Registrar Pago</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formRegistrarPago">
+                        <div class="mb-3">
+                            <label class="form-label">Paciente</label>
+                            <select class="form-control" id="pacientePago" required>
+                                <option value="">Seleccionar paciente...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Factura/Concepto</label>
+                            <select class="form-control" id="conceptoPago" required>
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Monto</label>
+                                <input type="number" class="form-control" id="montoPago" 
+                                       step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Método de Pago</label>
+                                <select class="form-control" id="metodoPago" required>
+                                    <option value="">Seleccionar...</option>
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="tarjeta">Tarjeta</option>
+                                    <option value="transferencia">Transferencia</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="observacionesPago" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarPago()">
+                        <i class="fas fa-save"></i> Registrar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configurar Servicios -->
+    <div class="modal fade" id="modalConfigServicios" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-cogs"></i> Configurar Servicio</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formConfigServicio">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Servicio</label>
+                            <input type="text" class="form-control" id="nombreServicio" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcionServicio" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Precio</label>
+                                <input type="number" class="form-control" id="precioServicio" 
+                                       step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Duración (min)</label>
+                                <input type="number" class="form-control" id="duracionServicio" 
+                                       min="15" step="15">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="activoServicio" checked>
+                                <label class="form-check-label">Servicio activo</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarServicio()">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalles de Factura -->
+    <div class="modal fade" id="modalVerFactura" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-file-invoice"></i> Detalles de la Factura</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="contenidoDetalleFactura">
+                        <!-- El contenido se cargará dinámicamente -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                            <p>Cargando detalles de la factura...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-success" onclick="cobrarFacturaActual()">
+                        <i class="fas fa-dollar-sign"></i> Cobrar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="imprimirDetalleFactura()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalles de Pago -->
+    <div class="modal fade" id="modalVerPago" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-receipt"></i> Detalles del Pago</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="contenidoDetallePago">
+                        <!-- El contenido se cargará dinámicamente -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                            <p>Cargando detalles del pago...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="imprimirDetallePago()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registrar Pago a Odontólogo -->
+    <div class="modal fade" id="modalRegistrarPagoOdontologo" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-money-bill-wave"></i> Registrar Pago a Odontólogo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formPagoOdontologo">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="selectOdontologo" class="form-label">Odontólogo</label>
+                                    <select class="form-select" id="selectOdontologo" required>
+                                        <option value="">Seleccione un odontólogo...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="montoTotalPago" class="form-label">Monto Total</label>
+                                    <input type="number" class="form-control" id="montoTotalPago" 
+                                           min="0" step="0.01" placeholder="0.00" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="metodoPagoOdontologo" class="form-label">Método de Pago</label>
+                                    <select class="form-select" id="metodoPagoOdontologo" required>
+                                        <option value="">Seleccione método...</option>
+                                        <option value="transferencia">Transferencia Bancaria</option>
+                                        <option value="efectivo">Efectivo</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="consignacion">Consignación</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="fechaPagoOdontologo" class="form-label">Fecha de Pago</label>
+                                    <input type="date" class="form-control" id="fechaPagoOdontologo" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conceptoPago" class="form-label">Concepto</label>
+                                    <input type="text" class="form-control" id="conceptoPago" 
+                                           placeholder="Ej: Pago quincenal Sep 1-15" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="numeroComprobante" class="form-label">Número de Comprobante</label>
+                                    <input type="text" class="form-control" id="numeroComprobante" 
+                                           placeholder="Número de transferencia, cheque, etc.">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="observacionesPago" class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="observacionesPago" rows="2" 
+                                      placeholder="Observaciones adicionales (opcional)"></textarea>
+                        </div>
+
+                        <!-- Sección de servicios pendientes -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-list"></i> Servicios Pendientes de Pago</h6>
+                            </div>
+                            <div class="card-body" id="serviciosPendientesContainer">
+                                <p class="text-muted text-center">Seleccione un odontólogo para ver sus servicios pendientes</p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="formPagoOdontologo" class="btn btn-success">
+                        <i class="fas fa-save"></i> Registrar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalles Odontólogo -->
+    <div class="modal fade" id="modalDetallesOdontologo" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-md"></i> Detalles Financieros - <span id="nombreOdontologoDetalle"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Resumen financiero -->
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6><i class="fas fa-chart-pie"></i> Resumen Financiero</h6>
+                                    <div id="resumenFinancieroOdontologo">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Total Comisiones:</span>
+                                            <strong id="totalComisionesDetalle">$0</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Total Pagado:</span>
+                                            <strong id="totalPagadoDetalle">$0</strong>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Saldo Pendiente:</span>
+                                            <strong class="text-warning" id="saldoPendienteDetalle">$0</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pestañas de detalles -->
+                        <div class="col-md-8">
+                            <ul class="nav nav-tabs" id="tabsDetalleOdontologo" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" 
+                                            data-bs-target="#serviciosPendientes" type="button">
+                                        Servicios Pendientes
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="historial-tab" data-bs-toggle="tab" 
+                                            data-bs-target="#historialPagos" type="button">
+                                        Historial de Pagos
+                                    </button>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content" id="contenidoDetalleOdontologo">
+                                <div class="tab-pane fade show active" id="serviciosPendientes" role="tabpanel">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Paciente</th>
+                                                    <th>Servicio</th>
+                                                    <th>Comisión</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tablaServiciosPendientes">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <div class="tab-pane fade" id="historialPagos" role="tabpanel">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Monto</th>
+                                                    <th>Método</th>
+                                                    <th>Concepto</th>
+                                                    <th>Comprobante</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tablaHistorialPagos">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-success" onclick="modalRegistrarPagoDirecto()">
+                        <i class="fas fa-money-bill-wave"></i> Registrar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registrar Pago a Odontólogo -->
+    <div class="modal fade" id="modalPagoOdontologo" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-money-bill-wave"></i> Registrar Pago a Odontólogo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formPagoOdontologo">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="odontologoPago" class="form-label">Odontólogo *</label>
+                                <select class="form-select" id="odontologoPago" required>
+                                    <option value="">Seleccionar odontólogo...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fechaPagoOdontologo" class="form-label">Fecha de Pago *</label>
+                                <input type="date" class="form-control" id="fechaPagoOdontologo" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipoPago" class="form-label">Tipo de Pago *</label>
+                                <select class="form-select" id="tipoPago" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    <option value="comision">Comisión por Servicios</option>
+                                    <option value="salario">Salario Base</option>
+                                    <option value="bono">Bono/Incentivo</option>
+                                    <option value="ajuste">Ajuste</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="metodoPagoOdontologo" class="form-label">Método de Pago *</label>
+                                <select class="form-select" id="metodoPagoOdontologo" required>
+                                    <option value="">Seleccionar método...</option>
+                                    <option value="transferencia">Transferencia Bancaria</option>
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="montoPagoOdontologo" class="form-label">Monto *</label>
+                                <input type="number" class="form-control" id="montoPagoOdontologo" 
+                                       step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="comisionPorcentaje" class="form-label">Comisión (%)</label>
+                                <input type="number" class="form-control" id="comisionPorcentaje" 
+                                       step="0.1" min="0" max="100" placeholder="Ej: 40">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="conceptoPagoOdontologo" class="form-label">Concepto</label>
+                            <textarea class="form-control" id="conceptoPagoOdontologo" rows="3" 
+                                      placeholder="Descripción del pago (servicios realizados, período, etc.)"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="referenciaPago" class="form-label">Referencia/Comprobante</label>
+                                <input type="text" class="form-control" id="referenciaPago" 
+                                       placeholder="Número de transferencia, cheque, etc.">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="serviciosPeriodo" class="form-label">Servicios en el Período</label>
+                                <div class="d-flex">
+                                    <input type="number" class="form-control me-2" id="serviciosPeriodo" 
+                                           min="0" placeholder="Cantidad">
+                                    <button type="button" class="btn btn-outline-info btn-sm" 
+                                            onclick="calcularComision()">
+                                        <i class="fas fa-calculator"></i> Calcular
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resumen del pago -->
+                        <div class="alert alert-info" id="resumenPago" style="display: none;">
+                            <h6><i class="fas fa-info-circle"></i> Resumen del Pago</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <small>Servicios realizados:</small><br>
+                                    <strong id="resumenServicios">0</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <small>Comisión %:</small><br>
+                                    <strong id="resumenComision">0%</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <small>Total a pagar:</small><br>
+                                    <strong id="resumenTotal">$0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="registrarPagoOdontologo()">
+                        <i class="fas fa-save"></i> Registrar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Script de simulación de login para testing -->
+    <script>
+        // Función de debug para limpiar caché
+        window.debugLimpiarCache = function() {
+            console.log('🧹 Limpiando localStorage y recargando...');
+            localStorage.clear();
+            location.reload();
+        };
+        
+        window.debugForzarDatos = function() {
+            console.log('🔄 Forzando recarga de datos...');
+            if (window.cargarPacientes) window.cargarPacientes();
+            if (window.cargarServicios) window.cargarServicios();
+        };
+        
+        // Simular login de administrador si no existe
+        if (!localStorage.getItem('user')) {
+            console.log('🔄 Simulando login de administrador para testing...');
+            
+            const adminUser = {
+                id: 1,
+                nombre: 'Admin',
+                apellido: 'Sistema',
+                correo: 'admin@clinikdent.com',
+                rol: 'administrador',
+                rol_id: 1
+            };
+            
+            localStorage.setItem('user', JSON.stringify(adminUser));
+            localStorage.setItem('userRole', 'administrador');
+            localStorage.setItem('authToken', 'admin-token-123');
+            
+            console.log('✅ Usuario administrador simulado para testing');
+        } else {
+            console.log('👤 Usuario ya existe:', JSON.parse(localStorage.getItem('user')));
+            console.log('🔑 Token actual:', localStorage.getItem('authToken'));
+        }
+    </script>
+    
+    <script src="js/pagos-facturacion.js?v=20250915"></script>
+    <script src="js/diagnostico-botones.js"></script>
+    <script src="js/funciones-emergencia.js"></script>
+    
+    <!-- Script para exponer funciones globalmente para debug -->
+    <script>
+        // Exponer funciones para debugging
+        setTimeout(() => {
+            if (typeof cargarPacientes !== 'undefined') {
+                window.cargarPacientes = cargarPacientes;
+                window.cargarServicios = cargarServicios;
+                window.llenarSelectPacientes = llenarSelectPacientes;
+                window.llenarSelectServicios = llenarSelectServicios;
+                
+                console.log('🔧 Funciones de debug expuestas:');
+                console.log('- debugLimpiarCache() - Limpia localStorage y recarga');
+                console.log('- debugForzarDatos() - Fuerza recarga de pacientes y servicios');
+                console.log('- cargarPacientes() - Carga pacientes desde API');
+                console.log('- cargarServicios() - Carga servicios desde API');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Test Final - Botones Servicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        .btn-test {
+            padding: 20px 30px;
+            font-size: 18px;
+            margin: 15px;
+            min-width: 250px;
+        }
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #c3e6cb;
+        }
+        .loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="text-center mb-5">
+            <h1 class="text-primary">🔧 Test Final - Botones de Servicios</h1>
+            <p class="lead">Estos botones DEBEN funcionar perfectamente</p>
+        </div>
+
+        <div class="row text-center">
+            <div class="col-md-6">
+                <button class="btn btn-info btn-test" onclick="testConfigurar()">
+                    <i class="fas fa-cogs"></i><br>
+                    Configurar Servicios
+                </button>
+                <div id="status1" class="mt-2"></div>
+            </div>
+            
+            <div class="col-md-6">
+                <button class="btn btn-primary btn-test" onclick="testNuevo()">
+                    <i class="fas fa-plus"></i><br>
+                    Nuevo Servicio
+                </button>
+                <div id="status2" class="mt-2"></div>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3>🔍 Test de la Página Original</h3>
+                <p>Ahora pruebe los botones en la página real:</p>
+                <a href="/public/pagos-facturacion.html" class="btn btn-success btn-lg">
+                    <i class="fas fa-external-link-alt"></i> Ir a Página de Pagos
+                </a>
+            </div>
+        </div>
+
+        <!-- Pestañas de prueba -->
+        <ul class="nav nav-tabs mt-5" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="inicio-tab" data-bs-toggle="tab" data-bs-target="#inicio">
+                    Inicio
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="servicios-tab" data-bs-toggle="tab" data-bs-target="#servicios">
+                    <i class="fas fa-tooth"></i> Servicios
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content mt-3">
+            <div class="tab-pane show active" id="inicio">
+                <p>Pestaña de inicio</p>
+            </div>
+            <div class="tab-pane" id="servicios">
+                <div class="success-msg">
+                    <i class="fas fa-check"></i> ¡Pestaña de servicios funcionando!
+                </div>
+                <p>Esta es la pestaña donde se configuran los servicios.</p>
+                <button class="btn btn-primary" onclick="testNuevo()">Nuevo Servicio</button>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="modalConfigServicios" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-check-circle"></i> ¡Modal Funcionando!
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="success-msg">
+                            <i class="fas fa-thumbs-up"></i> El modal se abre correctamente
+                        </div>
+                        <p>En la aplicación real, aquí estaría el formulario para crear servicios.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-success">¡Perfecto!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 p-4 bg-light">
+            <h4>🎯 Instrucciones</h4>
+            <ol>
+                <li><strong>Pruebe estos botones</strong> - Deben funcionar inmediatamente</li>
+                <li><strong>Vaya a la página real</strong> - Use el enlace de arriba</li>
+                <li><strong>Abra la consola del navegador</strong> - Verá mensajes de diagnóstico</li>
+                <li><strong>Pruebe los botones originales</strong> - Ahora deben funcionar</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showStatus(id, message, type = 'success') {
+            const status = document.getElementById(id);
+            status.className = type === 'success' ? 'success-msg' : 'loading';
+            status.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'spinner fa-spin'}"></i> ${message}`;
+        }
+
+        function testConfigurar() {
+            showStatus('status1', 'Procesando...', 'loading');
+            
+            setTimeout(() => {
+                document.getElementById('servicios-tab').click();
+                showStatus('status1', '¡Funciona! Cambió a pestaña servicios');
+            }, 500);
+        }
+
+        function testNuevo() {
+            showStatus('status2', 'Abriendo modal...', 'loading');
+            
+            setTimeout(() => {
+                const modal = new bootstrap.Modal(document.getElementById('modalConfigServicios'));
+                modal.show();
+                showStatus('status2', '¡Funciona! Modal abierto correctamente');
+            }, 500);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Página de test final cargada');
+        });
+    </script>
+</body>
+</html>

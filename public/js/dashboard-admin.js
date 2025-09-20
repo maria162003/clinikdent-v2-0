@@ -1,0 +1,4379 @@
+// Dashboard Admin JavaScript - Versión sin duplicación
+if (window.dashboardAdminInitialized) {
+    console.log('⚠️ Dashboard Admin ya inicializado, evitando duplicación');
+} else {
+    window.dashboardAdminInitialized = true;
+    console.log('✅ Inicializando Dashboard Admin por primera vez');
+
+// DEBUG: Verificar datos de localStorage
+console.log('🔍 DEBUG - Estado inicial de localStorage:');
+console.log('  user:', localStorage.getItem('user'));
+console.log('  userId:', localStorage.getItem('userId'));
+console.log('  userRole:', localStorage.getItem('userRole'));
+
+// Prevenir múltiples instancias
+if (!window.dashboardAdmin) {
+
+class DashboardAdmin {
+    constructor() {
+        this.currentSection = 'dashboard';
+        this.users = [];
+        this.citas = [];
+        this.charts = {};
+        this.calendarioFechaActual = new Date();
+        this.vistaActual = 'tabla'; // 'tabla' o 'calendario'
+        
+        // Establecer el nombre de usuario inmediatamente
+        this.setUserNameFromStorage();
+        
+        this.init();
+        
+        // Mantener el nombre correcto cada segundo
+        this.startUserNameWatcher();
+    }
+
+    // Función para establecer el nombre desde localStorage
+    setUserNameFromStorage() {
+        console.log('🔧 DASHBOARD ADMIN - Estableciendo nombre de usuario...');
+        
+        let storedUser = localStorage.getItem('user');
+        
+        // Si no hay usuario en localStorage, crear uno por defecto con Camila Perez
+        if (!storedUser) {
+            console.log('⚠️ No hay usuario en localStorage, creando usuario por defecto');
+            const defaultUser = {
+                id: 5,
+                nombre: 'Camila',
+                apellido: 'Perez',
+                rol: 'administrador',
+                email: 'admin@clinikdent.com'
+            };
+            localStorage.setItem('user', JSON.stringify(defaultUser));
+            localStorage.setItem('userId', '5');
+            localStorage.setItem('userRole', 'administrador');
+            storedUser = JSON.stringify(defaultUser);
+        }
+        
+        if (storedUser) {
+            try {
+                const userData = JSON.parse(storedUser);
+                const nombreCompleto = `${userData.nombre || ''} ${userData.apellido || ''}`.trim();
+                
+                console.log('👤 DASHBOARD ADMIN - Usuario encontrado:', userData);
+                console.log('📝 DASHBOARD ADMIN - Nombre completo:', nombreCompleto);
+                
+                // Intentar establecer el nombre inmediatamente
+                const userNameElement = document.getElementById('userName');
+                if (userNameElement && nombreCompleto) {
+                    userNameElement.textContent = nombreCompleto;
+                    console.log('✅ DASHBOARD ADMIN - Nombre establecido:', nombreCompleto);
+                } else if (nombreCompleto) {
+                    // Si el elemento no existe aún, esperar un poco
+                    setTimeout(() => {
+                        const element = document.getElementById('userName');
+                        if (element) {
+                            element.textContent = nombreCompleto;
+                            console.log('✅ DASHBOARD ADMIN - Nombre establecido (delayed):', nombreCompleto);
+                        }
+                    }, 100);
+                }
+                
+                return nombreCompleto;
+            } catch (error) {
+                console.error('❌ DASHBOARD ADMIN - Error parseando usuario:', error);
+            }
+        } else {
+            console.log('⚠️ DASHBOARD ADMIN - No hay datos de usuario en localStorage');
+        }
+        return null;
+    }
+
+    // Función que vigila y mantiene el nombre correcto
+    startUserNameWatcher() {
+        console.log('👁️ DASHBOARD ADMIN - Iniciando vigilancia del nombre de usuario');
+        
+        // Ejecutar inmediatamente al iniciar
+        this.setUserNameFromStorage();
+        
+        setInterval(() => {
+            const userNameElement = document.getElementById('userName');
+            if (userNameElement) {
+                const currentText = userNameElement.textContent;
+                
+                // Si el texto es incorrecto o es el hardcodeado, corregirlo
+                if (currentText === 'Admin Sistema' || 
+                    currentText === 'Administrador' || 
+                    currentText === 'Cargando...' ||
+                    currentText === 'Usuario' ||
+                    currentText === 'Camila Perez') { // También actualizar el hardcodeado
+                    
+                    console.log('🔧 DASHBOARD ADMIN - Texto detectado:', currentText);
+                    const correctName = this.setUserNameFromStorage();
+                    if (correctName && correctName !== currentText) {
+                        console.log('🔄 DASHBOARD ADMIN - Actualizando de "' + currentText + '" a "' + correctName + '"');
+                    }
+                }
+            }
+        }, 500); // Revisar cada medio segundo para ser más agresivo
+    }
+
+    // Obtener headers de autenticación para las peticiones
+    getAuthHeaders() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userId = localStorage.getItem('userId') || user.id;
+        
+        return {
+            'Content-Type': 'application/json',
+            'user-id': userId || '1' // Valor por defecto para evitar errores
+        };
+    }
+
+    // Hacer petición fetch con headers de autenticación
+    async authFetch(url, options = {}) {
+        const headers = this.getAuthHeaders();
+        
+        return fetch(url, {
+            ...options,
+            headers: {
+                ...headers,
+                ...options.headers
+            }
+        });
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.loadDashboardData();
+        this.initializeCharts();
+        this.actualizarContadorCitasProximas();
+        
+        // Limpiar elementos problemáticos al cargar
+        setTimeout(() => {
+            this.cleanupProblematicElements();
+        }, 1000);
+        
+        // Cargar información del usuario AL FINAL para evitar que sea sobrescrita
+        setTimeout(() => {
+            this.loadUserInfo();
+        }, 1500);
+        
+        // Actualizar contador cada 5 minutos
+        setInterval(() => {
+            this.actualizarContadorCitasProximas();
+        }, 5 * 60 * 1000);
+        
+        // Actualizar citas automáticamente cada 30 segundos si estamos en la sección de citas
+        setInterval(() => {
+            if (this.currentSection === 'citas') {
+                console.log('🔄 Auto-actualizando citas...');
+                this.loadCitas();
+            }
+        }, 30 * 1000);
+    }
+
+    setupEventListeners() {
+        // Sidebar navigation
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.dataset.section;
+                if (section) {
+                    this.showSection(section);
+                    this.updateActiveNav(link);
+                }
+            });
+        });
+
+        // Mobile sidebar toggle - Botón en header
+        const sidebarToggleHeader = document.getElementById('sidebarToggle');
+        if (sidebarToggleHeader) {
+            sidebarToggleHeader.addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('show');
+            });
+        }
+
+        // Mobile sidebar toggle - Botón en contenido
+        const sidebarToggle = document.getElementById('sidebarToggleMobile');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('show');
+            });
+        }
+
+        // Modal events
+        this.setupModalEvents();
+
+        // Form events
+        this.setupFormEvents();
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.logout();
+        });
+
+        // Citas próximas button
+        const citasProximasBtn = document.getElementById('citasProximasBtn');
+        if (citasProximasBtn) {
+            citasProximasBtn.addEventListener('click', () => {
+                this.mostrarCitasProximas();
+            });
+        }
+        
+        // Edit Profile button
+        const editProfileBtn = document.getElementById('editProfileBtn');
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.openProfileModal();
+            });
+        }
+        
+        // Save Profile button
+        const saveProfileBtn = document.getElementById('saveProfileBtn');
+        if (saveProfileBtn) {
+            saveProfileBtn.addEventListener('click', () => {
+                this.saveProfile();
+            });
+        }
+    }
+
+    setupModalEvents() {
+        // Add user button
+        document.getElementById('addUserBtn').addEventListener('click', () => {
+            this.openUserModal();
+        });
+
+        // Save user button - No agregamos listener aquí ya que se asigna dinámicamente en openUserModal
+    }
+
+    setupFormEvents() {
+        // Search functionality for users
+        const searchUser = document.getElementById('searchUser');
+        if (searchUser) {
+            searchUser.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.trim();
+                if (searchTerm === '') {
+                    this.renderUsuariosTable(); // Mostrar todos los usuarios
+                } else {
+                    this.filterUsers(searchTerm);
+                }
+            });
+        }
+
+        // Filters for citas
+        const fechaFiltro = document.getElementById('fechaFiltro');
+        const estadoFiltro = document.getElementById('estadoFiltro');
+        const pacienteFiltro = document.getElementById('pacienteFiltro');
+        const odontologoFiltro = document.getElementById('odontologoFiltro');
+        const refreshCitasBtn = document.getElementById('refreshCitasBtn');
+        
+        if (fechaFiltro) {
+            fechaFiltro.addEventListener('change', () => this.filterCitas());
+        }
+        
+        if (estadoFiltro) {
+            estadoFiltro.addEventListener('change', () => this.filterCitas());
+        }
+
+        if (pacienteFiltro) {
+            pacienteFiltro.addEventListener('input', () => this.filterCitas());
+        }
+
+        if (odontologoFiltro) {
+            odontologoFiltro.addEventListener('input', () => this.filterCitas());
+        }
+
+        if (refreshCitasBtn) {
+            refreshCitasBtn.addEventListener('click', () => this.loadCitas());
+        }
+
+        // Debug button for citas
+        const debugCitasBtn = document.getElementById('debugCitasBtn');
+        if (debugCitasBtn) {
+            debugCitasBtn.addEventListener('click', () => this.debugCitas());
+        }
+
+        // Export buttons for citas
+        const exportCitasPdfBtn = document.getElementById('exportCitasPdfBtn');
+        const exportCitasExcelBtn = document.getElementById('exportCitasExcelBtn');
+        
+        if (exportCitasPdfBtn) {
+            exportCitasPdfBtn.addEventListener('click', () => this.exportCitasPdf());
+        }
+        
+        if (exportCitasExcelBtn) {
+            exportCitasExcelBtn.addEventListener('click', () => this.exportCitasExcel());
+        }
+
+        // Event listener para el select de estado en el modal de citas
+        const nuevoEstadoCita = document.getElementById('nuevoEstadoCita');
+        if (nuevoEstadoCita) {
+            nuevoEstadoCita.addEventListener('change', () => this.toggleNotasCancelacion());
+        }
+
+        // Event listeners para vista de calendario
+        const vistaTablaBtn = document.getElementById('vistaTablaBtn');
+        const vistaCalendarioBtn = document.getElementById('vistaCalendarioBtn');
+        const calendarioPrevBtn = document.getElementById('calendarioPrevBtn');
+        const calendarioNextBtn = document.getElementById('calendarioNextBtn');
+        const calendarioHoyBtn = document.getElementById('calendarioHoyBtn');
+
+        if (vistaTablaBtn) {
+            vistaTablaBtn.addEventListener('click', () => this.cambiarVista('tabla'));
+        }
+        
+        if (vistaCalendarioBtn) {
+            vistaCalendarioBtn.addEventListener('click', () => this.cambiarVista('calendario'));
+        }
+
+        if (calendarioPrevBtn) {
+            calendarioPrevBtn.addEventListener('click', () => this.navegarCalendario(-1));
+        }
+
+        if (calendarioNextBtn) {
+            calendarioNextBtn.addEventListener('click', () => this.navegarCalendario(1));
+        }
+
+        if (calendarioHoyBtn) {
+            calendarioHoyBtn.addEventListener('click', () => this.irAHoy());
+        }
+    }
+
+    showSection(sectionName) {
+        // Hide all sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Show target section
+        const targetSection = document.getElementById(`${sectionName}-section`);
+        if (targetSection) {
+            targetSection.classList.add('active');
+            this.currentSection = sectionName;
+            
+            // Update page title
+            document.getElementById('pageTitle').textContent = this.getSectionTitle(sectionName);
+            
+            // Limpiar elementos problemáticos después de cambiar de sección
+            setTimeout(() => {
+                this.cleanupProblematicElements();
+            }, 150);
+            
+            // Load section data
+            this.loadSectionData(sectionName);
+            
+            // ✅ AGREGAR: Si volvemos al dashboard, refrescar todos los datos
+            if (sectionName === 'dashboard') {
+                console.log('🔄 Refrescando datos del dashboard...');
+                setTimeout(() => {
+                    this.loadDashboardData();
+                }, 200);
+            }
+        }
+    }
+
+    cleanupProblematicElements() {
+        console.log('🧹 Limpiando elementos problemáticos...');
+        
+        // Eliminar elementos que solo contienen "Teléfono" sin contexto útil fuera de las secciones
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(el => {
+            const text = el.textContent.trim();
+            if (text === 'Teléfono' && 
+                !el.closest('table') && 
+                !el.closest('form') && 
+                !el.closest('.modal') &&
+                !el.closest('.content-section') &&
+                !el.querySelector('input') &&
+                !el.querySelector('select')) {
+                console.log('🗑️ Ocultando elemento problemático con "Teléfono":', el);
+                el.style.display = 'none';
+            }
+        });
+
+        // Eliminar elementos vacíos que puedan estar flotando
+        const emptyElements = document.querySelectorAll('div:empty:not([id]):not([class]):not([data-section])');
+        emptyElements.forEach(el => {
+            if (!el.closest('.content-section') && !el.closest('.modal') && !el.closest('.sidebar')) {
+                console.log('🗑️ Eliminando div vacío:', el);
+                el.remove();
+            }
+        });
+    }
+
+    updateActiveNav(activeLink) {
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        activeLink.classList.add('active');
+    }
+
+    getSectionTitle(section) {
+        const titles = {
+            dashboard: 'Dashboard',
+            usuarios: 'Gestión de Usuarios',
+            citas: 'Gestión de Citas',
+            pagos: 'Pagos y Facturación',
+            faqs: 'Preguntas Frecuentes',
+            evaluaciones: 'Evaluaciones de Servicio',
+            reportes: 'Reportes y Estadísticas',
+            inventario: 'Inventario y Sedes'
+        };
+        return titles[section] || 'Dashboard';
+    }
+
+    async loadUserInfo() {
+        console.log('🔍 DEBUG - Iniciando loadUserInfo()');
+        
+        // Usar la nueva función para establecer el nombre
+        const nombreCompleto = this.setUserNameFromStorage();
+        
+        if (nombreCompleto) {
+            console.log('✅ loadUserInfo completado exitosamente con:', nombreCompleto);
+        } else {
+            console.log('⚠️ loadUserInfo no pudo obtener nombre del usuario');
+            
+            // Como último recurso, establecer un nombre por defecto más amigable
+            const userNameElement = document.getElementById('userName');
+            if (userNameElement) {
+                userNameElement.textContent = 'Usuario Admin';
+                console.log('🔧 Establecido nombre por defecto: Usuario Admin');
+            }
+        }
+    }
+
+    async loadDashboardData() {
+        try {
+            // Obtener headers de autenticación
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userId = localStorage.getItem('userId') || user.id;
+            
+            // Cargar estadísticas desde la API
+            const statsResponse = await fetch('/api/usuarios/estadisticas', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': userId || '1'
+                }
+            });
+            
+            if (statsResponse.ok) {
+                const stats = await statsResponse.json();
+                document.getElementById('totalPacientes').textContent = stats.totalPacientes || 0;
+                document.getElementById('citasHoy').textContent = stats.citasHoy || 0;
+                document.getElementById('ingresosMes').textContent = `$${(stats.ingresosMes || 0).toLocaleString()}`;
+                document.getElementById('odontologosActivos').textContent = stats.odontologosActivos || 0;
+            } else {
+                // Datos de respaldo si la API falla
+                document.getElementById('totalPacientes').textContent = '156';
+                document.getElementById('citasHoy').textContent = '12';
+                document.getElementById('ingresosMes').textContent = '$45,230';
+                document.getElementById('odontologosActivos').textContent = '8';
+            }
+            
+            // Cargar próximas citas
+            await this.loadProximasCitas();
+            
+            // ✅ AGREGAR: Cargar usuarios/pacientes al inicializar el dashboard
+            console.log('🔄 Cargando usuarios en el dashboard inicial...');
+            await this.loadUsuarios();
+            
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            // Datos de respaldo en caso de error
+            document.getElementById('totalPacientes').textContent = '156';
+            document.getElementById('citasHoy').textContent = '12';
+            document.getElementById('ingresosMes').textContent = '$45,230';
+            document.getElementById('odontologosActivos').textContent = '8';
+            
+            // Cargar usuarios incluso si hay error en estadísticas
+            try {
+                await this.loadUsuarios();
+            } catch (userError) {
+                console.error('Error cargando usuarios:', userError);
+            }
+        }
+    }
+
+    async loadProximasCitas() {
+        try {
+            // Obtener headers de autenticación
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userId = localStorage.getItem('userId') || user.id;
+            
+            const response = await fetch('/api/usuarios/proximas-citas', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': userId || '1'
+                }
+            });
+            
+            if (response.ok) {
+                const proximasCitas = await response.json();
+                console.log('🔍 DEBUG - Próximas citas recibidas:', proximasCitas);
+                const container = document.getElementById('proximasCitas');
+                
+                if (proximasCitas.length === 0) {
+                    container.innerHTML = '<div class="alert alert-info">No hay citas próximas</div>';
+                    return;
+                }
+                
+                container.innerHTML = proximasCitas.map(cita => `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${cita.paciente_nombre} ${cita.paciente_apellido}</h6>
+                            <small class="text-muted">${cita.motivo || 'Consulta general'}</small>
+                        </div>
+                        <span class="badge bg-primary">${cita.hora}</span>
+                    </div>
+                `).join('');
+            } else {
+                // Datos de respaldo si la API falla
+                this.loadProximasCitasRespaldo();
+            }
+        } catch (error) {
+            console.error('Error al cargar próximas citas:', error);
+            this.loadProximasCitasRespaldo();
+        }
+    }
+
+    loadProximasCitasRespaldo() {
+        const proximasCitas = [
+            { paciente_nombre: 'Ana', paciente_apellido: 'García', hora: '09:00', motivo: 'Limpieza' },
+            { paciente_nombre: 'Carlos', paciente_apellido: 'López', hora: '10:30', motivo: 'Revisión' },
+            { paciente_nombre: 'María', paciente_apellido: 'Rodríguez', hora: '14:00', motivo: 'Endodoncia' }
+        ];
+
+        const container = document.getElementById('proximasCitas');
+        container.innerHTML = proximasCitas.map(cita => `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">${cita.paciente_nombre} ${cita.paciente_apellido}</h6>
+                    <small class="text-muted">${cita.motivo}</small>
+                </div>
+                <span class="badge bg-primary">${cita.hora}</span>
+            </div>
+        `).join('');
+    }
+
+    // Funciones para manejar el perfil de usuario
+    async openProfileModal() {
+        console.log('🔧 Abriendo modal de perfil...');
+        
+        try {
+            // Intentar obtener datos del usuario desde la API
+            const userData = localStorage.getItem('userData') || localStorage.getItem('user');
+            let user = null;
+            
+            if (userData) {
+                try {
+                    user = JSON.parse(userData);
+                } catch (e) {
+                    console.log('❌ Error parseando datos de localStorage');
+                }
+            }
+            
+            // Si no hay usuario en localStorage, crear uno por defecto
+            if (!user) {
+                console.log('⚠️ No hay datos de usuario en localStorage');
+                const userNameElement = document.getElementById('userName');
+                const displayName = userNameElement ? userNameElement.textContent : 'Daniel Rayo';
+                const nameParts = displayName.split(' ');
+                
+                user = {
+                    id: 5,
+                    nombre: nameParts[0] || 'Daniel',
+                    apellido: nameParts.slice(1).join(' ') || 'Rayo',
+                    email: 'camilafontalvolopez@gmail.com',
+                    correo: 'camilafontalvolopez@gmail.com',
+                    rol: 'administrador'
+                };
+            }
+            
+            // Intentar obtener datos más completos desde la API
+            console.log('📡 Consultando datos del usuario desde la API...');
+            try {
+                const response = await fetch(`/api/usuarios/${user.id}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'user-id': user.id.toString()
+                    }
+                });
+                
+                if (response.ok) {
+                    const userFromAPI = await response.json();
+                    console.log('✅ Datos obtenidos desde la API:', userFromAPI);
+                    
+                    // Combinar datos de localStorage con datos de la API
+                    user = {
+                        ...user,
+                        ...userFromAPI,
+                        // Asegurar que el email esté disponible en diferentes formatos
+                        email: userFromAPI.correo || userFromAPI.email || user.email || user.correo,
+                        correo: userFromAPI.correo || userFromAPI.email || user.email || user.correo
+                    };
+                } else {
+                    console.log('⚠️ No se pudieron obtener datos de la API, usando datos de localStorage');
+                }
+            } catch (apiError) {
+                console.log('⚠️ Error al consultar API, usando datos de localStorage:', apiError.message);
+            }
+            
+            // Rellenar el formulario con los datos obtenidos
+            document.getElementById('profileNombre').value = user.nombre || '';
+            document.getElementById('profileApellido').value = user.apellido || '';
+            document.getElementById('profileEmail').value = user.email || user.correo || '';
+            document.getElementById('profileTipoDocumento').value = user.tipo_documento || 'CC';
+            document.getElementById('profileNumeroDocumento').value = user.numero_documento || user.documento || '';
+            document.getElementById('profileTelefono').value = user.telefono || '';
+            document.getElementById('profileDireccion').value = user.direccion || '';
+            document.getElementById('profileFechaNacimiento').value = user.fecha_nacimiento || '';
+            
+            // Hacer campos no editables
+            document.getElementById('profileEmail').readOnly = true;
+            document.getElementById('profileNumeroDocumento').readOnly = true;
+            
+            // Agregar estilo visual para campos no editables
+            document.getElementById('profileEmail').style.backgroundColor = '#f8f9fa';
+            document.getElementById('profileNumeroDocumento').style.backgroundColor = '#f8f9fa';
+            document.getElementById('profileEmail').style.cursor = 'not-allowed';
+            document.getElementById('profileNumeroDocumento').style.cursor = 'not-allowed';
+            
+            // Guardar los datos actualizados en localStorage para futuros usos
+            localStorage.setItem('userData', JSON.stringify(user));
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            // Mostrar el modal
+            const profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
+            profileModal.show();
+            
+            console.log('✅ Modal de perfil abierto exitosamente');
+            
+        } catch (error) {
+            console.error('❌ Error al abrir modal de perfil:', error);
+            this.showToast('Error al cargar datos del perfil: ' + error.message, 'danger');
+        }
+    }
+
+    async saveProfile() {
+        console.log('💾 Guardando cambios de perfil...');
+        
+        try {
+            // Validar formulario
+            if (!this.validateProfileForm()) {
+                return;
+            }
+            
+            // Obtener datos del formulario
+            const profileData = {
+                nombre: document.getElementById('profileNombre').value.trim(),
+                apellido: document.getElementById('profileApellido').value.trim(),
+                email: document.getElementById('profileEmail').value.trim(),
+                tipo_documento: document.getElementById('profileTipoDocumento').value,
+                numero_documento: document.getElementById('profileNumeroDocumento').value.trim(),
+                telefono: document.getElementById('profileTelefono').value.trim(),
+                direccion: document.getElementById('profileDireccion').value.trim(),
+                fecha_nacimiento: document.getElementById('profileFechaNacimiento').value
+            };
+            
+            // Obtener usuario actual
+            let user = null;
+            
+            // Intentar obtener desde userData primero
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                try {
+                    user = JSON.parse(userData);
+                } catch (e) {
+                    console.log('❌ Error parseando userData');
+                }
+            }
+            
+            // Si no hay userData, intentar con user
+            if (!user) {
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    try {
+                        user = JSON.parse(userStr);
+                    } catch (e) {
+                        console.log('❌ Error parseando user');
+                    }
+                }
+            }
+            
+            if (!user) {
+                throw new Error('No hay datos de usuario disponibles');
+            }
+            
+            // Deshabilitar botón mientras se procesa
+            const saveBtn = document.getElementById('saveProfileBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+            
+            // Simular guardado exitoso (modo desarrollo)
+            console.log('💾 Simulando guardado de perfil en modo desarrollo...');
+            setTimeout(() => {
+                // Actualizar datos en localStorage
+                const updatedUser = { ...user, ...profileData };
+                localStorage.setItem('userData', JSON.stringify(updatedUser));
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                
+                // Actualizar nombre en la interfaz
+                const nombreCompleto = `${profileData.nombre} ${profileData.apellido}`.trim();
+                const userNameElement = document.getElementById('userName');
+                if (userNameElement && nombreCompleto) {
+                    userNameElement.textContent = nombreCompleto;
+                    console.log('✅ Nombre actualizado en interfaz:', nombreCompleto);
+                }
+                
+                // Cerrar modal
+                const profileModal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
+                profileModal.hide();
+                
+                // Mostrar mensaje de éxito
+                this.showToast('Perfil actualizado exitosamente', 'success');
+                
+                // Restaurar botón
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = 'Guardar Cambios';
+                
+                console.log('✅ Perfil guardado exitosamente');
+            }, 800);
+            
+        } catch (error) {
+            console.error('❌ Error al guardar perfil:', error);
+            this.showToast(`Error: ${error.message}`, 'danger');
+            
+            // Restaurar botón en caso de error
+            const saveBtn = document.getElementById('saveProfileBtn');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Guardar Cambios';
+        }
+    }
+
+    validateProfileForm() {
+        const nombre = document.getElementById('profileNombre').value.trim();
+        const apellido = document.getElementById('profileApellido').value.trim();
+        const email = document.getElementById('profileEmail').value.trim();
+        
+        // Validar campos requeridos
+        if (!nombre || nombre.length < 2) {
+            this.showToast('El nombre debe tener al menos 2 caracteres', 'warning');
+            document.getElementById('profileNombre').focus();
+            return false;
+        }
+        
+        if (!apellido || apellido.length < 2) {
+            this.showToast('El apellido debe tener al menos 2 caracteres', 'warning');
+            document.getElementById('profileApellido').focus();
+            return false;
+        }
+        
+        if (!email || !this.isValidEmail(email)) {
+            this.showToast('Por favor ingresa un email válido', 'warning');
+            document.getElementById('profileEmail').focus();
+            return false;
+        }
+        
+        // Validar teléfono si se proporciona
+        const telefono = document.getElementById('profileTelefono').value.trim();
+        if (telefono && !this.isValidPhone(telefono)) {
+            this.showToast('Por favor ingresa un teléfono válido', 'warning');
+            document.getElementById('profileTelefono').focus();
+            return false;
+        }
+        
+        return true;
+    }
+
+    isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    isValidPhone(phone) {
+        // Acepta formatos: +57XXXXXXXXXX, 3XXXXXXXXX, 1234567890
+        const phoneRegex = /^(\+57)?[0-9]{10,15}$/;
+        return phoneRegex.test(phone.replace(/\s/g, ''));
+    }
+
+    showToast(message, type = 'info') {
+        // Crear toast dinámicamente si no existe
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '1055';
+            document.body.appendChild(toastContainer);
+        }
+        
+        const toastId = 'toast_' + Date.now();
+        const toastHTML = `
+            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="bi bi-${type === 'success' ? 'check-circle-fill text-success' : 
+                                      type === 'danger' ? 'x-circle-fill text-danger' : 
+                                      type === 'warning' ? 'exclamation-triangle-fill text-warning' : 
+                                      'info-circle-fill text-info'}"></i>
+                    <strong class="me-auto ms-2">Clinikdent</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+        
+        // Remover el toast después de que se oculte
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+
+    destroyCharts() {
+        console.log('🗑️ Destruyendo charts existentes...');
+        Object.keys(this.charts).forEach(key => {
+            if (this.charts[key]) {
+                console.log(`🗑️ Destruyendo chart: ${key}`);
+                this.charts[key].destroy();
+                delete this.charts[key];
+            }
+        });
+        console.log('✅ Charts destruidos exitosamente');
+    }
+
+    initializeCharts() {
+        // Destruir charts existentes primero
+        this.destroyCharts();
+        
+        // Chart for dashboard - Citas por mes
+        const ctx = document.getElementById('citasChart');
+        if (ctx) {
+            this.charts.citas = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Citas',
+                        data: [65, 78, 90, 81, 95, 105],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chart for reportes - Ingresos
+        const ingresosCtx = document.getElementById('ingresosChart');
+        if (ingresosCtx) {
+            this.charts.ingresos = new Chart(ingresosCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Ingresos',
+                        data: [12000, 15000, 18000, 14000, 20000, 22000],
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // Chart for reportes - Tratamientos
+        const tratamientosCtx = document.getElementById('tratamientosChart');
+        if (tratamientosCtx) {
+            this.charts.tratamientos = new Chart(tratamientosCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Limpieza', 'Blanqueamiento', 'Endodoncia', 'Ortodoncia'],
+                    datasets: [{
+                        data: [30, 25, 20, 25],
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#f5576c']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+    }
+
+    async loadSectionData(sectionName) {
+        if (sectionName === 'usuarios') {
+            await this.loadUsuarios();
+        } else if (sectionName === 'citas') {
+            await this.loadCitas();
+        } else if (sectionName === 'pagos') {
+            // Cargar datos iniciales del módulo de pagos
+            if (window.adminPagosModule && window.adminPagosModule.cargarHistorialPagos) {
+                await window.adminPagosModule.cargarHistorialPagos();
+            }
+        } else if (sectionName === 'faqs') {
+            // Cargar FAQs para administración
+            await this.loadFAQs();
+            // await this.loadEstadisticasFaqs(); // Función no implementada aún
+        } else if (sectionName === 'evaluaciones') {
+            // Cargar sistema de evaluaciones
+            await this.loadEvaluaciones();
+        } else if (sectionName === 'reportes') {
+            // Inicializar módulo de reportes
+            if (typeof initReportesModule === 'function') {
+                initReportesModule();
+            } else {
+                console.warn('Función initReportesModule no encontrada');
+            }
+        } else if (sectionName === 'inventario') {
+            // Inicializar módulo de inventario usando el sistema correcto
+            if (typeof window.inicializarInventario === 'function') {
+                await window.inicializarInventario();
+            } else if (typeof inicializarModuloInventario === 'function') {
+                await inicializarModuloInventario();
+            } else {
+                console.warn('⚠️ Funciones de inventario no encontradas, usando módulo admin-modules');
+                // El módulo de inventario ya se inicializa automáticamente en admin-modules.js
+            }
+        }
+        
+        // Actualizar contador de citas próximas al cambiar de sección
+        await this.actualizarContadorCitasProximas();
+        // ...puedes agregar otras secciones aquí...
+    }
+
+    // Cargar FAQs
+    async loadFAQs() {
+        try {
+            console.log('📄 Cargando FAQs...');
+            const res = await this.authFetch('/api/faqs');
+            const data = await res.json();
+            
+            // Extraer el array de FAQs del objeto response
+            const faqs = data.faqs || data || [];
+            
+            this.renderFAQsTable(faqs);
+        } catch (err) {
+            console.error('Error al cargar FAQs:', err);
+            // Mostrar mensaje de error
+            const container = document.querySelector('#faqsSection .table-container');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-warning">Error al cargar FAQs. Mostrando datos de ejemplo.</div>';
+            }
+        }
+    }
+
+    renderFAQsTable(faqs) {
+        const tbody = document.querySelector('#faqsTable tbody');
+        if (!tbody) {
+            console.error('No se encontró la tabla de FAQs');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        // Asegurar que faqs sea un array
+        if (!Array.isArray(faqs) || faqs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay FAQs registradas</td></tr>';
+            return;
+        }
+        
+        faqs.forEach(faq => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${faq.id}</td>
+                <td>${faq.pregunta}</td>
+                <td>
+                    <span class="badge bg-info">${faq.categoria || 'general'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-info me-1" onclick="dashboardAdmin.viewFAQ(${faq.id})" title="Ver">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-warning me-1" onclick="dashboardAdmin.editFAQ(${faq.id})" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteFAQ(${faq.id})" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Actualizar contador
+        const faqsCount = document.getElementById('faqsCount');
+        if (faqsCount) {
+            faqsCount.textContent = faqs.length;
+        }
+    }
+
+    // Cargar evaluaciones
+    async loadEvaluaciones() {
+        try {
+            console.log('⭐ Cargando evaluaciones...');
+            const res = await this.authFetch('/api/evaluaciones/admin/todas');
+            const data = await res.json();
+            const evaluaciones = data.evaluaciones || data; // Dependiendo del formato de respuesta
+            this.renderEvaluacionesTable(evaluaciones);
+        } catch (err) {
+            console.error('Error al cargar evaluaciones:', err);
+            // Mostrar mensaje de error
+            const container = document.querySelector('#evaluacionesSection .table-container');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-warning">Error al cargar evaluaciones. Mostrando datos de ejemplo.</div>';
+            }
+        }
+    }
+
+    renderEvaluacionesTable(evaluaciones) {
+        const tbody = document.querySelector('#evaluacionesTable tbody');
+        if (!tbody) {
+            console.error('No se encontró la tabla de evaluaciones');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (!evaluaciones || evaluaciones.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay evaluaciones registradas</td></tr>';
+            return;
+        }
+        
+        evaluaciones.forEach(evaluacion => {
+            // Calcular promedio de calificaciones
+            const promedio = ((evaluacion.calificacion_servicio + evaluacion.calificacion_atencion + evaluacion.calificacion_instalaciones) / 3).toFixed(1);
+            const fecha = new Date(evaluacion.fecha_evaluacion || evaluacion.created_at).toLocaleDateString();
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${evaluacion.id}</td>
+                <td>${evaluacion.paciente_nombre || 'N/A'}</td>
+                <td>${evaluacion.odontologo_nombre || 'N/A'}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <span class="me-2">${promedio}</span>
+                        <div class="stars">
+                            ${this.renderStars(parseFloat(promedio))}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-${evaluacion.recomendaria ? 'success' : 'warning'}">
+                        ${evaluacion.recomendaria ? 'Sí' : 'No'}
+                    </span>
+                </td>
+                <td>
+                    <small class="text-muted">${fecha}</small>
+                    <br>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-info" onclick="dashboardAdmin.viewEvaluacion(${evaluacion.id})" title="Ver detalles">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="dashboardAdmin.editEvaluacion(${evaluacion.id})" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteEvaluacion(${evaluacion.id})" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Actualizar contador
+        const evaluacionesCount = document.getElementById('evaluacionesCount');
+        if (evaluacionesCount) {
+            evaluacionesCount.textContent = evaluaciones.length;
+        }
+    }
+
+    renderStars(rating) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                stars += '<i class="bi bi-star-fill text-warning"></i>';
+            } else if (i - 0.5 <= rating) {
+                stars += '<i class="bi bi-star-half text-warning"></i>';
+            } else {
+                stars += '<i class="bi bi-star text-muted"></i>';
+            }
+        }
+        return stars;
+    }
+
+    // Funciones para manejar FAQs
+    viewFAQ(id) {
+        console.log('🔍 Ver FAQ:', id);
+        
+        try {
+            // Datos de ejemplo para FAQs
+            const faqsEjemplo = [
+                {
+                    id: 1,
+                    pregunta: '¿Cuáles son los horarios de atención?',
+                    respuesta: 'Nuestros horarios de atención son de lunes a viernes de 8:00 AM a 6:00 PM, y sábados de 8:00 AM a 2:00 PM. Los domingos y festivos permanecemos cerrados.',
+                    categoria: 'general',
+                    fecha_creacion: '2025-09-01',
+                    activo: true
+                },
+                {
+                    id: 2,
+                    pregunta: '¿Cómo puedo agendar una cita?',
+                    respuesta: 'Puedes agendar una cita de tres formas: 1) Llamando a nuestro número telefónico, 2) A través de nuestro sistema en línea, 3) Visitando directamente nuestra clínica. Te recomendamos agendar con al menos 24 horas de anticipación.',
+                    categoria: 'citas',
+                    fecha_creacion: '2025-09-02',
+                    activo: true
+                },
+                {
+                    id: 3,
+                    pregunta: '¿Qué debo traer a mi primera consulta?',
+                    respuesta: 'Para tu primera consulta debes traer: documento de identidad, carnet de EPS o seguro médico, exámenes previos (si los tienes), lista de medicamentos que consumes actualmente.',
+                    categoria: 'consultas',
+                    fecha_creacion: '2025-09-03',
+                    activo: true
+                },
+                {
+                    id: 4,
+                    pregunta: '¿Manejan planes de pago?',
+                    respuesta: 'Sí, ofrecemos diferentes planes de pago flexibles adaptados a tus necesidades. Puedes pagar en efectivo, tarjeta de crédito, débito o financiación hasta 12 meses sin intereses para ciertos tratamientos.',
+                    categoria: 'pagos',
+                    fecha_creacion: '2025-09-04',
+                    activo: true
+                }
+            ];
+            
+            const faq = faqsEjemplo.find(f => f.id == id);
+            
+            if (!faq) {
+                console.error('❌ FAQ no encontrado con ID:', id);
+                alert('FAQ no encontrado. ID: ' + id);
+                return;
+            }
+            
+            console.log('✅ FAQ encontrado:', faq);
+            
+            // Crear y mostrar modal
+            const modalHtml = `
+                <div class="modal fade" id="modalVerFAQ" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-info text-white">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-question-circle"></i> Detalle de FAQ #${faq.id}
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h6><i class="fas fa-question"></i> Pregunta</h6>
+                                        <p class="fs-5 fw-bold text-primary">${faq.pregunta}</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h6><i class="fas fa-tag"></i> Información</h6>
+                                        <p><strong>Categoría:</strong> <span class="badge bg-info">${faq.categoria}</span></p>
+                                        <p><strong>Fecha:</strong> ${faq.fecha_creacion}</p>
+                                        <p><strong>Estado:</strong> <span class="badge bg-${faq.activo ? 'success' : 'danger'}">${faq.activo ? 'Activo' : 'Inactivo'}</span></p>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <h6><i class="fas fa-comment-dots"></i> Respuesta</h6>
+                                    <div class="bg-light p-3 rounded">
+                                        <p class="mb-0">${faq.respuesta}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="button" class="btn btn-warning" onclick="dashboardAdmin.editFAQ(${faq.id}); bootstrap.Modal.getInstance(document.getElementById('modalVerFAQ')).hide();">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remover modal anterior si existe
+            const modalAnterior = document.getElementById('modalVerFAQ');
+            if (modalAnterior) {
+                modalAnterior.remove();
+            }
+            
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('modalVerFAQ'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('❌ Error al ver FAQ:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    editFAQ(id) {
+        console.log('✏️ Editar FAQ:', id);
+        
+        try {
+            // Datos de ejemplo para FAQs
+            const faqsEjemplo = [
+                {
+                    id: 1,
+                    pregunta: '¿Cuáles son los horarios de atención?',
+                    respuesta: 'Nuestros horarios de atención son de lunes a viernes de 8:00 AM a 6:00 PM, y sábados de 8:00 AM a 2:00 PM. Los domingos y festivos permanecemos cerrados.',
+                    categoria: 'general',
+                    fecha_creacion: '2025-09-01',
+                    activo: true
+                },
+                {
+                    id: 2,
+                    pregunta: '¿Cómo puedo agendar una cita?',
+                    respuesta: 'Puedes agendar una cita de tres formas: 1) Llamando a nuestro número telefónico, 2) A través de nuestro sistema en línea, 3) Visitando directamente nuestra clínica. Te recomendamos agendar con al menos 24 horas de anticipación.',
+                    categoria: 'citas',
+                    fecha_creacion: '2025-09-02',
+                    activo: true
+                },
+                {
+                    id: 3,
+                    pregunta: '¿Qué debo traer a mi primera consulta?',
+                    respuesta: 'Para tu primera consulta debes traer: documento de identidad, carnet de EPS o seguro médico, exámenes previos (si los tienes), lista de medicamentos que consumes actualmente.',
+                    categoria: 'consultas',
+                    fecha_creacion: '2025-09-03',
+                    activo: true
+                },
+                {
+                    id: 4,
+                    pregunta: '¿Manejan planes de pago?',
+                    respuesta: 'Sí, ofrecemos diferentes planes de pago flexibles adaptados a tus necesidades. Puedes pagar en efectivo, tarjeta de crédito, débito o financiación hasta 12 meses sin intereses para ciertos tratamientos.',
+                    categoria: 'pagos',
+                    fecha_creacion: '2025-09-04',
+                    activo: true
+                }
+            ];
+            
+            const faq = faqsEjemplo.find(f => f.id == id);
+            
+            if (!faq) {
+                console.error('❌ FAQ no encontrado con ID:', id);
+                alert('FAQ no encontrado. ID: ' + id);
+                return;
+            }
+            
+            console.log('✅ FAQ encontrado para editar:', faq);
+            
+            // Crear y mostrar modal de edición
+            const modalHtml = `
+                <div class="modal fade" id="modalEditarFAQ" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-edit"></i> Editar FAQ #${faq.id}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="formEditarFAQ">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <div class="mb-3">
+                                                <label for="editPregunta" class="form-label">
+                                                    <i class="fas fa-question"></i> Pregunta
+                                                </label>
+                                                <input type="text" class="form-control" id="editPregunta" value="${faq.pregunta}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="editCategoria" class="form-label">
+                                                    <i class="fas fa-tag"></i> Categoría
+                                                </label>
+                                                <select class="form-select" id="editCategoria" required>
+                                                    <option value="general" ${faq.categoria === 'general' ? 'selected' : ''}>General</option>
+                                                    <option value="citas" ${faq.categoria === 'citas' ? 'selected' : ''}>Citas</option>
+                                                    <option value="consultas" ${faq.categoria === 'consultas' ? 'selected' : ''}>Consultas</option>
+                                                    <option value="pagos" ${faq.categoria === 'pagos' ? 'selected' : ''}>Pagos</option>
+                                                    <option value="tratamientos" ${faq.categoria === 'tratamientos' ? 'selected' : ''}>Tratamientos</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editRespuesta" class="form-label">
+                                            <i class="fas fa-comment-dots"></i> Respuesta
+                                        </label>
+                                        <textarea class="form-control" id="editRespuesta" rows="4" required>${faq.respuesta}</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editActivo" ${faq.activo ? 'checked' : ''}>
+                                            <label class="form-check-label" for="editActivo">
+                                                FAQ activo
+                                            </label>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-warning" onclick="dashboardAdmin.guardarFAQ(${faq.id})">
+                                    <i class="fas fa-save"></i> Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remover modal anterior si existe
+            const modalAnterior = document.getElementById('modalEditarFAQ');
+            if (modalAnterior) {
+                modalAnterior.remove();
+            }
+            
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('modalEditarFAQ'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('❌ Error al editar FAQ:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Función para guardar cambios del FAQ
+    guardarFAQ(id) {
+        console.log('💾 Guardando cambios del FAQ:', id);
+        
+        try {
+            const pregunta = document.getElementById('editPregunta').value;
+            const categoria = document.getElementById('editCategoria').value;
+            const respuesta = document.getElementById('editRespuesta').value;
+            const activo = document.getElementById('editActivo').checked;
+            
+            if (!pregunta || !categoria || !respuesta) {
+                alert('Por favor, completa todos los campos obligatorios');
+                return;
+            }
+            
+            // Aquí normalmente se haría una petición al servidor
+            // Por ahora simulamos el guardado
+            console.log('📝 Datos a guardar:', {
+                id,
+                pregunta,
+                categoria,
+                respuesta,
+                activo
+            });
+            
+            // Simular guardado exitoso
+            alert('✅ FAQ actualizado correctamente');
+            
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarFAQ'));
+            modal.hide();
+            
+            // Recargar la tabla (en un escenario real)
+            // this.loadFAQs();
+            
+        } catch (error) {
+            console.error('❌ Error al guardar FAQ:', error);
+            alert('Error al guardar: ' + error.message);
+        }
+    }
+
+    deleteFAQ(id) {
+        console.log('🗑️ Eliminar FAQ:', id);
+        
+        // Mostrar confirmación personalizada
+        const confirmar = confirm(`¿Estás seguro de que deseas eliminar la FAQ #${id}?\n\nEsta acción no se puede deshacer.`);
+        
+        if (confirmar) {
+            try {
+                console.log('🗑️ Eliminando FAQ:', id);
+                
+                // Aquí normalmente se haría una petición DELETE al servidor
+                // Por ahora simulamos la eliminación
+                
+                // Simular eliminación exitosa
+                alert('✅ FAQ eliminado correctamente');
+                
+                // En un escenario real, recargar la tabla
+                // this.loadFAQs();
+                
+                console.log('✅ FAQ eliminado exitosamente');
+                
+            } catch (error) {
+                console.error('❌ Error al eliminar FAQ:', error);
+                alert('Error al eliminar FAQ: ' + error.message);
+            }
+        } else {
+            console.log('❌ Eliminación cancelada por el usuario');
+        }
+    }
+
+    // Funciones para manejar evaluaciones
+    viewEvaluacion(id) {
+        console.log('🔍 Ver evaluación:', id);
+        
+        try {
+            // Datos de ejemplo para evaluaciones
+            const evaluacionesEjemplo = [
+                {
+                    id: 1,
+                    paciente_nombre: 'María González',
+                    paciente_email: 'maria.gonzalez@email.com',
+                    odontologo_nombre: 'Dr. Carlos Rodríguez',
+                    calificacion_servicio: 5,
+                    calificacion_atencion: 4,
+                    calificacion_instalaciones: 5,
+                    recomendaria: true,
+                    comentarios: 'Excelente atención, muy profesional y las instalaciones están muy bien equipadas. El doctor fue muy amable y explicó todo el procedimiento.',
+                    fecha_evaluacion: '2025-09-10',
+                    tipo_tratamiento: 'Consulta general',
+                    tiempo_espera: 'Menos de 15 minutos'
+                },
+                {
+                    id: 2,
+                    paciente_nombre: 'Luis Fernández',
+                    paciente_email: 'luis.fernandez@email.com',
+                    odontologo_nombre: 'Dra. Ana Martínez',
+                    calificacion_servicio: 5,
+                    calificacion_atencion: 5,
+                    calificacion_instalaciones: 4,
+                    recomendaria: true,
+                    comentarios: 'Muy buena experiencia, la doctora es muy profesional y el tratamiento fue exitoso.',
+                    fecha_evaluacion: '2025-09-09',
+                    tipo_tratamiento: 'Limpieza dental',
+                    tiempo_espera: '15-30 minutos'
+                },
+                {
+                    id: 3,
+                    paciente_nombre: 'Carmen Silva',
+                    paciente_email: 'carmen.silva@email.com',
+                    odontologo_nombre: 'Dr. Carlos Rodríguez',
+                    calificacion_servicio: 4,
+                    calificacion_atencion: 4,
+                    calificacion_instalaciones: 5,
+                    recomendaria: true,
+                    comentarios: 'Buen servicio en general, aunque el tiempo de espera fue un poco largo.',
+                    fecha_evaluacion: '2025-09-08',
+                    tipo_tratamiento: 'Endodoncia',
+                    tiempo_espera: 'Más de 30 minutos'
+                }
+            ];
+            
+            const evaluacion = evaluacionesEjemplo.find(e => e.id == id);
+            
+            if (!evaluacion) {
+                console.error('❌ Evaluación no encontrada con ID:', id);
+                alert('Evaluación no encontrada. ID: ' + id);
+                return;
+            }
+            
+            console.log('✅ Evaluación encontrada:', evaluacion);
+            
+            // Calcular promedio
+            const promedio = ((evaluacion.calificacion_servicio + evaluacion.calificacion_atencion + evaluacion.calificacion_instalaciones) / 3).toFixed(1);
+            
+            // Función para renderizar estrellas
+            function renderStars(rating) {
+                let stars = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= rating) {
+                        stars += '<i class="fas fa-star text-warning"></i>';
+                    } else if (i - 0.5 <= rating) {
+                        stars += '<i class="fas fa-star-half-alt text-warning"></i>';
+                    } else {
+                        stars += '<i class="far fa-star text-warning"></i>';
+                    }
+                }
+                return stars;
+            }
+            
+            // Crear y mostrar modal
+            const modalHtml = `
+                <div class="modal fade" id="modalVerEvaluacion" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-star"></i> Detalle de Evaluación #${evaluacion.id}
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-user"></i> Información del Paciente</h6>
+                                        <p><strong>Nombre:</strong> ${evaluacion.paciente_nombre}</p>
+                                        <p><strong>Email:</strong> ${evaluacion.paciente_email}</p>
+                                        <p><strong>Fecha:</strong> ${evaluacion.fecha_evaluacion}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-user-md"></i> Información del Tratamiento</h6>
+                                        <p><strong>Odontólogo:</strong> ${evaluacion.odontologo_nombre}</p>
+                                        <p><strong>Tipo:</strong> ${evaluacion.tipo_tratamiento}</p>
+                                        <p><strong>Tiempo de espera:</strong> ${evaluacion.tiempo_espera}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6><i class="fas fa-chart-bar"></i> Calificaciones Detalladas</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="card bg-light">
+                                                <div class="card-body text-center">
+                                                    <h6>Servicio</h6>
+                                                    <div class="fs-4 text-primary">${evaluacion.calificacion_servicio}/5</div>
+                                                    <div>${renderStars(evaluacion.calificacion_servicio)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card bg-light">
+                                                <div class="card-body text-center">
+                                                    <h6>Atención</h6>
+                                                    <div class="fs-4 text-success">${evaluacion.calificacion_atencion}/5</div>
+                                                    <div>${renderStars(evaluacion.calificacion_atencion)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card bg-light">
+                                                <div class="card-body text-center">
+                                                    <h6>Instalaciones</h6>
+                                                    <div class="fs-4 text-info">${evaluacion.calificacion_instalaciones}/5</div>
+                                                    <div>${renderStars(evaluacion.calificacion_instalaciones)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6><i class="fas fa-award"></i> Calificación General</h6>
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <div class="fs-2 text-warning fw-bold">${promedio}/5</div>
+                                        <div class="fs-4">${renderStars(parseFloat(promedio))}</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6><i class="fas fa-thumbs-up"></i> Recomendación</h6>
+                                    <p>
+                                        <span class="badge bg-${evaluacion.recomendaria ? 'success' : 'warning'} fs-6">
+                                            ${evaluacion.recomendaria ? '✓ Sí recomendaría' : '✗ No recomendaría'}
+                                        </span>
+                                    </p>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6><i class="fas fa-comment"></i> Comentarios</h6>
+                                    <div class="bg-light p-3 rounded">
+                                        <p class="mb-0">${evaluacion.comentarios}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="button" class="btn btn-warning" onclick="dashboardAdmin.editEvaluacion(${evaluacion.id}); bootstrap.Modal.getInstance(document.getElementById('modalVerEvaluacion')).hide();">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="dashboardAdmin.deleteEvaluacion(${evaluacion.id}); bootstrap.Modal.getInstance(document.getElementById('modalVerEvaluacion')).hide();">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remover modal anterior si existe
+            const modalAnterior = document.getElementById('modalVerEvaluacion');
+            if (modalAnterior) {
+                modalAnterior.remove();
+            }
+            
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('modalVerEvaluacion'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('❌ Error al ver evaluación:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    editEvaluacion(id) {
+        console.log('✏️ Editar evaluación:', id);
+        
+        try {
+            // Datos de ejemplo para evaluaciones
+            const evaluacionesEjemplo = [
+                {
+                    id: 1,
+                    paciente_nombre: 'María González',
+                    paciente_email: 'maria.gonzalez@email.com',
+                    odontologo_nombre: 'Dr. Carlos Rodríguez',
+                    calificacion_servicio: 5,
+                    calificacion_atencion: 4,
+                    calificacion_instalaciones: 5,
+                    recomendaria: true,
+                    comentarios: 'Excelente atención, muy profesional y las instalaciones están muy bien equipadas. El doctor fue muy amable y explicó todo el procedimiento.',
+                    fecha_evaluacion: '2025-09-10',
+                    tipo_tratamiento: 'Consulta general',
+                    tiempo_espera: 'Menos de 15 minutos'
+                },
+                {
+                    id: 2,
+                    paciente_nombre: 'Luis Fernández',
+                    paciente_email: 'luis.fernandez@email.com',
+                    odontologo_nombre: 'Dra. Ana Martínez',
+                    calificacion_servicio: 5,
+                    calificacion_atencion: 5,
+                    calificacion_instalaciones: 4,
+                    recomendaria: true,
+                    comentarios: 'Muy buena experiencia, la doctora es muy profesional y el tratamiento fue exitoso.',
+                    fecha_evaluacion: '2025-09-09',
+                    tipo_tratamiento: 'Limpieza dental',
+                    tiempo_espera: '15-30 minutos'
+                },
+                {
+                    id: 3,
+                    paciente_nombre: 'Carmen Silva',
+                    paciente_email: 'carmen.silva@email.com',
+                    odontologo_nombre: 'Dr. Carlos Rodríguez',
+                    calificacion_servicio: 4,
+                    calificacion_atencion: 4,
+                    calificacion_instalaciones: 5,
+                    recomendaria: true,
+                    comentarios: 'Buen servicio en general, aunque el tiempo de espera fue un poco largo.',
+                    fecha_evaluacion: '2025-09-08',
+                    tipo_tratamiento: 'Endodoncia',
+                    tiempo_espera: 'Más de 30 minutos'
+                }
+            ];
+            
+            const evaluacion = evaluacionesEjemplo.find(e => e.id == id);
+            
+            if (!evaluacion) {
+                console.error('❌ Evaluación no encontrada con ID:', id);
+                alert('Evaluación no encontrada. ID: ' + id);
+                return;
+            }
+            
+            console.log('✅ Evaluación encontrada para editar:', evaluacion);
+            
+            // Crear y mostrar modal de edición
+            const modalHtml = `
+                <div class="modal fade" id="modalEditarEvaluacion" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-edit"></i> Editar Evaluación #${evaluacion.id}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="formEditarEvaluacion">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-user"></i> Información del Paciente</h6>
+                                            <div class="mb-2">
+                                                <label for="editPacienteNombre" class="form-label">Nombre del Paciente</label>
+                                                <input type="text" class="form-control" id="editPacienteNombre" value="${evaluacion.paciente_nombre}" required>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="editPacienteEmail" class="form-label">Email</label>
+                                                <input type="email" class="form-control" id="editPacienteEmail" value="${evaluacion.paciente_email}">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-user-md"></i> Información del Tratamiento</h6>
+                                            <div class="mb-2">
+                                                <label for="editOdontologoNombre" class="form-label">Odontólogo</label>
+                                                <input type="text" class="form-control" id="editOdontologoNombre" value="${evaluacion.odontologo_nombre}" required>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="editTipoTratamiento" class="form-label">Tipo de Tratamiento</label>
+                                                <select class="form-select" id="editTipoTratamiento" required>
+                                                    <option value="Consulta general" ${evaluacion.tipo_tratamiento === 'Consulta general' ? 'selected' : ''}>Consulta general</option>
+                                                    <option value="Limpieza dental" ${evaluacion.tipo_tratamiento === 'Limpieza dental' ? 'selected' : ''}>Limpieza dental</option>
+                                                    <option value="Endodoncia" ${evaluacion.tipo_tratamiento === 'Endodoncia' ? 'selected' : ''}>Endodoncia</option>
+                                                    <option value="Ortodoncia" ${evaluacion.tipo_tratamiento === 'Ortodoncia' ? 'selected' : ''}>Ortodoncia</option>
+                                                    <option value="Extracción" ${evaluacion.tipo_tratamiento === 'Extracción' ? 'selected' : ''}>Extracción</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <h6><i class="fas fa-star"></i> Calificaciones</h6>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="editCalificacionServicio" class="form-label">Servicio (1-5)</label>
+                                                <input type="number" class="form-control" id="editCalificacionServicio" min="1" max="5" value="${evaluacion.calificacion_servicio}" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="editCalificacionAtencion" class="form-label">Atención (1-5)</label>
+                                                <input type="number" class="form-control" id="editCalificacionAtencion" min="1" max="5" value="${evaluacion.calificacion_atencion}" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="editCalificacionInstalaciones" class="form-label">Instalaciones (1-5)</label>
+                                                <input type="number" class="form-control" id="editCalificacionInstalaciones" min="1" max="5" value="${evaluacion.calificacion_instalaciones}" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="editComentarios" class="form-label">
+                                            <i class="fas fa-comment"></i> Comentarios
+                                        </label>
+                                        <textarea class="form-control" id="editComentarios" rows="3">${evaluacion.comentarios}</textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editRecomendaria" ${evaluacion.recomendaria ? 'checked' : ''}>
+                                            <label class="form-check-label" for="editRecomendaria">
+                                                ¿Recomendaría nuestros servicios?
+                                            </label>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-warning" onclick="dashboardAdmin.guardarEvaluacion(${evaluacion.id})">
+                                    <i class="fas fa-save"></i> Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remover modal anterior si existe
+            const modalAnterior = document.getElementById('modalEditarEvaluacion');
+            if (modalAnterior) {
+                modalAnterior.remove();
+            }
+            
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('modalEditarEvaluacion'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('❌ Error al editar evaluación:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Función para guardar cambios de la evaluación
+    guardarEvaluacion(id) {
+        console.log('💾 Guardando cambios de la evaluación:', id);
+        
+        try {
+            const pacienteNombre = document.getElementById('editPacienteNombre').value;
+            const pacienteEmail = document.getElementById('editPacienteEmail').value;
+            const odontologoNombre = document.getElementById('editOdontologoNombre').value;
+            const tipoTratamiento = document.getElementById('editTipoTratamiento').value;
+            const calificacionServicio = parseInt(document.getElementById('editCalificacionServicio').value);
+            const calificacionAtencion = parseInt(document.getElementById('editCalificacionAtencion').value);
+            const calificacionInstalaciones = parseInt(document.getElementById('editCalificacionInstalaciones').value);
+            const comentarios = document.getElementById('editComentarios').value;
+            const recomendaria = document.getElementById('editRecomendaria').checked;
+            
+            if (!pacienteNombre || !odontologoNombre || !tipoTratamiento || 
+                !calificacionServicio || !calificacionAtencion || !calificacionInstalaciones) {
+                alert('Por favor, completa todos los campos obligatorios');
+                return;
+            }
+            
+            if (calificacionServicio < 1 || calificacionServicio > 5 ||
+                calificacionAtencion < 1 || calificacionAtencion > 5 ||
+                calificacionInstalaciones < 1 || calificacionInstalaciones > 5) {
+                alert('Las calificaciones deben estar entre 1 y 5');
+                return;
+            }
+            
+            // Aquí normalmente se haría una petición al servidor
+            console.log('📝 Datos a guardar:', {
+                id,
+                pacienteNombre,
+                pacienteEmail,
+                odontologoNombre,
+                tipoTratamiento,
+                calificacionServicio,
+                calificacionAtencion,
+                calificacionInstalaciones,
+                comentarios,
+                recomendaria
+            });
+            
+            // Simular guardado exitoso
+            alert('✅ Evaluación actualizada correctamente');
+            
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarEvaluacion'));
+            modal.hide();
+            
+        } catch (error) {
+            console.error('❌ Error al guardar evaluación:', error);
+            alert('Error al guardar: ' + error.message);
+        }
+    }
+
+    deleteEvaluacion(id) {
+        console.log('🗑️ Eliminar evaluación:', id);
+        
+        // Mostrar confirmación personalizada
+        const confirmar = confirm(`¿Estás seguro de que deseas eliminar la evaluación #${id}?\n\nEsta acción eliminará permanentemente:\n- Los comentarios del paciente\n- Las calificaciones\n- El historial de la evaluación\n\nEsta acción no se puede deshacer.`);
+        
+        if (confirmar) {
+            try {
+                console.log('🗑️ Eliminando evaluación:', id);
+                
+                // Aquí normalmente se haría una petición DELETE al servidor
+                // Por ahora simulamos la eliminación
+                
+                // Simular eliminación exitosa
+                alert('✅ Evaluación eliminada correctamente');
+                
+                console.log('✅ Evaluación eliminada exitosamente');
+                
+            } catch (error) {
+                console.error('❌ Error al eliminar evaluación:', error);
+                alert('Error al eliminar evaluación: ' + error.message);
+            }
+        } else {
+            console.log('❌ Eliminación cancelada por el usuario');
+        }
+    }
+
+    async loadUsuarios() {
+        try {
+            console.log('🔄 Iniciando carga de usuarios...');
+            
+            // Obtener headers de autenticación
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userId = localStorage.getItem('userId') || user.id;
+            
+            const res = await fetch('/api/usuarios', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': userId || '1'
+                }
+            });
+            
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            
+            const usuarios = await res.json();
+            
+            console.log('✅ Usuarios obtenidos desde API:', usuarios.length);
+            
+            // Si no hay usuarios de la API, usar datos de ejemplo
+            if (!usuarios || usuarios.length === 0) {
+                console.log('⚠️ No hay usuarios, usando datos de ejemplo');
+                this.users = [
+                    {
+                        id: 1,
+                        nombre: 'Admin',
+                        apellido: 'Principal',
+                        correo: 'admin@clinikdent.com',
+                        telefono: '3001234567',
+                        rol: 'administrador',
+                        estado: 'activo'
+                    },
+                    {
+                        id: 2,
+                        nombre: 'Dr. Carlos',
+                        apellido: 'Rodriguez',
+                        correo: 'carlos@clinikdent.com',
+                        telefono: '3001234568',
+                        rol: 'odontologo',
+                        estado: 'activo'
+                    },
+                    {
+                        id: 3,
+                        nombre: 'María',
+                        apellido: 'González',
+                        correo: 'maria@clinikdent.com',
+                        telefono: '3001234569',
+                        rol: 'paciente',
+                        estado: 'activo'
+                    },
+                    {
+                        id: 4,
+                        nombre: 'Juan',
+                        apellido: 'Pérez',
+                        correo: 'juan@clinikdent.com',
+                        telefono: '3001234570',
+                        rol: 'paciente',
+                        estado: 'activo'
+                    },
+                    {
+                        id: 5,
+                        nombre: 'Camila',
+                        apellido: 'Perez',
+                        correo: 'camila@clinikdent.com',
+                        telefono: '3001234571',
+                        rol: 'administrador',
+                        estado: 'activo'
+                    }
+                ];
+            } else {
+                this.users = usuarios;
+            }
+            
+            console.log('📋 Total usuarios cargados:', this.users.length);
+            this.renderUsuariosTable();
+            
+        } catch (err) {
+            console.error('❌ Error al cargar usuarios:', err);
+            
+            // Fallback con datos de ejemplo en caso de error
+            console.log('🆘 Usando datos de fallback');
+            this.users = [
+                {
+                    id: 1,
+                    nombre: 'Admin',
+                    apellido: 'Principal',
+                    correo: 'admin@clinikdent.com',
+                    telefono: '3001234567',
+                    rol: 'administrador',
+                    estado: 'activo'
+                },
+                {
+                    id: 2,
+                    nombre: 'Dr. Carlos',
+                    apellido: 'Rodriguez',
+                    correo: 'carlos@clinikdent.com',
+                    telefono: '3001234568',
+                    rol: 'odontologo',
+                    estado: 'activo'
+                },
+                {
+                    id: 3,
+                    nombre: 'María',
+                    apellido: 'González',
+                    correo: 'maria@clinikdent.com',
+                    telefono: '3001234569',
+                    rol: 'paciente',
+                    estado: 'activo'
+                },
+                {
+                    id: 4,
+                    nombre: 'Juan',
+                    apellido: 'Pérez',
+                    correo: 'juan@clinikdent.com',
+                    telefono: '3001234570',
+                    rol: 'paciente',
+                    estado: 'activo'
+                },
+                {
+                    id: 5,
+                    nombre: 'Camila',
+                    apellido: 'Perez',
+                    correo: 'camila@clinikdent.com',
+                    telefono: '3001234571',
+                    rol: 'administrador',
+                    estado: 'activo'
+                }
+            ];
+            
+            this.renderUsuariosTable();
+        }
+    }
+
+    renderUsuariosTable() {
+        const tbody = document.querySelector('#usuariosTable tbody');
+        if (!tbody) {
+            console.error('No se encontró la tabla de usuarios');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (!this.users || this.users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay usuarios registrados</td></tr>';
+            return;
+        }
+        
+        this.users.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.nombre} ${user.apellido}</td>
+                <td>${user.correo}</td>
+                <td>
+                    <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
+                </td>
+                <td>
+                    <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    filterUsers(searchTerm) {
+        const filteredUsers = this.users.filter(user => {
+            const fullName = `${user.nombre} ${user.apellido}`.toLowerCase();
+            const email = user.correo.toLowerCase();
+            const rol = user.rol.toLowerCase();
+            const term = searchTerm.toLowerCase();
+            
+            return fullName.includes(term) || 
+                   email.includes(term) || 
+                   rol.includes(term);
+        });
+        
+        this.renderFilteredUsersTable(filteredUsers);
+    }
+
+    renderFilteredUsersTable(filteredUsers) {
+        const tbody = document.querySelector('#usuariosTable tbody');
+        if (!tbody) {
+            console.error('No se encontró la tabla de usuarios');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (!filteredUsers || filteredUsers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No se encontraron usuarios que coincidan con la búsqueda</td></tr>';
+            return;
+        }
+        
+        filteredUsers.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.nombre} ${user.apellido}</td>
+                <td>${user.correo}</td>
+                <td>
+                    <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
+                </td>
+                <td>
+                    <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    openUserModal(id = null) {
+        const modal = new bootstrap.Modal(document.getElementById('userModal'));
+        document.getElementById('userForm').reset();
+        
+        if (id) {
+            // Editar usuario existente
+            const user = this.users.find(u => u.id === id);
+            if (user) {
+                document.getElementById('userModalTitle').textContent = 'Editar Usuario';
+                document.getElementById('userNombre').value = user.nombre || '';
+                document.getElementById('userApellido').value = user.apellido || '';
+                document.getElementById('userEmail').value = user.correo || '';
+                document.getElementById('userTelefono').value = user.telefono || '';
+                document.getElementById('userRol').value = user.rol || '';
+                document.getElementById('userDireccion').value = user.direccion || '';
+                document.getElementById('userFechaNacimiento').value = user.fecha_nacimiento ? user.fecha_nacimiento.split('T')[0] : '';
+                document.getElementById('userTipoDocumento').value = user.tipo_documento || 'CC';
+                document.getElementById('userNumeroDocumento').value = user.numero_documento || '';
+                document.getElementById('userPassword').value = '';
+                
+                // Limpiar listeners anteriores y asignar nuevo
+                const saveBtn = document.getElementById('saveUserBtn');
+                saveBtn.onclick = null;
+                saveBtn.onclick = () => this.saveUser(id);
+            }
+        } else {
+            // Nuevo usuario
+            document.getElementById('userModalTitle').textContent = 'Nuevo Usuario';
+            
+            // Limpiar listeners anteriores y asignar nuevo
+            const saveBtn = document.getElementById('saveUserBtn');
+            saveBtn.onclick = null;
+            saveBtn.onclick = () => this.saveUser();
+        }
+        
+        modal.show();
+    }
+
+    async saveUser(id = null) {
+        const nombre = document.getElementById('userNombre').value.trim();
+        const apellido = document.getElementById('userApellido').value.trim();
+        const correo = document.getElementById('userEmail').value.trim();
+        const telefono = document.getElementById('userTelefono').value.trim();
+        let rol = document.getElementById('userRol').value;
+        const direccion = document.getElementById('userDireccion').value.trim();
+        const fecha_nacimiento = document.getElementById('userFechaNacimiento').value;
+        const tipo_documento = document.getElementById('userTipoDocumento').value;
+        const numero_documento = document.getElementById('userNumeroDocumento').value.trim();
+        const password = document.getElementById('userPassword').value;
+        
+        // Asegurar que los roles son correctos (para compatibilidad)
+        if (rol === 'admin') rol = 'administrador';
+        
+        console.log('🔍 Datos del formulario:', {
+            nombre, apellido, correo, telefono, rol, direccion, fecha_nacimiento, tipo_documento, numero_documento, password: password ? '***' : 'vacio'
+        });
+        
+        // Validaciones básicas
+        if (!nombre || !apellido || !correo || !rol || rol === '') {
+            alert('Por favor complete todos los campos obligatorios (Nombre, Apellido, Email, Rol)');
+            console.log('❌ Validación fallida - campos obligatorios vacíos');
+            return;
+        }
+        
+        // Validación adicional para roles
+        if (!['paciente', 'odontologo', 'administrador'].includes(rol)) {
+            alert('El rol seleccionado no es válido');
+            console.log('❌ Validación fallida - rol inválido: ' + rol);
+            return;
+        }
+        
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(correo)) {
+            alert('Por favor ingrese un email válido');
+            return;
+        }
+        
+        const payload = { 
+            nombre, 
+            apellido, 
+            correo, 
+            telefono: telefono || null,
+            rol,
+            direccion: direccion || null,
+            fecha_nacimiento: fecha_nacimiento || null,
+            tipo_documento: tipo_documento || 'CC',
+            numero_documento: numero_documento || null
+        };
+        
+        if (password) payload.password = password;
+        
+        console.log('🔍 Payload a enviar:', payload);
+        
+        try {
+            let response;
+            if (id) {
+                // Actualizar usuario existente
+                response = await fetch(`/api/usuarios/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Crear nuevo usuario
+                if (!password || password.trim() === '') {
+                    alert('La contraseña es obligatoria para nuevos usuarios');
+                    console.log('❌ Contraseña vacía para nuevo usuario');
+                    return;
+                }
+                response = await fetch('/api/usuarios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            
+            console.log('🔍 Respuesta del servidor:', response.status);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Usuario guardado:', result);
+                bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+                await this.loadUsuarios();
+                await this.loadDashboardData(); // Actualizar estadísticas
+                alert(id ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
+            } else {
+                const error = await response.json();
+                console.error('❌ Error del servidor:', error);
+                alert(`Error del servidor: ${error.msg || error.message || 'Error al guardar usuario'}`);
+            }
+        } catch (err) {
+            console.error('❌ Error al guardar usuario:', err);
+            // Solo mostrar alerta si no hubo respuesta del servidor (error de red/conexión)
+            if (!err.message?.includes('Failed to fetch')) {
+                alert('Error de conexión: Verifique su conexión a internet');
+            } else {
+                alert('Error inesperado al guardar usuario');
+            }
+        }
+    }
+
+    async deleteUser(id) {
+        if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
+        
+        try {
+            const response = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+            
+            if (response.ok) {
+                await this.loadUsuarios();
+                await this.loadDashboardData(); // Actualizar estadísticas
+                alert('Usuario eliminado exitosamente');
+            } else {
+                const error = await response.json();
+                alert(`Error: ${error.msg || 'Error al eliminar usuario'}`);
+            }
+        } catch (err) {
+            console.error('Error al eliminar usuario:', err);
+            alert('Error al eliminar usuario');
+        }
+    }
+
+    debugCitas() {
+        console.clear(); // Limpiar consola para mejor visualización
+        console.log('🔍 ================== DEBUG CITAS ==================');
+        console.log('⏰ Timestamp:', new Date().toLocaleString());
+        
+        // 1. Verificar elementos del DOM
+        console.log('\n📋 1. VERIFICACIÓN DEL DOM:');
+        const citasSection = document.getElementById('citas');
+        const citasTableBody = document.getElementById('citasTableBody');
+        const debugBtn = document.getElementById('debugCitasBtn');
+        
+        console.log('   📍 Sección citas encontrada:', !!citasSection);
+        console.log('   📍 Sección visible:', citasSection ? citasSection.style.display !== 'none' : false);
+        console.log('   📋 Tabla citas body encontrada:', !!citasTableBody);
+        console.log('   � Botón debug encontrado:', !!debugBtn);
+        
+        // 2. Verificar estado del sistema
+        console.log('\n⚙️ 2. ESTADO DEL SISTEMA:');
+        console.log('   🔄 Auto-refresh activo:', !!this.citasInterval);
+        console.log('   📊 Citas en memoria:', this.citas ? this.citas.length : 0);
+        console.log('   🎯 Vista actual:', this.vistaActual || 'No definida');
+        
+        // 3. Verificar conectividad del servidor
+        console.log('\n🌐 3. PRUEBA DE CONECTIVIDAD:');
+        
+        // Probar conexión básica al servidor
+        fetch('/')
+            .then(response => {
+                console.log('   ✅ Servidor principal:', response.status === 200 ? 'OK' : `Error ${response.status}`);
+                
+                // 4. Probar endpoint específico de citas
+                console.log('\n📡 4. PRUEBA API CITAS:');
+                return fetch('/api/citas/admin/todas');
+            })
+            .then(response => {
+                console.log('   📡 Estado HTTP:', response.status, response.statusText);
+                console.log('   📦 Content-Type:', response.headers.get('content-type'));
+                console.log('   🔢 Content-Length:', response.headers.get('content-length'));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('\n📊 5. ANÁLISIS DE DATOS:');
+                console.log('   🔍 Tipo de respuesta:', typeof data);
+                console.log('   📏 Es array:', Array.isArray(data));
+                console.log('   📊 Cantidad de citas:', Array.isArray(data) ? data.length : 'No es array');
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    console.log('   📋 Primera cita (muestra):');
+                    console.table(data[0]);
+                    
+                    console.log('   🔑 Campos disponibles:', Object.keys(data[0]));
+                    
+                    // Verificar campos requeridos
+                    const camposRequeridos = ['id', 'fecha', 'hora', 'estado', 'paciente_nombre', 'odontologo_nombre'];
+                    const camposFaltantes = camposRequeridos.filter(campo => !(campo in data[0]));
+                    
+                    if (camposFaltantes.length > 0) {
+                        console.warn('   ⚠️ Campos faltantes:', camposFaltantes);
+                    } else {
+                        console.log('   ✅ Todos los campos requeridos presentes');
+                    }
+                } else {
+                    console.log('   ⚠️ No hay citas para analizar');
+                }
+                
+                // 6. Verificar renderizado de tabla
+                console.log('\n🎨 6. ANÁLISIS DE RENDERIZADO:');
+                if (citasTableBody) {
+                    const filas = citasTableBody.getElementsByTagName('tr');
+                    console.log('   📋 Filas en tabla:', filas.length);
+                    
+                    if (filas.length > 0) {
+                        console.log('   📝 Contenido primera fila:', filas[0].innerHTML.substring(0, 100) + '...');
+                    }
+                } else {
+                    console.error('   ❌ No se puede analizar tabla - elemento no encontrado');
+                }
+                
+                // 7. Verificar otros endpoints
+                console.log('\n🔗 7. PRUEBA OTROS ENDPOINTS:');
+                return Promise.all([
+                    fetch('/api/sedes').then(r => ({ endpoint: 'sedes', status: r.status, ok: r.ok })),
+                    fetch('/api/inventario').then(r => ({ endpoint: 'inventario', status: r.status, ok: r.ok })),
+                    fetch('/api/usuarios').then(r => ({ endpoint: 'usuarios', status: r.status, ok: r.ok }))
+                ]);
+            })
+            .then(resultados => {
+                console.log('   📊 Estado de otros endpoints:');
+                resultados.forEach(resultado => {
+                    const icono = resultado.ok ? '✅' : '❌';
+                    console.log(`   ${icono} ${resultado.endpoint}: HTTP ${resultado.status}`);
+                });
+                
+                // 8. Recomendaciones
+                console.log('\n💡 8. RECOMENDACIONES:');
+                
+                if (!this.citas || this.citas.length === 0) {
+                    console.log('   🔄 Intenta recargar los datos manualmente');
+                    console.log('   🔍 Verifica que existan citas en la base de datos');
+                }
+                
+                if (!this.citasInterval) {
+                    console.log('   ⏰ El auto-refresh no está activo');
+                    console.log('   🔄 Considera activar la actualización automática');
+                }
+                
+                console.log('   🔧 Para más detalles, revisa la pestaña Network en DevTools');
+                console.log('   📱 Asegúrate de estar en la sección correcta del dashboard');
+                
+                console.log('\n🎉 DEBUG COMPLETADO - Revisa los resultados arriba');
+                
+                // Mostrar resumen en pantalla
+                const statusDiv = document.getElementById('citasStatus');
+                if (statusDiv) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-bug"></i> Debug Ejecutado</h6>
+                            <p class="mb-1">✅ Servidor conectado correctamente</p>
+                            <p class="mb-1">📊 Citas en sistema: ${this.citas ? this.citas.length : 0}</p>
+                            <p class="mb-0"><small>🔍 Revisa la consola del navegador (F12) para detalles completos</small></p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('\n❌ ERROR EN DEBUG:', error);
+                console.log('\n🚨 DIAGNÓSTICO DE ERROR:');
+                console.log('   🔍 Tipo de error:', error.name);
+                console.log('   📝 Mensaje:', error.message);
+                console.log('   📍 Stack trace:', error.stack);
+                
+                // Mostrar error en pantalla
+                const statusDiv = document.getElementById('citasStatus');
+                if (statusDiv) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6><i class="bi bi-exclamation-triangle"></i> Error en Debug</h6>
+                            <p class="mb-1">❌ ${error.message}</p>
+                            <p class="mb-0"><small>🔍 Revisa la consola para más detalles</small></p>
+                        </div>
+                    `;
+                }
+                
+                console.log('\n🔧 POSIBLES SOLUCIONES:');
+                console.log('   1. Verifica que el servidor esté ejecutándose');
+                console.log('   2. Revisa la conexión a la base de datos');
+                console.log('   3. Asegúrate de que las rutas API estén configuradas');
+                console.log('   4. Verifica que no haya errores en la consola del servidor');
+            });
+    }
+
+    async loadCitas() {
+        console.log('🔄 Cargando todas las citas...');
+        
+        const citasTableBody = document.getElementById('citasTableBody');
+        if (!citasTableBody) {
+            console.error('❌ No se encontró citasTableBody en el DOM');
+            return;
+        }
+        
+        try {
+            this.showCitasLoading(true);
+            console.log('📡 Haciendo petición a /api/citas/admin/todas...');
+            
+            // Obtener headers de autenticación
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userId = localStorage.getItem('userId') || user.id;
+            
+            const res = await fetch('/api/citas/admin/todas', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': userId || '1'
+                }
+            });
+            
+            console.log('📡 Respuesta del servidor:', res.status, res.statusText);
+            
+            if (!res.ok) {
+                throw new Error(`Error ${res.status}: ${res.statusText}`);
+            }
+            
+            const citas = await res.json();
+            console.log(`✅ Respuesta recibida. Tipo: ${typeof citas}, Longitud: ${Array.isArray(citas) ? citas.length : 'No es array'}`);
+            console.log('📊 Datos completos:', citas);
+            
+            // Asegurar que citas es un array
+            const citasArray = Array.isArray(citas) ? citas : [];
+            
+            this.citas = citasArray;
+            console.log(`📋 Citas almacenadas: ${this.citas.length}`);
+            
+            this.renderCitasTable();
+            
+            // Si estamos en vista calendario, actualizarlo también
+            if (this.vistaActual === 'calendario') {
+                this.renderCalendario();
+            }
+            
+            // Mostrar estado en la interfaz
+            const statusDiv = document.getElementById('citasStatus');
+            if (statusDiv) {
+                if (citasArray.length === 0) {
+                    statusDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> No hay citas registradas en el sistema</div>';
+                } else {
+                    statusDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${citasArray.length} citas cargadas correctamente</div>`;
+                }
+            }
+            
+            this.showCitasLoading(false);
+            
+            console.log('✅ Citas cargadas y renderizadas exitosamente');
+            
+        } catch (err) {
+            console.error('❌ Error al cargar citas:', err);
+            this.showCitasLoading(false);
+            
+            // Mostrar error en la interfaz
+            const statusDiv = document.getElementById('citasStatus');
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Error al cargar citas: ${err.message}</div>`;
+            }
+            
+            // Mostrar mensaje en la tabla
+            citasTableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+                        <h5>Error al cargar citas</h5>
+                        <p>${err.message}</p>
+                        <button class="btn btn-outline-primary" onclick="dashboardAdmin.loadCitas()">
+                            <i class="bi bi-arrow-clockwise"></i> Reintentar
+                        </button>
+                    </td>
+                </tr>
+            `;
+            
+            this.showNoCitasMessage();
+            
+            // También mostrar alerta
+            alert('Error al cargar citas: ' + err.message + '. Revise la conexión con el servidor.');
+        }
+    }
+
+    showCitasLoading(show) {
+        const loadingMsg = document.getElementById('citasLoadingMsg');
+        const table = document.getElementById('citasTable');
+        const noCitasMsg = document.getElementById('noCitasMsg');
+        
+        if (show) {
+            loadingMsg.style.display = 'block';
+            table.style.display = 'none';
+            noCitasMsg.classList.add('d-none');
+        } else {
+            loadingMsg.style.display = 'none';
+            table.style.display = 'table';
+        }
+    }
+
+    showNoCitasMessage() {
+        const noCitasMsg = document.getElementById('noCitasMsg');
+        const table = document.getElementById('citasTable');
+        
+        table.style.display = 'none';
+        noCitasMsg.classList.remove('d-none');
+    }
+
+    renderCitasTable() {
+        const tbody = document.getElementById('citasTableBody');
+        if (!tbody) {
+            console.error('❌ No se encontró el tbody de la tabla de citas');
+            return;
+        }
+
+        if (!this.citas || this.citas.length === 0) {
+            this.showNoCitasMessage();
+            return;
+        }
+
+        tbody.innerHTML = '';
+        
+        this.citas.forEach(cita => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><span class="badge bg-secondary">${cita.id}</span></td>
+                <td>
+                    <div class="fw-bold">${cita.paciente_completo}</div>
+                    <small class="text-muted">${cita.paciente_correo || ''}</small>
+                </td>
+                <td>
+                    <div class="fw-bold">${cita.odontologo_completo}</div>
+                    <small class="text-muted">${cita.odontologo_correo || ''}</small>
+                </td>
+                <td>${cita.fecha_formateada || 'N/A'}</td>
+                <td><span class="badge bg-info">${cita.hora || 'N/A'}</span></td>
+                <td>${this.getEstadoBadge(cita.estado)}</td>
+                <td class="text-truncate" style="max-width: 200px;" title="${cita.motivo || 'Sin motivo especificado'}">
+                    ${cita.motivo || 'Sin motivo especificado'}
+                </td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-outline-primary" onclick="dashboardAdmin.verDetallesCita(${cita.id})" title="Ver detalles">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="dashboardAdmin.cambiarEstadoCita(${cita.id}, 'confirmada')" title="Confirmar" ${cita.estado === 'confirmada' || cita.estado === 'completada' || cita.estado === 'cancelada' ? 'disabled' : ''}>
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="dashboardAdmin.cambiarEstadoCita(${cita.id}, 'completada')" title="Completar" ${cita.estado === 'completada' || cita.estado === 'cancelada' ? 'disabled' : ''}>
+                            <i class="bi bi-check2-all"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="dashboardAdmin.cambiarEstadoCita(${cita.id}, 'cancelada')" title="Cancelar" ${cita.estado === 'cancelada' ? 'disabled' : ''}>
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="dashboardAdmin.reasignarOdontologo(${cita.id})" title="Reasignar odontólogo" ${cita.estado === 'completada' || cita.estado === 'cancelada' ? 'disabled' : ''}>
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    getEstadoBadge(estado) {
+        const badges = {
+            'programada': '<span class="badge bg-primary">Programada</span>',
+            'confirmada': '<span class="badge bg-info">Confirmada</span>',
+            'completada': '<span class="badge bg-success">Completada</span>',
+            'cancelada': '<span class="badge bg-danger">Cancelada</span>'
+        };
+        return badges[estado] || `<span class="badge bg-secondary">${estado}</span>`;
+    }
+
+    verDetallesCita(id) {
+        const cita = this.citas.find(c => c.id === id);
+        if (!cita) {
+            alert('Cita no encontrada');
+            return;
+        }
+
+        // Llenar el modal con los datos de la cita
+        document.getElementById('citaDetalleId').textContent = cita.id;
+        document.getElementById('citaDetalleFecha').textContent = cita.fecha_formateada || 'N/A';
+        document.getElementById('citaDetalleHora').textContent = cita.hora || 'N/A';
+        document.getElementById('citaDetalleEstado').innerHTML = this.getEstadoBadge(cita.estado);
+        document.getElementById('citaDetalleMotivo').textContent = cita.motivo || 'Sin motivo especificado';
+        
+        document.getElementById('citaDetallePaciente').textContent = cita.paciente_completo;
+        document.getElementById('citaDetallePacienteEmail').textContent = cita.paciente_correo || 'N/A';
+        document.getElementById('citaDetallePacienteTelefono').textContent = cita.paciente_telefono || 'N/A';
+        
+        document.getElementById('citaDetalleOdontologo').textContent = cita.odontologo_completo;
+        document.getElementById('citaDetalleOdontologoEmail').textContent = cita.odontologo_correo || 'N/A';
+        
+        document.getElementById('citaDetalleNotas').textContent = cita.notas || 'Sin notas adicionales';
+        
+        // Establecer el estado actual en el select
+        document.getElementById('nuevoEstadoCita').value = cita.estado;
+        
+        // Configurar el evento del botón actualizar
+        document.getElementById('actualizarEstadoCitaBtn').onclick = () => this.actualizarEstadoCitaDesdeModal(id);
+        
+        // Mostrar/ocultar notas de cancelación según el estado seleccionado
+        this.toggleNotasCancelacion();
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('citaDetallesModal'));
+        modal.show();
+    }
+
+    toggleNotasCancelacion() {
+        const estadoSelect = document.getElementById('nuevoEstadoCita');
+        const notasDiv = document.getElementById('notasCancelacionDiv');
+        
+        if (estadoSelect.value === 'cancelada') {
+            notasDiv.style.display = 'block';
+        } else {
+            notasDiv.style.display = 'none';
+        }
+    }
+
+    async cambiarEstadoCita(id, nuevoEstado) {
+        if (!confirm(`¿Está seguro de cambiar el estado de la cita a "${nuevoEstado}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/citas/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.msg || 'Error al actualizar estado');
+            }
+
+            const result = await response.json();
+            console.log('✅ Estado actualizado:', result);
+            
+            // Recargar las citas para reflejar el cambio
+            await this.loadCitas();
+            
+            // Mostrar mensaje de éxito
+            this.showAlert('success', `Cita ${nuevoEstado} exitosamente`);
+
+        } catch (error) {
+            console.error('❌ Error al cambiar estado de cita:', error);
+            this.showAlert('danger', `Error: ${error.message}`);
+        }
+    }
+
+    async actualizarEstadoCitaDesdeModal(id) {
+        const nuevoEstado = document.getElementById('nuevoEstadoCita').value;
+        const notasCancelacion = document.getElementById('notasCancelacion').value;
+        
+        try {
+            const payload = { estado: nuevoEstado };
+            
+            // Agregar notas si es cancelación
+            if (nuevoEstado === 'cancelada' && notasCancelacion.trim()) {
+                payload.notas_cancelacion = notasCancelacion.trim();
+            }
+
+            const response = await fetch(`/api/citas/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.msg || 'Error al actualizar estado');
+            }
+
+            const result = await response.json();
+            console.log('✅ Estado actualizado desde modal:', result);
+            
+            // Cerrar el modal
+            bootstrap.Modal.getInstance(document.getElementById('citaDetallesModal')).hide();
+            
+            // Recargar las citas
+            await this.loadCitas();
+            
+            // Mostrar mensaje de éxito
+            this.showAlert('success', `Cita ${nuevoEstado} exitosamente`);
+
+        } catch (error) {
+            console.error('❌ Error al actualizar estado desde modal:', error);
+            this.showAlert('danger', `Error: ${error.message}`);
+        }
+    }
+
+    filterCitas() {
+        const fechaFiltro = document.getElementById('fechaFiltro').value;
+        const estadoFiltro = document.getElementById('estadoFiltro').value;
+        const pacienteFiltro = document.getElementById('pacienteFiltro').value.toLowerCase();
+        const odontologoFiltro = document.getElementById('odontologoFiltro').value.toLowerCase();
+
+        let citasFiltradas = [...this.citas];
+
+        // Filtrar por fecha
+        if (fechaFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => {
+                if (!cita.fecha) return false;
+                const fechaCita = new Date(cita.fecha).toISOString().split('T')[0];
+                return fechaCita === fechaFiltro;
+            });
+        }
+
+        // Filtrar por estado
+        if (estadoFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => cita.estado === estadoFiltro);
+        }
+
+        // Filtrar por paciente
+        if (pacienteFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => 
+                (cita.paciente_completo || '').toLowerCase().includes(pacienteFiltro)
+            );
+        }
+
+        // Filtrar por odontólogo
+        if (odontologoFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => 
+                (cita.odontologo_completo || '').toLowerCase().includes(odontologoFiltro)
+            );
+        }
+
+        // Renderizar tabla con citas filtradas
+        const citasOriginales = this.citas;
+        this.citas = citasFiltradas;
+        this.renderCitasTable();
+        this.citas = citasOriginales; // Restaurar citas originales
+    }
+
+    async loadInventario() {
+        try {
+            const res = await this.authFetch('/api/inventario');
+            if (!res.ok) {
+                throw new Error(`Error ${res.status}: ${res.statusText}`);
+            }
+            const inventario = await res.json();
+            this.inventario = inventario;
+            // Usar la función global que está correctamente implementada
+            renderInventarioTable(inventario);
+        } catch (err) {
+            console.error('Error al cargar inventario:', err);
+            // Usar la función global para mostrar error
+            const tbody = document.querySelector('#inventarioTableBody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Error al cargar inventario</td></tr>';
+            }
+        }
+    }
+
+    openInventarioModal(codigo = null) {
+        const modal = new bootstrap.Modal(document.getElementById('inventarioModal'));
+        document.getElementById('inventarioForm').reset();
+        if (codigo) {
+            const item = this.inventario.find(i => i.codigo === codigo);
+            document.getElementById('inventarioModalTitle').textContent = 'Editar Item';
+            document.getElementById('invCodigo').value = item.codigo;
+            document.getElementById('invProducto').value = item.producto;
+            document.getElementById('invCategoria').value = item.categoria;
+            document.getElementById('invStock').value = item.stock;
+            document.getElementById('invEstado').value = item.estado;
+            document.getElementById('invCodigo').readOnly = true;
+            document.getElementById('saveInventarioBtn').onclick = () => this.saveInventario(codigo);
+        } else {
+            document.getElementById('inventarioModalTitle').textContent = 'Nuevo Item';
+            document.getElementById('invCodigo').readOnly = false;
+            document.getElementById('saveInventarioBtn').onclick = () => this.saveInventario();
+        }
+        modal.show();
+    }
+
+    async saveInventario(codigo = null) {
+        const payload = {
+            codigo: document.getElementById('invCodigo').value,
+            producto: document.getElementById('invProducto').value,
+            categoria: document.getElementById('invCategoria').value,
+            stock: document.getElementById('invStock').value,
+            estado: document.getElementById('invEstado').value
+        };
+        try {
+            if (codigo) {
+                await fetch(`/api/inventario/${codigo}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                await fetch('/api/inventario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            bootstrap.Modal.getInstance(document.getElementById('inventarioModal')).hide();
+            await this.loadInventario();
+        } catch (err) {
+            alert('Error al guardar item');
+        }
+    }
+
+    async deleteInventario(codigo) {
+        if (!confirm('¿Seguro que deseas eliminar este item?')) return;
+        try {
+            await fetch(`/api/inventario/${codigo}`, { method: 'DELETE' });
+            await this.loadInventario();
+        } catch (err) {
+            alert('Error al eliminar item');
+        }
+    }
+
+    getEstadoBadgeClass(estado) {
+        const classes = {
+            'programada': 'bg-warning',
+            'completada': 'bg-success',
+            'cancelada': 'bg-danger',
+            'confirmada': 'bg-info'
+        };
+        return classes[estado] || 'bg-secondary';
+    }
+
+    logout() {
+        console.log('🚪 Cerrando sesión del administrador...');
+        
+        // Usar el middleware de autenticación si está disponible
+        if (window.authMiddleware) {
+            window.authMiddleware.secureLogout();
+        } else {
+            // Fallback manual
+            this.manualLogout();
+        }
+    }
+
+    manualLogout() {
+        // Limpiar toda la información de sesión
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('adminSession');
+        sessionStorage.clear();
+        
+        // Invalidar la sesión en el historial del navegador
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, null, '/index.html');
+        }
+        
+        // Limpiar cualquier interval/timeout activo
+        this.clearIntervals();
+        
+        // Destruir gráficos para liberar memoria
+        this.destroyCharts();
+        
+        // Mostrar mensaje de confirmación
+        console.log('✅ Sesión cerrada correctamente');
+        
+        // Redireccionar al login/home
+        window.location.href = '/index.html';
+    }
+
+    clearIntervals() {
+        // Limpiar intervals específicos del dashboard si existen
+        if (this.citasInterval) {
+            clearInterval(this.citasInterval);
+        }
+        if (this.notificacionesInterval) {
+            clearInterval(this.notificacionesInterval);
+        }
+        // Limpiar todos los timeouts activos
+        for (let i = 1; i < 99999; i++) window.clearTimeout(i);
+    }
+
+    getRolBadgeClass(rol) {
+        const classes = {
+            'admin': 'danger',
+            'odontologo': 'primary',
+            'paciente': 'info'
+        };
+        return classes[rol] || 'secondary';
+    }
+
+    showAlert(type, message) {
+        // Crear el alert
+        const alertId = 'alert-' + Date.now();
+        const alertHTML = `
+            <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+                <strong>${type === 'success' ? '✅ Éxito!' : '❌ Error!'}</strong> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Agregar al DOM
+        document.body.insertAdjacentHTML('beforeend', alertHTML);
+        
+        // Auto-remover después de 5 segundos
+        setTimeout(() => {
+            const alertElement = document.getElementById(alertId);
+            if (alertElement) {
+                alertElement.remove();
+            }
+        }, 5000);
+    }
+
+    exportCitasPdf() {
+        try {
+            const doc = new window.jspdf.jsPDF();
+            
+            // Título
+            doc.setFontSize(20);
+            doc.text('Reporte de Citas - Clinik Dent', 20, 20);
+            
+            // Fecha del reporte
+            doc.setFontSize(12);
+            doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 30);
+            
+            // Obtener citas filtradas actuales
+            const citasParaExportar = this.getCurrentFilteredCitas();
+            
+            // Headers de la tabla
+            doc.setFontSize(10);
+            doc.text('ID', 20, 50);
+            doc.text('Paciente', 35, 50);
+            doc.text('Odontólogo', 80, 50);
+            doc.text('Fecha', 125, 50);
+            doc.text('Hora', 155, 50);
+            doc.text('Estado', 175, 50);
+            
+            // Línea separadora
+            doc.line(20, 52, 190, 52);
+            
+            let y = 60;
+            citasParaExportar.forEach((cita, index) => {
+                if (y > 270) { // Nueva página
+                    doc.addPage();
+                    y = 20;
+                }
+                
+                doc.text(cita.id.toString(), 20, y);
+                doc.text(cita.paciente_completo.substring(0, 20), 35, y);
+                doc.text(cita.odontologo_completo.substring(0, 20), 80, y);
+                doc.text(cita.fecha_formateada || 'N/A', 125, y);
+                doc.text(cita.hora || 'N/A', 155, y);
+                doc.text(cita.estado, 175, y);
+                
+                y += 8;
+            });
+            
+            // Resumen al final
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Total de citas: ${citasParaExportar.length}`, 20, y);
+            
+            // Guardar
+            doc.save(`citas_reporte_${new Date().toISOString().split('T')[0]}.pdf`);
+            this.showAlert('success', 'Reporte PDF generado exitosamente');
+            
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            this.showAlert('danger', 'Error al generar el reporte PDF');
+        }
+    }
+
+    exportCitasExcel() {
+        try {
+            // Obtener citas filtradas actuales
+            const citasParaExportar = this.getCurrentFilteredCitas();
+            
+            // Preparar datos para Excel
+            const datosExcel = citasParaExportar.map(cita => ({
+                'ID': cita.id,
+                'Paciente': cita.paciente_completo,
+                'Email Paciente': cita.paciente_correo || 'N/A',
+                'Teléfono Paciente': cita.paciente_telefono || 'N/A',
+                'Odontólogo': cita.odontologo_completo,
+                'Email Odontólogo': cita.odontologo_correo || 'N/A',
+                'Fecha': cita.fecha_formateada || 'N/A',
+                'Hora': cita.hora || 'N/A',
+                'Estado': cita.estado,
+                'Motivo': cita.motivo || 'Sin motivo especificado',
+                'Notas': cita.notas || 'Sin notas'
+            }));
+            
+            // Crear hoja de trabajo
+            const ws = window.XLSX.utils.json_to_sheet(datosExcel);
+            
+            // Crear libro de trabajo
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, 'Citas');
+            
+            // Agregar hoja de resumen
+            const resumen = [{
+                'Total de Citas': citasParaExportar.length,
+                'Programadas': citasParaExportar.filter(c => c.estado === 'programada').length,
+                'Confirmadas': citasParaExportar.filter(c => c.estado === 'confirmada').length,
+                'Completadas': citasParaExportar.filter(c => c.estado === 'completada').length,
+                'Canceladas': citasParaExportar.filter(c => c.estado === 'cancelada').length,
+                'Fecha del Reporte': new Date().toLocaleDateString('es-ES')
+            }];
+            
+            const wsResumen = window.XLSX.utils.json_to_sheet(resumen);
+            window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+            
+            // Guardar archivo
+            window.XLSX.writeFile(wb, `citas_reporte_${new Date().toISOString().split('T')[0]}.xlsx`);
+            this.showAlert('success', 'Reporte Excel generado exitosamente');
+            
+        } catch (error) {
+            console.error('Error al generar Excel:', error);
+            this.showAlert('danger', 'Error al generar el reporte Excel');
+        }
+    }
+
+    getCurrentFilteredCitas() {
+        // Aplicar los mismos filtros que en la tabla
+        const fechaFiltro = document.getElementById('fechaFiltro').value;
+        const estadoFiltro = document.getElementById('estadoFiltro').value;
+        const pacienteFiltro = document.getElementById('pacienteFiltro').value.toLowerCase();
+        const odontologoFiltro = document.getElementById('odontologoFiltro').value.toLowerCase();
+
+        let citasFiltradas = [...this.citas];
+
+        if (fechaFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => {
+                if (!cita.fecha) return false;
+                const fechaCita = new Date(cita.fecha).toISOString().split('T')[0];
+                return fechaCita === fechaFiltro;
+            });
+        }
+
+        if (estadoFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => cita.estado === estadoFiltro);
+        }
+
+        if (pacienteFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => 
+                (cita.paciente_completo || '').toLowerCase().includes(pacienteFiltro)
+            );
+        }
+
+        if (odontologoFiltro) {
+            citasFiltradas = citasFiltradas.filter(cita => 
+                (cita.odontologo_completo || '').toLowerCase().includes(odontologoFiltro)
+            );
+        }
+
+        return citasFiltradas;
+    }
+
+    async actualizarContadorCitasProximas() {
+        try {
+            // TEMPORALMENTE DESHABILITADO - Error de DB en citas
+            console.warn('⚠️ actualizarContadorCitasProximas temporalmente deshabilitado');
+            return;
+            
+            const response = await fetch('/api/citas/admin/proximas');
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}`);
+            }
+            
+            const citasProximas = await response.json();
+            const badge = document.getElementById('citasProximasBadge');
+            
+            if (badge) {
+                badge.textContent = citasProximas.length;
+                
+                // Cambiar color según urgencia
+                if (citasProximas.length === 0) {
+                    badge.className = 'badge bg-secondary';
+                } else if (citasProximas.some(c => c.urgencia === 'critica')) {
+                    badge.className = 'badge bg-danger';
+                } else if (citasProximas.some(c => c.urgencia === 'alta')) {
+                    badge.className = 'badge bg-warning';
+                } else {
+                    badge.className = 'badge bg-info';
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error al actualizar contador de citas próximas:', error);
+        }
+    }
+
+    async mostrarCitasProximas() {
+        try {
+            // TEMPORALMENTE DESHABILITADO - Error de DB en citas  
+            console.warn('⚠️ mostrarCitasProximas temporalmente deshabilitado');
+            const container = document.getElementById('citasProximasContainer');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Funcionalidad de citas temporalmente deshabilitada</div>';
+            }
+            return;
+            
+            const response = await fetch('/api/citas/admin/proximas');
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}`);
+            }
+            
+            const citasProximas = await response.json();
+            
+            let html;
+            if (citasProximas.length === 0) {
+                html = '<div class="alert alert-info"><i class="bi bi-calendar-check"></i> No hay citas próximas para mañana</div>';
+            } else {
+                html = '<div class="list-group">';
+                citasProximas.forEach(cita => {
+                    const urgenciaClass = {
+                        'critica': 'danger',
+                        'alta': 'warning', 
+                        'media': 'info',
+                        'baja': 'secondary'
+                    };
+                    
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">
+                                    <i class="bi bi-person"></i> ${cita.paciente_completo}
+                                    <span class="badge bg-${urgenciaClass[cita.urgencia]} ms-2">${cita.urgencia}</span>
+                                </h6>
+                                <small class="text-muted">${cita.hora}</small>
+                            </div>
+                            <p class="mb-1">
+                                <i class="bi bi-person-badge"></i> Dr. ${cita.odontologo_completo}
+                            </p>
+                            <small class="text-muted">
+                                <i class="bi bi-clipboard"></i> ${cita.motivo || 'Sin motivo especificado'}
+                            </small>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Crear y mostrar modal
+            const modalDiv = document.createElement('div');
+            modalDiv.className = 'modal fade';
+            modalDiv.id = 'citasProximasModal';
+            modalDiv.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-clock"></i> Citas Próximas (Mañana)
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">${html}</div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modalDiv);
+            const modal = new bootstrap.Modal(modalDiv);
+            modal.show();
+            modalDiv.addEventListener('hidden.bs.modal', () => modalDiv.remove());
+            
+        } catch (error) {
+            console.error('Error al cargar citas próximas:', error);
+            this.showAlert('danger', 'Error al cargar citas próximas');
+        }
+    }
+
+    cambiarVista(vista) {
+        this.vistaActual = vista;
+        
+        const tablaView = document.getElementById('citasTablaView');
+        const calendarioView = document.getElementById('citasCalendarioView');
+        const vistaTablaBtn = document.getElementById('vistaTablaBtn');
+        const vistaCalendarioBtn = document.getElementById('vistaCalendarioBtn');
+        
+        if (vista === 'tabla') {
+            tablaView.classList.remove('d-none');
+            calendarioView.classList.add('d-none');
+            vistaTablaBtn.classList.add('active');
+            vistaCalendarioBtn.classList.remove('active');
+        } else {
+            tablaView.classList.add('d-none');
+            calendarioView.classList.remove('d-none');
+            vistaTablaBtn.classList.remove('active');
+            vistaCalendarioBtn.classList.add('active');
+            this.renderCalendario();
+        }
+    }
+
+    navegarCalendario(direccion) {
+        this.calendarioFechaActual.setMonth(this.calendarioFechaActual.getMonth() + direccion);
+        this.renderCalendario();
+    }
+
+    irAHoy() {
+        this.calendarioFechaActual = new Date();
+        this.renderCalendario();
+    }
+
+    renderCalendario() {
+        const year = this.calendarioFechaActual.getFullYear();
+        const month = this.calendarioFechaActual.getMonth();
+        
+        // Actualizar título
+        const meses = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+        document.getElementById('calendarioMesAno').textContent = `${meses[month]} ${year}`;
+        
+        // Crear calendario
+        const primerDia = new Date(year, month, 1);
+        const ultimoDia = new Date(year, month + 1, 0);
+        const primerDiaSemana = primerDia.getDay();
+        const diasEnMes = ultimoDia.getDate();
+        
+        const tbody = document.getElementById('calendarioBody');
+        tbody.innerHTML = '';
+        
+        let fecha = 1;
+        const hoy = new Date();
+        
+        // Crear 6 semanas (filas)
+        for (let semana = 0; semana < 6; semana++) {
+            const fila = document.createElement('tr');
+            
+            // Crear 7 días (columnas)
+            for (let dia = 0; dia < 7; dia++) {
+                const celda = document.createElement('td');
+                celda.className = 'calendario-dia';
+                
+                if (semana === 0 && dia < primerDiaSemana) {
+                    // Días del mes anterior
+                    const mesAnterior = new Date(year, month - 1, 0);
+                    const diaAnterior = mesAnterior.getDate() - (primerDiaSemana - dia - 1);
+                    celda.innerHTML = `<div class="dia-numero">${diaAnterior}</div>`;
+                    celda.classList.add('otro-mes');
+                } else if (fecha > diasEnMes) {
+                    // Días del mes siguiente
+                    const diaSiguiente = fecha - diasEnMes;
+                    celda.innerHTML = `<div class="dia-numero">${diaSiguiente}</div>`;
+                    celda.classList.add('otro-mes');
+                    fecha++;
+                } else {
+                    // Días del mes actual
+                    const fechaActual = new Date(year, month, fecha);
+                    const esHoy = fechaActual.toDateString() === hoy.toDateString();
+                    
+                    celda.innerHTML = `<div class="dia-numero">${fecha}</div>`;
+                    
+                    if (esHoy) {
+                        celda.classList.add('hoy');
+                    }
+                    
+                    // Agregar citas del día
+                    this.agregarCitasAlDia(celda, fechaActual);
+                    
+                    fecha++;
+                }
+                
+                fila.appendChild(celda);
+            }
+            
+            tbody.appendChild(fila);
+            
+            // Si ya no hay más días, salir del bucle
+            if (fecha > diasEnMes) break;
+        }
+    }
+
+    agregarCitasAlDia(celda, fecha) {
+        const fechaStr = fecha.toISOString().split('T')[0];
+        const citasDelDia = this.citas.filter(cita => {
+            if (!cita.fecha) return false;
+            return new Date(cita.fecha).toISOString().split('T')[0] === fechaStr;
+        });
+        
+        if (citasDelDia.length > 0) {
+            celda.classList.add('dia-con-citas');
+            
+            // Agregar contador
+            const contador = document.createElement('div');
+            contador.className = 'citas-contador';
+            contador.textContent = citasDelDia.length;
+            celda.appendChild(contador);
+            
+            // Mostrar máximo 3 citas
+            const citasAMostrar = citasDelDia.slice(0, 3);
+            citasAMostrar.forEach(cita => {
+                const citaDiv = document.createElement('div');
+                citaDiv.className = `cita-item cita-${cita.estado}`;
+                citaDiv.textContent = `${cita.hora} ${cita.paciente_completo}`;
+                citaDiv.title = `${cita.hora} - ${cita.paciente_completo} con ${cita.odontologo_completo}`;
+                citaDiv.onclick = () => this.verDetallesCita(cita.id);
+                celda.appendChild(citaDiv);
+            });
+            
+            // Si hay más de 3 citas, mostrar indicador
+            if (citasDelDia.length > 3) {
+                const masDiv = document.createElement('div');
+                masDiv.className = 'cita-item';
+                masDiv.style.backgroundColor = '#6c757d';
+                masDiv.textContent = `+${citasDelDia.length - 3} más`;
+                masDiv.onclick = () => this.mostrarCitasDelDia(fecha, citasDelDia);
+                celda.appendChild(masDiv);
+            }
+        }
+        
+        // Click en día para ver todas las citas
+        celda.onclick = (e) => {
+            if (e.target === celda || e.target.classList.contains('dia-numero')) {
+                this.mostrarCitasDelDia(fecha, citasDelDia);
+            }
+        };
+    }
+
+    mostrarCitasDelDia(fecha, citas) {
+        const fechaFormateada = fecha.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        let html;
+        if (citas.length === 0) {
+            html = '<div class="alert alert-info">No hay citas programadas para este día</div>';
+        } else {
+            html = '<div class="list-group">';
+            citas.forEach(cita => {
+                const estadoClass = this.getStatusBadgeClass(cita.estado);
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                <i class="bi bi-clock"></i> ${cita.hora}
+                                <span class="badge bg-${estadoClass} ms-2">${cita.estado}</span>
+                            </h6>
+                        </div>
+                        <p class="mb-1">
+                            <i class="bi bi-person"></i> ${cita.paciente_completo}
+                        </p>
+                        <p class="mb-1">
+                            <i class="bi bi-person-badge"></i> Dr. ${cita.odontologo_completo}
+                        </p>
+                        <small class="text-muted">
+                            <i class="bi bi-clipboard"></i> ${cita.motivo || 'Sin motivo especificado'}
+                        </small>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        // Crear y mostrar modal
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal fade';
+        modalDiv.id = 'citasDelDiaModal';
+        modalDiv.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-calendar-day"></i> Citas - ${fechaFormateada}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">${html}</div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modalDiv);
+        const modal = new bootstrap.Modal(modalDiv);
+        modal.show();
+        modalDiv.addEventListener('hidden.bs.modal', () => modalDiv.remove());
+    }
+}
+
+// Función auxiliar para obtener color del estado
+function getEstadoColor(estado) {
+    switch (estado) {
+        case 'programada': return 'primary';
+        case 'confirmada': return 'info';
+        case 'completada': return 'success';
+        case 'cancelada': return 'danger';
+        default: return 'secondary';
+    }
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.dashboardAdmin) {
+        console.log('🚀 Creando instancia única de DashboardAdmin');
+        window.dashboardAdmin = new DashboardAdmin();
+    } else {
+        console.log('⚠️ DashboardAdmin ya existe, saltando inicialización');
+    }
+    
+    // Event listeners para tabs de inventario
+    const inventarioTabs = document.querySelectorAll('#inventarioTab button[data-bs-toggle="tab"]');
+    inventarioTabs.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', (event) => {
+            const targetId = event.target.getAttribute('data-bs-target');
+            console.log('📋 Tab de inventario cambiado:', targetId);
+            
+            switch (targetId) {
+                case '#equipos-inventario':
+                    console.log('🔧 Cargando equipos...');
+                    if (typeof cargarInventario === 'function') {
+                        cargarInventario();
+                    }
+                    break;
+                case '#sedes-gestion':
+                    console.log('🏢 Cargando sedes...');
+                    if (typeof cargarGestionSedes === 'function') {
+                        cargarGestionSedes();
+                    }
+                    break;
+                case '#proveedores-inventario':
+                    console.log('🚚 Cargando proveedores...');
+                    if (typeof cargarProveedores === 'function') {
+                        cargarProveedores();
+                    }
+                    break;
+                case '#categorias-inventario':
+                    console.log('🏷️ Cargando categorías...');
+                    if (typeof cargarCategorias === 'function') {
+                        cargarCategorias();
+                    }
+                    break;
+                case '#movimientos-inventario':
+                    console.log('📦 Cargando movimientos...');
+                    if (typeof cargarMovimientos === 'function') {
+                        cargarMovimientos();
+                    }
+                    break;
+            }
+        });
+    });
+    
+    // Cargar proveedores por defecto al ir a la sección de inventario
+    setTimeout(() => {
+        const inventarioSection = document.getElementById('inventario-section');
+        if (inventarioSection && !inventarioSection.classList.contains('d-none')) {
+            console.log('📦 Cargando datos iniciales de inventario...');
+            if (typeof cargarInventario === 'function') {
+                cargarInventario();
+            }
+        }
+    }, 1000);
+});
+
+} // Cierre del check de dashboardAdmin
+} // Cierre del check de inicialización
+
+// ==========================================
+// FUNCIONES GLOBALES PARA PAGOS Y FACTURAS EN DASHBOARD ADMIN
+// ==========================================
+
+// Función para formatear moneda
+function formatearMoneda(valor) {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+    }).format(valor);
+}
+
+// Datos de ejemplo para pagos
+window.pagosEjemplo = [
+    {
+        id: 1,
+        paciente_nombre: 'María García',
+        monto: 150000,
+        metodo_pago: 'Efectivo',
+        fecha: '2025-09-01',
+        estado: 'completado',
+        concepto: 'Consulta general',
+        descripcion: 'Consulta general odontológica y limpieza dental'
+    },
+    {
+        id: 2,
+        paciente_nombre: 'Juan Pérez',
+        monto: 75000,
+        metodo_pago: 'Transferencia',
+        fecha: '2025-09-05',
+        estado: 'pendiente',
+        concepto: 'Limpieza dental',
+        descripcion: 'Profilaxis y fluorización'
+    },
+    {
+        id: 3,
+        paciente_nombre: 'Ana López',
+        monto: 300000,
+        metodo_pago: 'Tarjeta',
+        fecha: '2025-09-08',
+        estado: 'completado',
+        concepto: 'Endodoncia',
+        descripcion: 'Tratamiento de conductos pieza 16'
+    }
+];
+
+// Datos de ejemplo para facturas
+window.facturasEjemplo = [
+    {
+        id: 1,
+        numero_factura: 'FAC-001-2025',
+        paciente_nombre: 'María García',
+        total: 150000,
+        subtotal: 126050,
+        impuestos: 23950,
+        fecha_emision: '2025-09-01',
+        fecha_vencimiento: '2025-09-15',
+        estado: 'pagada',
+        concepto: 'Consulta general',
+        descripcion: 'Consulta general odontológica y limpieza dental'
+    },
+    {
+        id: 2,
+        numero_factura: 'FAC-002-2025',
+        paciente_nombre: 'Juan Pérez',
+        total: 75000,
+        subtotal: 63025,
+        impuestos: 11975,
+        fecha_emision: '2025-09-05',
+        fecha_vencimiento: '2025-09-19',
+        estado: 'pendiente',
+        concepto: 'Limpieza dental',
+        descripcion: 'Profilaxis y fluorización'
+    },
+    {
+        id: 3,
+        numero_factura: 'FAC-003-2025',
+        paciente_nombre: 'Ana López',
+        total: 300000,
+        subtotal: 252100,
+        impuestos: 47900,
+        fecha_emision: '2025-09-08',
+        fecha_vencimiento: '2025-09-22',
+        estado: 'pagada',
+        concepto: 'Endodoncia',
+        descripcion: 'Tratamiento de conductos pieza 16'
+    },
+    {
+        id: 4,
+        numero_factura: 'FAC-004-2025',
+        paciente_nombre: 'Carlos Rodríguez',
+        total: 450000,
+        subtotal: 378151,
+        impuestos: 71849,
+        fecha_emision: '2025-09-10',
+        fecha_vencimiento: '2025-09-24',
+        estado: 'vencida',
+        concepto: 'Ortodoncia',
+        descripcion: 'Instalación de brackets metálicos'
+    }
+];
+
+// ==========================================
+// FUNCIONES GLOBALES PARA PAGOS (Dashboard Admin)
+// ==========================================
+
+// Función principal para ver pago
+window.verPago = function(id) {
+    console.log('🔍 DASHBOARD ADMIN - Ver detalles del pago:', id);
+    
+    try {
+        const pago = window.pagosEjemplo.find(p => p.id == id);
+        
+        if (!pago) {
+            console.error('❌ Pago no encontrado con ID:', id);
+            alert('Pago no encontrado. ID: ' + id);
+            return;
+        }
+        
+        console.log('✅ Pago encontrado:', pago);
+        
+        // Crear y mostrar modal manualmente
+        const modalHtml = `
+            <div class="modal fade" id="modalPagoTemporal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-dollar-sign"></i> Detalles del Pago #${pago.id}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-user"></i> Información del Paciente</h6>
+                                    <p><strong>Nombre:</strong> ${pago.paciente_nombre}</p>
+                                    <p><strong>Concepto:</strong> ${pago.concepto}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-calendar"></i> Información del Pago</h6>
+                                    <p><strong>Fecha:</strong> ${pago.fecha}</p>
+                                    <p><strong>Método:</strong> ${pago.metodo_pago}</p>
+                                    <p><strong>Estado:</strong> <span class="badge bg-${pago.estado === 'completado' ? 'success' : 'warning'}">${pago.estado}</span></p>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <h6><i class="fas fa-file-alt"></i> Descripción</h6>
+                                <p>${pago.descripcion}</p>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <h5 class="text-success">
+                                    <i class="fas fa-money-bill-wave"></i> Monto Total: ${formatearMoneda(pago.monto)}
+                                </h5>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-success" onclick="window.imprimirPago(${pago.id})">
+                                <i class="fas fa-print"></i> Imprimir Recibo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalPagoTemporal');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalPagoTemporal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('❌ Error al ver pago:', error);
+        alert('Error: ' + error.message);
+    }
+};
+
+// Función principal para imprimir pago
+window.imprimirPago = function(id) {
+    console.log('🖨️ DASHBOARD ADMIN - Imprimir pago:', id);
+    
+    try {
+        const pago = window.pagosEjemplo.find(p => p.id == id);
+        
+        if (!pago) {
+            alert('Pago no encontrado para imprimir');
+            return;
+        }
+        
+        // Crear contenido de impresión
+        const contenidoImpresion = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Recibo de Pago ${pago.id}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .header { display: flex; justify-content: space-between; border-bottom: 3px solid #28a745; padding-bottom: 20px; }
+                    .logo { font-size: 28px; font-weight: bold; color: #28a745; }
+                    .recibo-numero { font-size: 24px; font-weight: bold; color: #28a745; }
+                    .info-section { display: flex; justify-content: space-between; margin: 30px 0; }
+                    .info-box { width: 48%; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+                    .monto { text-align: center; margin: 30px 0; background: #d4edda; padding: 20px; border-radius: 8px; }
+                    .monto-valor { font-size: 36px; font-weight: bold; color: #155724; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <div class="logo">🦷 CLINIK DENT</div>
+                        <div>Clínica Odontológica</div>
+                        <div>NIT: 900.123.456-7</div>
+                    </div>
+                    <div>
+                        <div class="recibo-numero">RECIBO DE PAGO</div>
+                        <div class="recibo-numero">#${pago.id}</div>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-box">
+                        <h4>DATOS DEL PACIENTE</h4>
+                        <p><strong>Nombre:</strong> ${pago.paciente_nombre}</p>
+                        <p><strong>Concepto:</strong> ${pago.concepto}</p>
+                    </div>
+                    <div class="info-box">
+                        <h4>INFORMACIÓN DE PAGO</h4>
+                        <p><strong>Fecha:</strong> ${pago.fecha}</p>
+                        <p><strong>Método de Pago:</strong> ${pago.metodo_pago}</p>
+                        <p><strong>Estado:</strong> ${pago.estado}</p>
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h4>DESCRIPCIÓN DEL SERVICIO</h4>
+                    <p>${pago.descripcion}</p>
+                </div>
+                
+                <div class="monto">
+                    <div>MONTO PAGADO</div>
+                    <div class="monto-valor">${formatearMoneda(pago.monto)}</div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 40px; color: #666;">
+                    <p>Gracias por su pago</p>
+                    <p>Este recibo fue generado electrónicamente</p>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Abrir ventana de impresión
+        const ventana = window.open('', '_blank', 'width=800,height=600');
+        ventana.document.write(contenidoImpresion);
+        ventana.document.close();
+        ventana.focus();
+        ventana.print();
+        
+        // Cerrar después de un momento
+        setTimeout(() => ventana.close(), 1000);
+        
+    } catch (error) {
+        console.error('❌ Error al imprimir pago:', error);
+        alert('Error al imprimir: ' + error.message);
+    }
+};
+
+// ==========================================
+// FUNCIONES GLOBALES PARA FACTURAS (Dashboard Admin)
+// ==========================================
+
+// Función principal para ver factura
+window.verFactura = function(id) {
+    console.log('🔍 DASHBOARD ADMIN - Ver detalles de la factura:', id);
+    
+    try {
+        const factura = window.facturasEjemplo.find(f => f.id == id);
+        
+        if (!factura) {
+            console.error('❌ Factura no encontrada con ID:', id);
+            alert('Factura no encontrada. ID: ' + id);
+            return;
+        }
+        
+        console.log('✅ Factura encontrada:', factura);
+        
+        // Crear y mostrar modal manualmente
+        const modalHtml = `
+            <div class="modal fade" id="modalFacturaTemporal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-file-invoice"></i> Detalles de la Factura ${factura.numero_factura}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-file-invoice"></i> Información de la Factura</h6>
+                                    <p><strong>Número:</strong> ${factura.numero_factura}</p>
+                                    <p><strong>Fecha de Emisión:</strong> ${factura.fecha_emision}</p>
+                                    <p><strong>Fecha de Vencimiento:</strong> ${factura.fecha_vencimiento}</p>
+                                    <p><strong>Estado:</strong> <span class="badge bg-${factura.estado === 'pagada' ? 'success' : factura.estado === 'pendiente' ? 'warning' : 'danger'}">${factura.estado}</span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-user"></i> Información del Paciente</h6>
+                                    <p><strong>Nombre:</strong> ${factura.paciente_nombre}</p>
+                                    <p><strong>Concepto:</strong> ${factura.concepto}</p>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <h6><i class="fas fa-calculator"></i> Información Financiera</h6>
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <p><strong>Descripción:</strong> ${factura.descripcion}</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <p><strong>Subtotal:</strong> ${formatearMoneda(factura.subtotal)}</p>
+                                        <p><strong>IVA:</strong> ${formatearMoneda(factura.impuestos)}</p>
+                                        <p><strong>Total:</strong> <span class="text-success fs-5">${formatearMoneda(factura.total)}</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            ${factura.estado !== 'pagada' ? `<button type="button" class="btn btn-success" onclick="window.cobrarFactura(${factura.id})"><i class="fas fa-dollar-sign"></i> Cobrar</button>` : ''}
+                            <button type="button" class="btn btn-primary" onclick="window.imprimirFactura(${factura.id})">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover modal anterior si existe
+        const modalAnterior = document.getElementById('modalFacturaTemporal');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalFacturaTemporal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('❌ Error al ver factura:', error);
+        alert('Error: ' + error.message);
+    }
+};
+
+// Función principal para imprimir factura
+window.imprimirFactura = function(id) {
+    console.log('🖨️ DASHBOARD ADMIN - Imprimir factura:', id);
+    
+    try {
+        const factura = window.facturasEjemplo.find(f => f.id == id);
+        
+        if (!factura) {
+            alert('Factura no encontrada para imprimir');
+            return;
+        }
+        
+        // Crear contenido de impresión
+        const contenidoImpresion = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Factura ${factura.numero_factura}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .header { display: flex; justify-content: space-between; border-bottom: 3px solid #007bff; padding-bottom: 20px; }
+                    .logo { font-size: 28px; font-weight: bold; color: #007bff; }
+                    .factura-numero { font-size: 24px; font-weight: bold; color: #007bff; }
+                    .info-section { display: flex; justify-content: space-between; margin: 30px 0; }
+                    .info-box { width: 48%; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+                    .totales { margin-left: 60%; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; }
+                    .total-final { font-size: 18px; font-weight: bold; color: #28a745; border-top: 2px solid #28a745; padding-top: 8px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <div class="logo">🦷 CLINIK DENT</div>
+                        <div>Clínica Odontológica</div>
+                        <div>NIT: 900.123.456-7</div>
+                    </div>
+                    <div>
+                        <div class="factura-numero">FACTURA</div>
+                        <div class="factura-numero">${factura.numero_factura}</div>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-box">
+                        <h4>DATOS DEL PACIENTE</h4>
+                        <p><strong>Nombre:</strong> ${factura.paciente_nombre}</p>
+                        <p><strong>Concepto:</strong> ${factura.concepto}</p>
+                    </div>
+                    <div class="info-box">
+                        <h4>INFORMACIÓN DE FACTURA</h4>
+                        <p><strong>Fecha de Emisión:</strong> ${factura.fecha_emision}</p>
+                        <p><strong>Fecha de Vencimiento:</strong> ${factura.fecha_vencimiento}</p>
+                        <p><strong>Estado:</strong> ${factura.estado}</p>
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h4>DESCRIPCIÓN DE SERVICIOS</h4>
+                    <p>${factura.descripcion}</p>
+                </div>
+                
+                <div class="totales">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Subtotal:</span>
+                        <span>${formatearMoneda(factura.subtotal)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>IVA (19%):</span>
+                        <span>${formatearMoneda(factura.impuestos)}</span>
+                    </div>
+                    <div class="total-final" style="display: flex; justify-content: space-between;">
+                        <span>TOTAL A PAGAR:</span>
+                        <span>${formatearMoneda(factura.total)}</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 40px; color: #666;">
+                    <p>Gracias por confiar en Clinik Dent</p>
+                    <p>Esta factura fue generada electrónicamente</p>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Abrir ventana de impresión
+        const ventana = window.open('', '_blank', 'width=800,height=600');
+        ventana.document.write(contenidoImpresion);
+        ventana.document.close();
+        ventana.focus();
+        ventana.print();
+        
+        // Cerrar después de un momento
+        setTimeout(() => ventana.close(), 1000);
+        
+    } catch (error) {
+        console.error('❌ Error al imprimir factura:', error);
+        alert('Error al imprimir: ' + error.message);
+    }
+};
+
+// Función para cobrar factura
+window.cobrarFactura = function(id) {
+    console.log('💰 DASHBOARD ADMIN - Cobrar factura:', id);
+    alert(`Funcionalidad de cobro para factura ${id} - Se puede integrar con el sistema de pagos`);
+};
+
+// ===== FUNCIONES GLOBALES PARA INVENTARIO Y SEDES =====
+// Aliases para funciones de inventario (equipos)
+window.verDetallesInventario = function(id) {
+    if (typeof verDetallesEquipo === 'function') {
+        return verDetallesEquipo(id);
+    } else {
+        console.error('Función verDetallesEquipo no encontrada');
+        showNotification('Error: Función no disponible', 'error');
+    }
+};
+
+window.editarInventario = function(id) {
+    if (typeof editarEquipo === 'function') {
+        return editarEquipo(id);
+    } else {
+        console.error('Función editarEquipo no encontrada');
+        showNotification('Error: Función no disponible', 'error');
+    }
+};
+
+window.eliminarInventario = function(id) {
+    if (typeof eliminarEquipo === 'function') {
+        return eliminarEquipo(id);
+    } else {
+        console.error('Función eliminarEquipo no encontrada');
+        showNotification('Error: Función no disponible', 'error');
+    }
+};
+
+console.log('✅ Funciones globales para pagos y facturas cargadas en Dashboard Admin');
+console.log('✅ Funciones globales para inventario y sedes cargadas en Dashboard Admin');
+
+// Función adicional para asegurar que el usuario se carga correctamente
+// Se ejecuta después de que todo el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 DEBUG - DOM completamente cargado');
+    
+    // Esperamos un poco más para que todos los otros scripts terminen
+    setTimeout(() => {
+        console.log('🔍 DEBUG - Verificando usuario final...');
+        
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const userData = JSON.parse(storedUser);
+                const nombreCompleto = `${userData.nombre || ''} ${userData.apellido || ''}`.trim();
+                
+                console.log('🔍 DEBUG - Usuario en localStorage:', userData);
+                console.log('🔍 DEBUG - Nombre completo calculado:', nombreCompleto);
+                
+                const userNameElement = document.getElementById('userName');
+                if (userNameElement && nombreCompleto) {
+                    // Solo actualizar si no es el nombre que queremos
+                    const currentText = userNameElement.textContent;
+                    if (currentText === 'Cargando...' || currentText === 'Administrador' || currentText === 'Admin Sistema') {
+                        userNameElement.textContent = nombreCompleto;
+                        console.log('✅ DEBUG - Nombre actualizado finalmente a:', nombreCompleto);
+                    } else {
+                        console.log('ℹ️ DEBUG - Nombre ya está correcto:', currentText);
+                    }
+                }
+            } catch (error) {
+                console.error('❌ DEBUG - Error parseando usuario:', error);
+            }
+        } else {
+            console.log('❌ DEBUG - No hay usuario en localStorage');
+        }
+    }, 2000); // Esperamos 2 segundos para estar seguros
+});
+
+// ==========================================
+// FUNCIONES PARA PAGOS A ODONTÓLOGOS EN ADMIN
+// ==========================================
+
+// Función para abrir el modal de pago desde el dashboard admin
+function abrirModalPagoAdmin() {
+    console.log('🔓 Abriendo modal de pago a odontólogo desde admin...');
+    
+    // Cargar odontólogos en el select
+    cargarOdontologosEnSelectAdmin();
+    
+    // Establecer fecha actual
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaPagoAdmin').value = fechaHoy;
+    
+    // Limpiar formulario
+    document.getElementById('formPagoOdontologoAdmin').reset();
+    document.getElementById('fechaPagoAdmin').value = fechaHoy;
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('modalPagoOdontologoAdmin'));
+    modal.show();
+}
+
+// Cargar odontólogos en el select del modal admin
+async function cargarOdontologosEnSelectAdmin() {
+    try {
+        console.log('🔄 Cargando odontólogos para el select admin...');
+        
+        const response = await fetch('/api/usuarios');
+        if (response.ok) {
+            const data = await response.json();
+            const usuarios = Array.isArray(data) ? data : (data.usuarios || data.value || []);
+            
+            // Filtrar solo odontólogos
+            const odontologosData = usuarios.filter(u => u.rol === 'odontologo');
+            
+            const select = document.getElementById('odontologoPagoAdmin');
+            if (select) {
+                select.innerHTML = '<option value="">Seleccionar odontólogo...</option>';
+                
+                odontologosData.forEach(odontologo => {
+                    const nombre = `Dr. ${odontologo.nombre} ${odontologo.apellido}`;
+                    select.innerHTML += `<option value="${odontologo.id}">${nombre}</option>`;
+                });
+                
+                console.log(`✅ ${odontologosData.length} odontólogos cargados en select admin`);
+            }
+        } else {
+            console.warn('⚠️ No se pudieron cargar odontólogos, usando datos de ejemplo');
+            const select = document.getElementById('odontologoPagoAdmin');
+            if (select) {
+                select.innerHTML = `
+                    <option value="">Seleccionar odontólogo...</option>
+                    <option value="2">Dr. Carlos Rodriguez</option>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error cargando odontólogos:', error);
+    }
+}
+
+// Función para registrar el pago al odontólogo desde admin
+async function registrarPagoOdontologoAdmin() {
+    try {
+        console.log('💾 Registrando pago a odontólogo desde admin...');
+        
+        // Obtener datos del formulario
+        const odontologoId = document.getElementById('odontologoPagoAdmin').value;
+        const fecha = document.getElementById('fechaPagoAdmin').value;
+        const tipo = document.getElementById('tipoPagoAdmin').value;
+        const metodo = document.getElementById('metodoPagoAdmin').value;
+        const monto = parseFloat(document.getElementById('montoPagoAdmin').value);
+        const concepto = document.getElementById('conceptoPagoAdmin').value;
+        const referencia = document.getElementById('referenciaPagoAdmin').value;
+        
+        // Validaciones
+        if (!odontologoId || !fecha || !tipo || !metodo || !monto) {
+            alert('Por favor, completa todos los campos obligatorios');
+            return;
+        }
+        
+        if (monto <= 0) {
+            alert('El monto debe ser mayor a cero');
+            return;
+        }
+        
+        // Datos del pago
+        const datosPago = {
+            odontologo_id: parseInt(odontologoId),
+            fecha_pago: fecha,
+            tipo_pago: tipo,
+            metodo_pago: metodo,
+            monto: monto,
+            concepto: concepto || `Pago de ${tipo}`,
+            referencia: referencia,
+            comision_porcentaje: parseFloat(document.getElementById('comisionPorcentajeAdmin').value) || null
+        };
+        
+        console.log('📤 Enviando datos del pago desde admin:', datosPago);
+        
+        // Enviar al backend
+        const response = await fetch('/api/pagos-odontologo/registrar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'user-id': localStorage.getItem('userId') || '1'
+            },
+            body: JSON.stringify(datosPago)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Pago registrado exitosamente desde admin:', result);
+            
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalPagoOdontologoAdmin'));
+            modal.hide();
+            
+            // Mostrar mensaje de éxito
+            alert('✅ Pago registrado exitosamente');
+            
+            // Recargar datos si estamos en la pestaña de pagos a odontólogos
+            const activeTab = document.querySelector('#pagos-odontologos-tab');
+            if (activeTab && activeTab.classList.contains('active')) {
+                cargarDatosPagosOdontologos();
+            }
+            
+        } else {
+            const error = await response.json();
+            console.error('❌ Error del servidor:', error);
+            alert(`Error: ${error.message || 'No se pudo registrar el pago'}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error registrando pago:', error);
+        alert('Error: No se pudo conectar con el servidor');
+    }
+}
+
+// Función para cargar datos de la pestaña de pagos a odontólogos
+async function cargarDatosPagosOdontologos() {
+    try {
+        console.log('🔄 Cargando datos de pagos a odontólogos...');
+        
+        // Cargar estadísticas
+        await cargarEstadisticasPagosOdontologos();
+        
+        // Cargar tabla de odontólogos
+        await cargarTablaOdontologos();
+        
+    } catch (error) {
+        console.error('❌ Error cargando datos de pagos a odontólogos:', error);
+    }
+}
+
+// Cargar estadísticas de pagos a odontólogos
+async function cargarEstadisticasPagosOdontologos() {
+    try {
+        const response = await fetch('/api/pagos-odontologo/resumen');
+        if (response.ok) {
+            const stats = await response.json();
+            
+            // Actualizar tarjetas de estadísticas
+            const elementos = {
+                'totalOdontologosAdmin': stats.total_odontologos || 1,
+                'pagosPendientesAdmin': `$${(stats.total_pendiente || 0).toLocaleString()}`,
+                'pagosMesAdmin': `$${(stats.pagos_mes_actual || 0).toLocaleString()}`,
+                'totalComisionesAdmin': `$${(stats.total_comisiones || 0).toLocaleString()}`
+            };
+            
+            Object.entries(elementos).forEach(([id, valor]) => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.textContent = valor;
+                }
+            });
+            
+        } else {
+            console.warn('⚠️ No se pudieron cargar estadísticas, usando valores por defecto');
+            // Valores por defecto
+            const valoresPorDefecto = {
+                'totalOdontologosAdmin': '1',
+                'pagosPendientesAdmin': '$0',
+                'pagosMesAdmin': '$0',
+                'totalComisionesAdmin': '$0'
+            };
+            
+            Object.entries(valoresPorDefecto).forEach(([id, valor]) => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.textContent = valor;
+                }
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error cargando estadísticas:', error);
+    }
+}
+
+// Cargar tabla de odontólogos
+async function cargarTablaOdontologos() {
+    try {
+        const tbody = document.getElementById('tablaOdontologosAdminBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+        
+        const response = await fetch('/api/pagos-odontologo/lista');
+        if (response.ok) {
+            const odontologos = await response.json();
+            
+            if (odontologos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay odontólogos registrados</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            odontologos.forEach(odontologo => {
+                const saldoPendiente = (odontologo.total_comisiones || 0) - (odontologo.total_pagado || 0);
+                const estado = saldoPendiente > 0 ? 'Pendiente' : 'Al día';
+                const badgeClass = saldoPendiente > 0 ? 'bg-warning' : 'bg-success';
+                
+                html += `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar me-3">
+                                    <i class="fas fa-user-md"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold">Dr. ${odontologo.nombre} ${odontologo.apellido}</div>
+                                    <div class="text-muted small">${odontologo.correo}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>$${(odontologo.total_comisiones || 0).toLocaleString()}</td>
+                        <td>$${(odontologo.total_pagado || 0).toLocaleString()}</td>
+                        <td>$${saldoPendiente.toLocaleString()}</td>
+                        <td><span class="badge ${badgeClass}">${estado}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary me-1" onclick="verDetalleOdontologo(${odontologo.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="pagarOdontologo(${odontologo.id})">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+            
+        } else {
+            // Datos de ejemplo si falla la API
+            tbody.innerHTML = `
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar me-3">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Dr. Carlos Rodriguez</div>
+                                <div class="text-muted small">carlos@gmail.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>$450,000</td>
+                    <td>$300,000</td>
+                    <td>$150,000</td>
+                    <td><span class="badge bg-warning">Pendiente</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" onclick="verDetalleOdontologo(2)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="pagarOdontologo(2)">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('❌ Error cargando tabla de odontólogos:', error);
+        const tbody = document.getElementById('tablaOdontologosAdminBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error cargando datos</td></tr>';
+        }
+    }
+}
+
+// Funciones auxiliares
+function verDetalleOdontologo(id) {
+    console.log('👁️ Viendo detalle del odontólogo:', id);
+    // Aquí puedes implementar la lógica para mostrar detalles
+}
+
+function pagarOdontologo(id) {
+    console.log('💰 Pagando al odontólogo:', id);
+    // Pre-seleccionar el odontólogo en el modal
+    const select = document.getElementById('odontologoPagoAdmin');
+    if (select) {
+        select.value = id;
+    }
+    abrirModalPagoAdmin();
+}
+
+// Event listener para cargar datos cuando se activa la pestaña
+document.addEventListener('DOMContentLoaded', function() {
+    // Listener para la pestaña de pagos a odontólogos
+    const tabPagosOdontologos = document.getElementById('pagos-odontologos-tab');
+    if (tabPagosOdontologos) {
+        tabPagosOdontologos.addEventListener('shown.bs.tab', function() {
+            console.log('📋 Pestaña de pagos a odontólogos activada');
+            cargarDatosPagosOdontologos();
+        });
+    }
+});

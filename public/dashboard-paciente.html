@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Paciente - Clinik Dent</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/dashboard-paciente.css">
+    <link rel="stylesheet" href="css/notifications.css">
+</head>
+<body>
+    <script>
+    const user = localStorage.getItem('user');
+    if (!user) {
+      window.location.href = '/index.html';
+    }
+    </script>
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <img src="images/logo.jpg" alt="Logo" class="logo">
+            <h4>Clinik Dent</h4>
+            <button class="btn btn-outline-light d-md-none" id="sidebarToggle">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+        
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="bi bi-person-circle"></i>
+            </div>
+            <div class="user-details">
+                <h6 id="userName">Cargando...</h6>
+                <small class="text-muted">Paciente</small>
+            </div>
+        </div>
+
+        <ul class="nav nav-pills flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#dashboard" data-section="dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#citas" data-section="citas">
+                    <i class="bi bi-calendar3"></i>
+                    <span>Mis Citas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#historial" data-section="historial">
+                    <i class="bi bi-file-medical"></i>
+                    <span>Mi Historial</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#perfil" data-section="perfil">
+                    <i class="bi bi-person"></i>
+                    <span>Mi Perfil</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#evaluaciones" data-section="evaluaciones">
+                    <i class="bi bi-star"></i>
+                    <span>Evaluaciones</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#pagos" data-section="pagos">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Mis Pagos</span>
+                </a>
+            </li>
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="#" id="logoutBtn">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Cerrar Sesión</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="content-header">
+            <button class="btn btn-outline-secondary d-md-none me-3" id="sidebarToggleMobile">
+                <i class="bi bi-list"></i>
+            </button>
+            <h1 id="pageTitle">Dashboard</h1>
+            <div class="header-actions">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary me-2 position-relative" id="notificationsBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell"></i>
+                        <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="notificationCount" style="display: none;">0</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow" style="width: 350px; max-height: 400px; overflow-y: auto;" id="notificationsDropdown">
+                        <div class="dropdown-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Notificaciones</h6>
+                            <button class="btn btn-sm btn-link text-decoration-none" id="markAllReadBtn">Marcar como leídas</button>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div id="notificationsList">
+                            <div class="dropdown-item-text text-center text-muted py-3">
+                                <i class="bi bi-bell-slash" style="font-size: 2rem;"></i>
+                                <p class="mb-0 mt-2">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="agendarCitaBtn">
+                    <i class="bi bi-plus-circle"></i> Agendar Cita
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Sections -->
+        <div class="content-body">
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="content-section active">
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Próxima Cita</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800" id="proximaCita">Sin citas</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Última Visita</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800" id="ultimaVisita">-</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-clock-history fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Mi Odontólogo</div>
+                                        <div class="h6 mb-0 font-weight-bold text-gray-800" id="miOdontologo">-</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-person-badge fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Mis Próximas Citas</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="proximasCitas" class="timeline">
+                                    <!-- Se carga dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Progreso de Tratamientos</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="tratamientosChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Citas Section -->
+            <section id="citas-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mis Citas</h2>
+                    <button class="btn btn-primary" id="nuevaCitaBtn">
+                        <i class="bi bi-plus-circle"></i> Agendar Nueva Cita
+                    </button>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Filtrar por estado:</label>
+                        <select class="form-select" id="estadoFiltro">
+                            <option value="">Todos</option>
+                            <option value="programada">Programada</option>
+                            <option value="confirmada">Confirmada</option>
+                            <option value="completada">Completada</option>
+                            <option value="cancelada">Cancelada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="citasTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Hora</th>
+                                        <th>Odontólogo</th>
+                                        <th>Tratamiento</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se carga dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Historial Section -->
+            <section id="historial-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mi Historial Clínico</h2>
+                </div>
+                
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="historialTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Odontólogo</th>
+                                        <th>Diagnóstico</th>
+                                        <th>Tratamiento</th>
+                                        <th>Observaciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se carga dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Perfil Section -->
+            <section id="perfil-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Mi Perfil</h2>
+                    <button class="btn btn-primary" id="editarPerfilBtn">
+                        <i class="bi bi-pencil"></i> Editar Perfil
+                    </button>
+                </div>
+                
+                <div class="row">
+                    <div class="col-lg-4">
+                        <div class="card shadow">
+                            <div class="card-body text-center">
+                                <div class="profile-avatar mb-3">
+                                    <i class="bi bi-person-circle" style="font-size: 5rem; color: #6c757d;"></i>
+                                </div>
+                                <h5 id="perfilNombre">Nombre del Paciente</h5>
+                                <p class="text-muted" id="perfilEmail">email@ejemplo.com</p>
+                                <p class="text-muted" id="perfilTelefono">555-0123</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card shadow">
+                            <div class="card-header">
+                                <h6 class="m-0">Información Personal</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="perfilForm">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nombre</label>
+                                            <input type="text" class="form-control" id="perfilFormNombre" readonly>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Apellido</label>
+                                            <input type="text" class="form-control" id="perfilFormApellido" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="perfilFormEmail" readonly>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Teléfono</label>
+                                            <input type="tel" class="form-control" id="perfilFormTelefono" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Dirección</label>
+                                        <input type="text" class="form-control" id="perfilFormDireccion" readonly>
+                                    </div>
+                                    <div class="d-none" id="perfilEditButtons">
+                                        <button type="button" class="btn btn-primary me-2" id="guardarPerfilBtn">Guardar</button>
+                                        <button type="button" class="btn btn-secondary" id="cancelarPerfilBtn">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tarjeta de Cambio de Contraseña -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow">
+                            <div class="card-header">
+                                <h6 class="m-0"><i class="bi bi-shield-lock"></i> Seguridad</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <p class="text-muted">
+                                        <i class="bi bi-info-circle"></i>
+                                        Mantén tu cuenta segura cambiando tu contraseña regularmente.
+                                    </p>
+                                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#cambiarPasswordModal">
+                                        <i class="bi bi-key"></i> Cambiar Contraseña
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Evaluaciones Section -->
+            <section id="evaluaciones-section" class="content-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Evaluaciones de Atención</h2>
+                </div>
+                
+                <!-- Citas Pendientes de Evaluación -->
+                <div id="citasPendientesContainer">
+                    <div class="text-center p-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <!-- Evaluaciones Realizadas -->
+                <div id="evaluacionesContainer">
+                    <div class="text-center p-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mis Pagos Section -->
+            <section id="pagos-section" class="content-section">
+                <div class="container-fluid">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-wallet2 text-primary"></i> Mis Pagos y Facturas</h2>
+                        <div class="d-flex align-items-center">
+                            <img src="https://http2.mlstatic.com/storage/logos-api-admin/51b446b0-571c-11e8-9a2d-4b2bd7b1bf77-xl@2x.png" 
+                                 alt="MercadoPago" height="24" class="me-2">
+                            <small class="text-muted">Pagos procesados por MercadoPago</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Facturas Pendientes Alert -->
+                    <div id="facturasPendientesAlert" class="alert alert-warning d-none" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Tienes facturas pendientes de pago</strong>
+                        <div id="facturasPendientesCount"></div>
+                    </div>
+                    
+                    <!-- Tabs para diferentes vistas -->
+                    <ul class="nav nav-tabs" id="pagosTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="facturas-pendientes-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#facturas-pendientes" type="button" role="tab">
+                                <i class="bi bi-exclamation-circle"></i> Facturas Pendientes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pagar-servicio-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#pagar-servicio" type="button" role="tab">
+                                <i class="bi bi-credit-card"></i> Pagar Servicio
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="historial-pagos-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#historial-pagos" type="button" role="tab">
+                                <i class="bi bi-clock-history"></i> Historial de Pagos
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="pagosTabContent">
+                        <!-- Tab Facturas Pendientes -->
+                        <div class="tab-pane fade show active" id="facturas-pendientes" role="tabpanel">
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Facturas por Pagar</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="facturasPendientesContainer">
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando facturas...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Pagar Servicio -->
+                        <div class="tab-pane fade" id="pagar-servicio" role="tabpanel">
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-credit-card me-2"></i>
+                                        Pagar Servicio Dental
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="pagoRapidoForm">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Tipo de Servicio</label>
+                                                    <select class="form-select" id="tipoServicio" required>
+                                                        <option value="">Selecciona un servicio</option>
+                                                        <option value="consulta" data-precio="80000">Consulta General - $80,000</option>
+                                                        <option value="limpieza" data-precio="120000">Limpieza Dental - $120,000</option>
+                                                        <option value="extraccion" data-precio="150000">Extracción - $150,000</option>
+                                                        <option value="resina" data-precio="200000">Resina - $200,000</option>
+                                                        <option value="endodoncia" data-precio="400000">Endodoncia - $400,000</option>
+                                                        <option value="corona" data-precio="800000">Corona - $800,000</option>
+                                                        <option value="implante" data-precio="1500000">Implante - $1,500,000</option>
+                                                        <option value="ortodoncia" data-precio="2500000">Ortodoncia - $2,500,000</option>
+                                                        <option value="blanqueamiento" data-precio="300000">Blanqueamiento - $300,000</option>
+                                                        <option value="otro" data-precio="0">Otro servicio</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Precio (COP)</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">$</span>
+                                                        <input type="number" class="form-control" id="precioServicio" required 
+                                                               min="1000" step="1000" placeholder="80000">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Descripción del Servicio</label>
+                                            <textarea class="form-control" id="descripcionServicio" rows="3" 
+                                                      placeholder="Describe el servicio o tratamiento..."></textarea>
+                                        </div>
+                                        
+                                        <div class="alert alert-info">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            <strong>Información del Pago:</strong>
+                                            <ul class="mb-0 mt-2">
+                                                <li>El pago será procesado de forma segura por MercadoPago</li>
+                                                <li>Podrás pagar con tarjeta, PSE, o efectivo en puntos autorizados</li>
+                                                <li>Recibirás confirmación por email</li>
+                                                <li>El pago se reflejará inmediatamente en tu historial</li>
+                                            </ul>
+                                        </div>
+                                        
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-success btn-lg">
+                                                <i class="bi bi-credit-card me-2"></i>
+                                                Proceder al Pago con MercadoPago
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Historial de Pagos -->
+                        <div class="tab-pane fade" id="historial-pagos" role="tabpanel">
+                            <div class="card mt-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Mis Pagos Realizados</h6>
+                                    <div>
+                                        <select class="form-select form-select-sm" id="filtroEstadoPago" style="width: auto;">
+                                            <option value="">Todos los estados</option>
+                                            <option value="pagada">Pagadas</option>
+                                            <option value="pendiente">Pendientes</option>
+                                            <option value="vencida">Vencidas</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="historialPagosContainer">
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando historial...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Modal Agendar Cita -->
+    <div class="modal fade" id="citaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agendar Nueva Cita</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="citaForm">
+                        <div class="mb-3">
+                            <label class="form-label">Odontólogo</label>
+                            <select class="form-select" id="citaOdontologo" required>
+                                <option value="">Cargando odontólogos...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de Tratamiento</label>
+                            <select class="form-select" id="citaTratamiento" required>
+                                <option value="">Seleccionar tratamiento</option>
+                                <option value="limpieza">Limpieza Dental</option>
+                                <option value="revision">Revisión General</option>
+                                <option value="blanqueamiento">Blanqueamiento</option>
+                                <option value="endodoncia">Endodoncia</option>
+                                <option value="ortodoncia">Ortodoncia</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fecha Preferida</label>
+                            <input type="date" class="form-control" id="citaFecha" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Hora Preferida</label>
+                            <select class="form-select" id="citaHora" required>
+                                <option value="">Seleccionar hora</option>
+                                <option value="09:00">09:00 AM</option>
+                                <option value="10:00">10:00 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="14:00">02:00 PM</option>
+                                <option value="15:00">03:00 PM</option>
+                                <option value="16:00">04:00 PM</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" rows="3" id="citaObservaciones"></textarea>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Horarios de confirmación automática:</strong><br>
+                            Las citas programadas de <strong>lunes a viernes entre 8:00 AM y 6:00 PM</strong> se confirman automáticamente y aparecen directamente en el calendario del odontólogo.<br>
+                            Otras citas requerirán confirmación del administrador.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="guardarCitaBtn">Agendar Cita</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Reprogramar Cita -->
+    <div class="modal fade" id="reprogramarModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reprogramar Cita</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Solo se puede reprogramar con más de 24 horas de anticipación.
+                    </div>
+                    <form id="reprogramarForm">
+                        <input type="hidden" id="reprogramarCitaId">
+                        <div class="mb-3">
+                            <label class="form-label">Cita Actual</label>
+                            <div class="card">
+                                <div class="card-body">
+                                    <p class="mb-1"><strong>Fecha:</strong> <span id="citaActualFecha"></span></p>
+                                    <p class="mb-1"><strong>Hora:</strong> <span id="citaActualHora"></span></p>
+                                    <p class="mb-0"><strong>Motivo:</strong> <span id="citaActualMotivo"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Fecha</label>
+                            <input type="date" class="form-control" id="nuevaFecha" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Hora</label>
+                            <select class="form-select" id="nuevaHora" required>
+                                <option value="">Seleccionar hora</option>
+                                <option value="09:00">09:00 AM</option>
+                                <option value="10:00">10:00 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="14:00">02:00 PM</option>
+                                <option value="15:00">03:00 PM</option>
+                                <option value="16:00">04:00 PM</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo (opcional)</label>
+                            <select class="form-select" id="nuevoMotivo">
+                                <option value="">Mantener motivo actual</option>
+                                <option value="limpieza">Limpieza Dental</option>
+                                <option value="revision">Revisión General</option>
+                                <option value="blanqueamiento">Blanqueamiento</option>
+                                <option value="endodoncia">Endodoncia</option>
+                                <option value="ortodoncia">Ortodoncia</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notas Adicionales</label>
+                            <textarea class="form-control" rows="2" id="nuevasNotas" placeholder="Observaciones adicionales..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmarReprogramarBtn">
+                        <i class="bi bi-calendar-check"></i> Reprogramar Cita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cambiar Contraseña -->
+    <div class="modal fade" id="cambiarPasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-shield-lock"></i> Cambiar Contraseña
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="passwordChangeAlert"></div>
+                    <form id="cambiarPasswordForm">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-lock-fill"></i> Contraseña Actual
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="passwordActual" placeholder="Ingresa tu contraseña actual" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordActual">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-key-fill"></i> Nueva Contraseña
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="passwordNueva" placeholder="Mínimo 6 caracteres" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordNueva">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <small>La contraseña debe tener al menos 6 caracteres.</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-check-circle-fill"></i> Confirmar Nueva Contraseña
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="passwordConfirmar" placeholder="Repite la nueva contraseña" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirmar">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Indicador de fortaleza de contraseña -->
+                        <div class="mb-3">
+                            <label class="form-label">Fortaleza de la contraseña:</label>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small id="passwordStrengthText" class="text-muted">Ingresa una contraseña</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="cambiarPasswordBtn">
+                        <i class="bi bi-key"></i> Cambiar Contraseña
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Evaluación -->
+    <div class="modal fade" id="evaluacionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Evaluar Atención</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="evaluacionForm">
+                        <input type="hidden" id="evaluacionCitaId" name="cita_id">
+                        <input type="hidden" id="evaluacionOdontologoId" name="odontologo_id">
+                        
+                        <div class="mb-3 text-center">
+                            <h6>Evaluando atención de: <strong id="evaluacionOdontologoNombre">Dr. Nombre</strong></h6>
+                        </div>
+                        
+                        <!-- Calificación del Servicio -->
+                        <div class="mb-3">
+                            <label class="form-label">Calificación del Servicio:</label>
+                            <div class="star-rating text-center">
+                                <i class="bi bi-star fs-2" data-campo="calificacion_servicio"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_servicio"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_servicio"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_servicio"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_servicio"></i>
+                            </div>
+                            <input type="hidden" id="calificacion_servicio" name="calificacion_servicio">
+                        </div>
+                        
+                        <!-- Calificación del Odontólogo -->
+                        <div class="mb-3">
+                            <label class="form-label">Calificación del Odontólogo:</label>
+                            <div class="star-rating text-center">
+                                <i class="bi bi-star fs-2" data-campo="calificacion_odontologo"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_odontologo"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_odontologo"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_odontologo"></i>
+                                <i class="bi bi-star fs-2" data-campo="calificacion_odontologo"></i>
+                            </div>
+                            <input type="hidden" id="calificacion_odontologo" name="calificacion_odontologo">
+                        </div>
+                        
+                        <!-- Comentarios -->
+                        <div class="mb-3">
+                            <label for="comentarios" class="form-label">Comentarios (opcional):</label>
+                            <textarea class="form-control" id="comentarios" name="comentarios" rows="3" 
+                                      placeholder="Cuéntanos más sobre tu experiencia..."></textarea>
+                        </div>
+                        
+                        <!-- Recomendaría -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="recomendaria" name="recomendaria">
+                                <label class="form-check-label" for="recomendaria">
+                                    Recomendaría este odontólogo a otros pacientes
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="enviarEvaluacionBtn" class="btn btn-warning">
+                        <i class="bi bi-star-fill"></i> Enviar Evaluación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agregar Método de Pago -->
+    <div class="modal fade" id="metodoPagoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Método de Pago</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="metodoPagoForm">
+                        <div class="mb-3">
+                            <label for="tipoMetodo" class="form-label">Tipo de Método:</label>
+                            <select class="form-select" id="tipoMetodo" name="tipo_metodo" required>
+                                <option value="">Selecciona un tipo</option>
+                                <option value="tarjeta_credito">Tarjeta de Crédito</option>
+                                <option value="tarjeta_debito">Tarjeta de Débito</option>
+                                <option value="cuenta_bancaria">Cuenta Bancaria</option>
+                                <option value="billetera_digital">Billetera Digital</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="nombreMetodo" class="form-label">Nombre del Método:</label>
+                            <input type="text" class="form-control" id="nombreMetodo" name="nombre_metodo" 
+                                   placeholder="Ej: Visa Clásica, Nequi, etc." required>
+                        </div>
+                        
+                        <div class="mb-3" id="digitosGroup">
+                            <label for="ultimos4Digitos" class="form-label">Últimos 4 Dígitos:</label>
+                            <input type="text" class="form-control" id="ultimos4Digitos" name="ultimos_4_digitos" 
+                                   maxlength="4" placeholder="1234">
+                        </div>
+                        
+                        <div class="mb-3" id="bancoGroup">
+                            <label for="banco" class="form-label">Banco:</label>
+                            <select class="form-select" id="banco" name="banco">
+                                <option value="">Selecciona un banco</option>
+                                <option value="Bancolombia">Bancolombia</option>
+                                <option value="Banco de Bogotá">Banco de Bogotá</option>
+                                <option value="Davivienda">Davivienda</option>
+                                <option value="BBVA">BBVA</option>
+                                <option value="Banco Popular">Banco Popular</option>
+                                <option value="Colpatria">Colpatria</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="esPreferido" name="es_preferido">
+                                <label class="form-check-label" for="esPreferido">
+                                    Establecer como método preferido
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="metodoPagoForm" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Agregar Método
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Procesar Pago -->
+    <div class="modal fade" id="procesarPagoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Procesar Pago</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="procesarPagoForm">
+                        <input type="hidden" id="pagoFacturaId" name="factura_id">
+                        
+                        <div class="mb-3">
+                            <h6 id="pagoFacturaInfo">Factura: FAC-2025-001</h6>
+                            <p class="text-muted" id="pagoMontoInfo">Monto: $0</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="metodoPagoSelect" class="form-label">Método de Pago:</label>
+                            <select class="form-select" id="metodoPagoSelect" name="metodo_pago_id" required>
+                                <option value="">Selecciona un método de pago</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="referenciaExterna" class="form-label">Referencia Externa (opcional):</label>
+                            <input type="text" class="form-control" id="referenciaExterna" name="referencia_externa" 
+                                   placeholder="Número de confirmación del banco">
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Simulación de Pago:</strong> Este es un entorno de demostración. 
+                            El pago se procesará automáticamente al confirmar.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="procesarPagoForm" class="btn btn-success">
+                        <i class="bi bi-credit-card"></i> Procesar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Auth Middleware -->
+    <script src="js/auth-middleware.js"></script>
+    <!-- Custom JS -->
+    <script src="js/dashboard-paciente.js"></script>
+</body>
+</html>

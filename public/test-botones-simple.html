@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simple - Botones Servicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-section {
+            border: 2px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .btn-test {
+            margin: 10px 5px;
+            padding: 15px 25px;
+            font-size: 16px;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.success { background-color: #d4edda; color: #155724; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        .status.info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center text-success">🔧 Test de Botones - Servicios</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Botones Básicos</h3>
+            <p>Estos botones deberían funcionar inmediatamente:</p>
+            
+            <button class="btn btn-info btn-test" onclick="testConfigurarServicios()">
+                <i class="fas fa-cogs"></i> Test Configurar Servicios
+            </button>
+            
+            <button class="btn btn-primary btn-test" onclick="testNuevoServicio()">
+                <i class="fas fa-plus"></i> Test Nuevo Servicio
+            </button>
+            
+            <div id="status1" class="status d-none"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Navegación de Pestañas</h3>
+            
+            <!-- Tabs de navegación -->
+            <ul class="nav nav-tabs" id="testTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="home-tab" data-bs-toggle="tab" 
+                            data-bs-target="#home" type="button">
+                        <i class="fas fa-home"></i> Inicio
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="servicios-tab" data-bs-toggle="tab" 
+                            data-bs-target="#servicios" type="button">
+                        <i class="fas fa-tooth"></i> Servicios
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Contenido de las tabs -->
+            <div class="tab-content mt-3" id="testTabContent">
+                <div class="tab-pane fade show active" id="home" role="tabpanel">
+                    <div class="p-3 bg-light">
+                        <h5>Pestaña de Inicio</h5>
+                        <p>Esta es la pestaña principal.</p>
+                        <button class="btn btn-success" onclick="cambiarAServicios()">
+                            <i class="fas fa-arrow-right"></i> Ir a Servicios
+                        </button>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="servicios" role="tabpanel">
+                    <div class="p-3 bg-light">
+                        <h5><i class="fas fa-tooth"></i> Configuración de Servicios</h5>
+                        <p>✅ ¡La pestaña de servicios funciona!</p>
+                        <button class="btn btn-primary" onclick="testNuevoServicio()">
+                            <i class="fas fa-plus"></i> Nuevo Servicio
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="status2" class="status d-none"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: Modal</h3>
+            <button class="btn btn-warning btn-test" onclick="abrirModal()">
+                <i class="fas fa-window-maximize"></i> Test Modal
+            </button>
+            <div id="status3" class="status d-none"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 4: API Connection</h3>
+            <button class="btn btn-danger btn-test" onclick="testAPI()">
+                <i class="fas fa-wifi"></i> Test API Tratamientos
+            </button>
+            <div id="status4" class="status d-none"></div>
+            <pre id="apiResult" class="mt-2 p-2 bg-light" style="display: none;"></pre>
+        </div>
+    </div>
+
+    <!-- Modal de Prueba -->
+    <div class="modal fade" id="modalConfigServicios" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cogs"></i> ✅ Modal Test - Configurar Servicio
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> ¡El modal se abre correctamente!
+                    </div>
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Servicio</label>
+                            <input type="text" class="form-control" placeholder="Ej: Limpieza dental">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Precio</label>
+                            <input type="number" class="form-control" placeholder="Ej: 80000">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="simularGuardar()">
+                        <i class="fas fa-save"></i> Simular Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showStatus(id, message, type = 'success') {
+            const statusDiv = document.getElementById(id);
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'}"></i> ${message}`;
+            statusDiv.classList.remove('d-none');
+        }
+
+        function testConfigurarServicios() {
+            showStatus('status1', 'Botón "Configurar Servicios" funciona - cambiando a pestaña servicios', 'success');
+            setTimeout(() => {
+                document.getElementById('servicios-tab').click();
+            }, 500);
+        }
+
+        function testNuevoServicio() {
+            showStatus('status3', 'Botón "Nuevo Servicio" funciona - abriendo modal', 'success');
+            setTimeout(() => {
+                const modal = new bootstrap.Modal(document.getElementById('modalConfigServicios'));
+                modal.show();
+            }, 500);
+        }
+
+        function cambiarAServicios() {
+            document.getElementById('servicios-tab').click();
+            showStatus('status2', 'Navegación a pestaña servicios exitosa', 'success');
+        }
+
+        function abrirModal() {
+            const modal = new bootstrap.Modal(document.getElementById('modalConfigServicios'));
+            modal.show();
+            showStatus('status3', 'Modal abierto correctamente', 'success');
+        }
+
+        function simularGuardar() {
+            alert('✅ Simulación de guardado exitosa');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalConfigServicios'));
+            modal.hide();
+        }
+
+        async function testAPI() {
+            showStatus('status4', 'Probando conexión a API...', 'info');
+            
+            try {
+                const response = await fetch('/api/tratamientos');
+                const data = await response.json();
+                
+                document.getElementById('apiResult').style.display = 'block';
+                document.getElementById('apiResult').textContent = JSON.stringify(data, null, 2);
+                
+                showStatus('status4', `✅ API funciona - ${data.tratamientos ? data.tratamientos.length : 'datos'} registros`, 'success');
+            } catch (error) {
+                showStatus('status4', `❌ Error API: ${error.message}`, 'error');
+                document.getElementById('apiResult').style.display = 'block';
+                document.getElementById('apiResult').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Test automático al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Página de test cargada');
+            showStatus('status1', 'Página cargada - listos para hacer pruebas', 'info');
+        });
+    </script>
+</body>
+</html>

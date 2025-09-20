@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test APIs de Facturación</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test APIs de Facturación</h1>
+
+    <div class="section">
+        <h2>📋 Tratamientos</h2>
+        <button onclick="testTratamientos()">Probar API Tratamientos</button>
+        <div id="tratamientos-result" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>👥 Usuarios (Pacientes)</h2>
+        <button onclick="testUsuarios()">Probar API Usuarios</button>
+        <div id="usuarios-result" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>💰 Pagos</h2>
+        <button onclick="testPagos()">Probar API Pagos</button>
+        <div id="pagos-result" class="result"></div>
+    </div>
+
+    <script>
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'user-id': '5'
+            };
+        }
+
+        async function testTratamientos() {
+            const resultDiv = document.getElementById('tratamientos-result');
+            resultDiv.innerHTML = '🔄 Cargando tratamientos...';
+            
+            try {
+                const response = await fetch('/api/tratamientos', {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <h4>✅ Éxito!</h4>
+                        <p><strong>Tratamientos encontrados:</strong> ${data.tratamientos ? data.tratamientos.length : 'N/A'}</p>
+                        <details>
+                            <summary>Ver datos completos</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `❌ Error: ${response.status} - ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testUsuarios() {
+            const resultDiv = document.getElementById('usuarios-result');
+            resultDiv.innerHTML = '🔄 Cargando usuarios...';
+            
+            try {
+                const response = await fetch('/api/usuarios', {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const usuarios = data.usuarios || data || [];
+                    const pacientes = usuarios.filter(u => u.rol === 'paciente');
+                    
+                    resultDiv.innerHTML = `
+                        <h4>✅ Éxito!</h4>
+                        <p><strong>Total usuarios:</strong> ${usuarios.length}</p>
+                        <p><strong>Pacientes:</strong> ${pacientes.length}</p>
+                        <details>
+                            <summary>Ver pacientes</summary>
+                            <pre>${JSON.stringify(pacientes, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `❌ Error: ${response.status} - ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testPagos() {
+            const resultDiv = document.getElementById('pagos-result');
+            resultDiv.innerHTML = '🔄 Cargando pagos...';
+            
+            try {
+                const response = await fetch('/api/pagos', {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <h4>✅ Éxito!</h4>
+                        <p><strong>Pagos encontrados:</strong> ${data.pagos ? data.pagos.length : 'N/A'}</p>
+                        <details>
+                            <summary>Ver datos completos</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `❌ Error: ${response.status} - ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        // Auto-ejecutar tests al cargar la página
+        window.addEventListener('load', () => {
+            console.log('🚀 Página cargada, ejecutando tests automáticos...');
+            testTratamientos();
+            testUsuarios();
+            testPagos();
+        });
+    </script>
+</body>
+</html>
