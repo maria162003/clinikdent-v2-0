@@ -1,7 +1,8 @@
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 const db = require('../config/db');
 const emailService = require('../services/emailService');
+const { generateSecureToken, validatePassword, SECURITY_CONSTANTS } = require('../utils/securityUtils');
+const { attemptAutoUnlock } = require('../utils/accountUtils');
 
 /**
  * POST /api/auth/register
@@ -76,8 +77,7 @@ exports.registerUser = async (req, res) => {
  * body: { correo, numero_documento }
  */
 exports.recuperarPassword = async (req, res) => {
-  console.log('=== NUEVA FUNCION DE RECUPERACION EJECUTANDOSE ===');
-  console.log('Datos recibidos:', req.body);
+  console.log('🔐 recuperarPassword - Datos recibidos:', req.body);
   
   const { correo, numero_documento } = req.body;
   if (!correo || !numero_documento) {
@@ -85,9 +85,11 @@ exports.recuperarPassword = async (req, res) => {
   }
   
   try {
-    // Verificar que el usuario existe
+    // Verificar que el usuario existe y su estado
     const { rows } = await db.query(
-      'SELECT id, nombre, apellido FROM usuarios WHERE correo = $1 AND numero_documento = $2',
+      `SELECT id, nombre, apellido, is_locked, account_lock_until 
+       FROM usuarios 
+       WHERE correo = $1 AND numero_documento = $2`,
       [correo, numero_documento]
     );
     
@@ -98,25 +100,27 @@ exports.recuperarPassword = async (req, res) => {
     const usuario = rows[0];
     console.log('Usuario encontrado:', usuario.nombre, usuario.apellido);
     
-    // Generar token simple de 6 dígitos
-    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    // Si la cuenta está bloqueada temporalmente, indicar tiempo restante
+    if (usuario.is_locked && usuario.account_lock_until) {
+      const now = new Date();
+      const lockUntil = new Date(usuario.account_lock_until);
+      
+      if (now < lockUntil) {
+        const minutesRemaining = Math.ceil((lockUntil - now) / 60000);
+        return res.status(403).json({ 
+          msg: `Cuenta bloqueada. Intente nuevamente en ${minutesRemaining} minutos.`,
+          isLocked: true,
+          lockExpires: lockUntil
+        });
+      }
+    }
+    
+    // Generar token seguro alfanumérico
+    const resetToken = generateSecureToken(SECURITY_CONSTANTS.PASSWORD_RESET_TOKEN_LENGTH);
     console.log('Token generado:', resetToken);
     
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1);
-    
-    console.log('🕐 Tiempo actual JS:', new Date());
-    console.log('🕐 Token expira JS:', expiresAt);
-    console.log('🕐 Token expira ISO:', expiresAt.toISOString());
-    
-    // ARREGLO DEFINITIVO: Usar UTC directo sin conversiones
-    const nowUtc = Math.floor(Date.now() / 1000); // Tiempo actual en UTC segundos
-    const expiresUtc = nowUtc + (60 * 60); // +1 hora en segundos UTC
-    const expiresAtDate = new Date(expiresUtc * 1000); // Convertir a Date para BD
-    
-    console.log('🕐 DEFINITIVO - Ahora UTC segundos:', nowUtc);
-    console.log('🕐 DEFINITIVO - Expira UTC segundos:', expiresUtc);
-    console.log('🕐 DEFINITIVO - Expira como Date:', expiresAtDate.toISOString());
+    // Configurar expiración del token
+    const expiresAt = new Date(Date.now() + SECURITY_CONSTANTS.TOKEN_EXPIRATION_MINUTES * 60000);
     
     // Limpiar tokens antiguos del usuario
     await db.query(
@@ -319,8 +323,13 @@ exports.cambiarPassword = async (req, res) => {
     return res.status(400).json({ msg: 'Contraseña actual, nueva contraseña y usuario son requeridos.' });
   }
   
-  if (new_password.length < 6) {
-    return res.status(400).json({ msg: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+  // Validar la nueva contraseña con criterios más estrictos
+  const passwordValidation = validatePassword(new_password);
+  if (!passwordValidation.isValid) {
+    return res.status(400).json({ 
+      msg: 'La contraseña no cumple con los requisitos de seguridad',
+      errors: passwordValidation.errors
+    });
   }
   
   try {
@@ -444,8 +453,13 @@ exports.resetPasswordWithToken = async (req, res) => {
     return res.status(400).json({ msg: 'Correo, token y nueva contraseña son requeridos.' });
   }
 
-  if (nueva_password.length < 6) {
-    return res.status(400).json({ msg: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+  // Validar la nueva contraseña con criterios más estrictos
+  const passwordValidation = validatePassword(nueva_password);
+  if (!passwordValidation.isValid) {
+    return res.status(400).json({ 
+      msg: 'La contraseña no cumple con los requisitos de seguridad',
+      errors: passwordValidation.errors
+    });
   }
 
   try {
