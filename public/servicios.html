@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicios - Clinik Dent</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/servicios.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="images/logo.jpg" alt="Clinik Dent Logo" onerror="this.style.display='none'" style="height:48px;vertical-align:middle;">
+            <span style="vertical-align:middle;">Clinik Dent</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="#" class="active">Servicios</a></li>
+            <li><a href="noticias.html">Noticias</a></li>
+            <li><a href="profesionales.html">Profesionales</a></li>
+            <li><a href="index.html#comentarios">Comentarios</a></li>
+            <li><a href="index.html#ubicacion">Ubicación</a></li>
+            <li><a href="index.html">Iniciar Sesión</a></li>
+        </ul>
+    </nav>
+
+    <main class="servicios-detalle">
+        <h1>Nuestros Servicios</h1>
+        
+        <div class="servicios-grid">
+            <div class="servicio-card">
+                <img src="images/service1.jpg" alt="Odontología General">
+                <h3>Odontología General</h3>
+                <p>Servicios completos de diagnóstico, prevención y tratamiento dental.</p>
+                <ul>
+                    <li>Limpieza dental profesional</li>
+                    <li>Restauraciones dentales</li>
+                    <li>Tratamiento de caries</li>
+                    <li>Extracciones</li>
+                </ul>
+                <button onclick="agendarCita('Odontología General')">Agendar Cita</button>
+            </div>
+
+            <div class="servicio-card">
+                <img src="images/service2.jpg" alt="Ortodoncia">
+                <h3>Ortodoncia</h3>
+                <p>Corrección de la posición dental y problemas de mordida.</p>
+                <ul>
+                    <li>Brackets tradicionales</li>
+                    <li>Ortodoncia invisible</li>
+                    <li>Ortodoncia infantil</li>
+                    <li>Retenedores</li>
+                </ul>
+                <button onclick="agendarCita('Ortodoncia')">Agendar Cita</button>
+            </div>
+
+            <div class="servicio-card">
+                <img src="images/service3.jpg" alt="Higiene Oral">
+                <h3>Higiene Oral</h3>
+                <p>Mantenimiento y prevención para una salud bucal óptima.</p>
+                <ul>
+                    <li>Profilaxis dental</li>
+                    <li>Fluorización</li>
+                    <li>Sellantes</li>
+                    <li>Educación en higiene</li>
+                </ul>
+                <button onclick="agendarCita('Higiene Oral')">Agendar Cita</button>
+            </div>
+
+            <div class="servicio-card">
+                <img src="images/service4.jpg" alt="Estética Dental">
+                <h3>Estética Dental</h3>
+                <p>Mejora la apariencia de tu sonrisa.</p>
+                <ul>
+                    <li>Blanqueamiento dental</li>
+                    <li>Carillas dentales</li>
+                    <li>Diseño de sonrisa</li>
+                    <li>Restauraciones estéticas</li>
+                </ul>
+                <button onclick="agendarCita('Estética Dental')">Agendar Cita</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/servicios.js"></script>
+</body>
+</html>

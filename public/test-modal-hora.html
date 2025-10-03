@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Modal Hora</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Test - Formato de Hora en Modal</h4>
+                    </div>
+                    <div class="card-body">
+                        <h5>Simulando datos de cita como los que vienen de PostgreSQL:</h5>
+                        <div class="alert alert-info">
+                            <strong>Datos de prueba:</strong><br>
+                            fecha: "2025-09-15"<br>
+                            hora: "14:30:00" (formato TIME de PostgreSQL)
+                        </div>
+                        
+                        <button id="mostrarModalBtn" class="btn btn-primary">
+                            Mostrar Modal de Detalles de Cita
+                        </button>
+                        
+                        <div class="mt-3">
+                            <h6>Log de formateo:</h6>
+                            <pre id="logOutput" class="bg-dark text-light p-3"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Datos simulados como los que vienen de PostgreSQL
+        const citaSimulada = {
+            id: 3,
+            fecha: "2025-09-15",
+            hora: "14:30:00",
+            paciente_id: 1,
+            motivo: "Consulta general",
+            estado: "programada",
+            notas: null
+        };
+
+        // Función de formateo robusta (la misma que agregamos al dashboard)
+        function formatearHora(horaData) {
+            try {
+                if (!horaData) return 'No especificada';
+                
+                // Si viene como string de tiempo (HH:MM:SS), extraer solo HH:MM
+                if (typeof horaData === 'string' && horaData.includes(':')) {
+                    const timeParts = horaData.split(':');
+                    return `${timeParts[0]}:${timeParts[1]}`;
+                }
+                
+                // Si viene como Date object
+                if (horaData instanceof Date && !isNaN(horaData.getTime())) {
+                    return horaData.toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+                
+                // Intentar parsear como hora
+                const parsedTime = new Date(`1970-01-01T${horaData}`);
+                if (!isNaN(parsedTime.getTime())) {
+                    return parsedTime.toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+                
+                return 'No especificada';
+            } catch (error) {
+                console.warn('Error al formatear hora:', error, 'Hora recibida:', horaData);
+                return 'No especificada';
+            }
+        }
+
+        function log(mensaje) {
+            const logElement = document.getElementById('logOutput');
+            logElement.textContent += mensaje + '\n';
+        }
+
+        function mostrarModalCita(cita) {
+            log('=== INICIANDO FORMATEO ===');
+            log(`Datos recibidos - fecha: ${cita.fecha}, hora: ${cita.hora}`);
+            
+            const fecha = new Date(cita.fecha).toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            log(`Fecha formateada: ${fecha}`);
+            
+            const hora = formatearHora(cita.hora);
+            log(`Hora formateada: ${hora}`);
+            log('=== FORMATEO COMPLETADO ===\n');
+
+            // Crear modal dinámico
+            const modalHtml = `
+                <div class="modal fade" id="modalDetallesCita" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-calendar-event me-2"></i>
+                                    Detalles de la Cita
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title text-primary">📅 Fecha y Hora</h6>
+                                                <p class="mb-1"><strong>Fecha:</strong> ${fecha}</p>
+                                                <p class="mb-0"><strong>Hora:</strong> ${hora}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title text-success">👤 Paciente</h6>
+                                                <p class="mb-1"><strong>ID:</strong> #${cita.paciente_id}</p>
+                                                <p class="mb-0"><strong>Estado:</strong> 
+                                                    <span class="badge bg-warning">${cita.estado.toUpperCase()}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h6 class="card-title text-info">🩺 Información Médica</h6>
+                                                <p class="mb-1"><strong>Motivo:</strong> ${cita.motivo || 'Consulta general'}</p>
+                                                ${cita.notas ? `<p class="mb-0"><strong>Notas:</strong> ${cita.notas}</p>` : '<p class="mb-0 text-muted">Sin notas adicionales</p>'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="button" class="btn btn-success">✅ Confirmar</button>
+                                <button type="button" class="btn btn-primary">🎯 Completar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Remover modal anterior si existe
+            const existingModal = document.getElementById('modalDetallesCita');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Agregar modal al body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('modalDetallesCita'));
+            modal.show();
+
+            // Limpiar modal cuando se cierre
+            document.getElementById('modalDetallesCita').addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
+        }
+
+        document.getElementById('mostrarModalBtn').addEventListener('click', function() {
+            document.getElementById('logOutput').textContent = '';
+            mostrarModalCita(citaSimulada);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Prueba Aislada - Sistema de Emails PQRS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .alert-test {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .form-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #ffe0b2;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        
+        .section-title {
+            color: #f57c00;
+            border-bottom: 2px solid #FF6B35;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .btn-test {
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-test:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.3);
+            color: white;
+        }
+        
+        .feature-box {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="header">
+            <h1><i class="fas fa-vial"></i> PRUEBA AISLADA</h1>
+            <h2>Sistema de Emails PQRS y Contacto</h2>
+            <p class="mb-0">🛡️ Esta prueba NO afecta los datos originales del sistema</p>
+        </div>
+        
+        <div class="alert-test">
+            <i class="fas fa-shield-alt"></i> <strong>MODO SEGURO ACTIVADO:</strong> 
+            Esta página usa endpoints de prueba que SOLO envían emails sin guardar datos en la base de datos principal.
+            Los controladores originales permanecen intactos.
+        </div>
+        
+        <div class="content">
+            <!-- Información del Sistema -->
+            <div class="form-section">
+                <h3 class="section-title"><i class="fas fa-info-circle"></i> ¿Qué hace esta prueba?</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="feature-box">
+                            <h5><i class="fas fa-envelope"></i> Emails Automáticos</h5>
+                            <ul class="mb-0">
+                                <li>Confirmación al usuario con radicado</li>
+                                <li>Notificación al equipo de soporte</li>
+                                <li>Templates profesionales</li>
+                                <li>Tiempo de respuesta: 7 días hábiles</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="feature-box">
+                            <h5><i class="fas fa-database"></i> Sin Afectar BD</h5>
+                            <ul class="mb-0">
+                                <li>NO guarda en base de datos</li>
+                                <li>Controladores aislados</li>
+                                <li>Sistema original intacto</li>
+                                <li>Radicados marcados como TEST</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Formulario PQRS TEST -->
+            <div class="form-section">
+                <h3 class="section-title"><i class="fas fa-clipboard-list"></i> PQRS de Prueba</h3>
+                <form id="pqrsTestForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre completo</label>
+                            <input type="text" class="form-control" name="nombre_completo" value="Ana García Martínez" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Correo electrónico</label>
+                            <input type="email" class="form-control" name="correo" value="ana.garcia@test.com" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" name="telefono" value="3001234567">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo de PQRS</label>
+                            <select class="form-select" name="tipo" required>
+                                <option value="Petición">Petición</option>
+                                <option value="Queja" selected>Queja</option>
+                                <option value="Reclamo">Reclamo</option>
+                                <option value="Sugerencia">Sugerencia</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descripción detallada</label>
+                        <textarea class="form-control" name="descripcion" rows="4" required>Buenos días,
+
+Me dirijo a ustedes para expresar mi inconformidad respecto a la atención recibida el día 10 de septiembre.
+
+Situación presentada:
+1. Tenía cita programada para las 3:00 PM
+2. La cita fue cancelada sin previo aviso
+3. Al llegar a la clínica me informaron que el doctor no se encontraba
+4. A pesar de esto, me cobraron una "penalidad por cancelación tardía"
+
+Solicito:
+- Explicación de por qué se canceló mi cita sin notificación
+- Reembolso del cobro indebido
+- Reagendar mi cita sin costo adicional
+
+Espero una pronta respuesta y solución a esta situación.
+
+Atentamente,
+Ana García</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Servicio relacionado</label>
+                        <select class="form-select" name="servicio_relacionado">
+                            <option value="">Seleccione...</option>
+                            <option value="Ortodoncia" selected>Ortodoncia</option>
+                            <option value="Limpieza dental">Limpieza dental</option>
+                            <option value="Blanqueamiento">Blanqueamiento</option>
+                            <option value="Implantes">Implantes</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-test">
+                        <i class="fas fa-paper-plane"></i> Enviar PQRS de Prueba (SOLO EMAILS)
+                    </button>
+                </form>
+                
+                <div id="pqrsResult" class="result-box"></div>
+            </div>
+            
+            <!-- Formulario Contacto TEST -->
+            <div class="form-section">
+                <h3 class="section-title"><i class="fas fa-envelope"></i> Contacto de Prueba</h3>
+                <form id="contactoTestForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" name="nombre" value="Carlos Rodríguez" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Correo electrónico</label>
+                            <input type="email" class="form-control" name="correo" value="carlos.rodriguez@test.com" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" name="telefono" value="3009876543">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Servicio de interés</label>
+                            <select class="form-select" name="servicio_interes">
+                                <option value="Consulta general">Consulta general</option>
+                                <option value="Limpieza dental">Limpieza dental</option>
+                                <option value="Blanqueamiento" selected>Blanqueamiento</option>
+                                <option value="Ortodoncia">Ortodoncia</option>
+                                <option value="Implantes">Implantes</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Asunto</label>
+                        <input type="text" class="form-control" name="asunto" value="Consulta sobre blanqueamiento dental">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Mensaje</label>
+                        <textarea class="form-control" name="mensaje" rows="4" required>Estimado equipo de ClinikDent,
+
+Espero que se encuentren bien. Me pongo en contacto con ustedes porque estoy interesado en realizarme un blanqueamiento dental.
+
+Me gustaría conocer:
+- Tipos de blanqueamiento que manejan
+- Precios aproximados
+- Duración del tratamiento
+- Cuidados posteriores
+- Disponibilidad de citas
+
+Tengo 28 años y no he tenido tratamientos dentales complicados. Mis dientes están en buen estado general, solo busco mejorar el color.
+
+¿Sería posible agendar una consulta de valoración para la próxima semana?
+
+Quedo atento a su respuesta.
+
+Saludos cordiales,
+Carlos Rodríguez</textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-test">
+                        <i class="fas fa-envelope"></i> Enviar Mensaje de Prueba (SOLO EMAILS)
+                    </button>
+                </form>
+                
+                <div id="contactoResult" class="result-box"></div>
+            </div>
+            
+            <!-- Estado del Sistema -->
+            <div class="form-section">
+                <h3 class="section-title"><i class="fas fa-cogs"></i> Estado del Sistema</h3>
+                <div class="alert alert-warning">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Endpoints de Prueba</h5>
+                    <ul class="mb-0">
+                        <li><strong>PQRS:</strong> <code>POST /api/test-email/pqrs</code></li>
+                        <li><strong>Contacto:</strong> <code>POST /api/test-email/contacto</code></li>
+                        <li><strong>Radicados:</strong> <code>PQRS-TEST-2025-XXXXXX</code> y <code>CONT-TEST-2025-XXXXXX</code></li>
+                        <li><strong>Nota:</strong> Los controladores originales NO han sido modificados</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Función para mostrar resultados
+        function mostrarResultado(elemento, esExito, mensaje, datos = null) {
+            elemento.style.display = 'block';
+            elemento.className = `result-box ${esExito ? 'result-success' : 'result-error'}`;
+            
+            let html = `<strong>${esExito ? '✅ Éxito' : '❌ Error'}:</strong> ${mensaje}`;
+            
+            if (datos) {
+                html += '<br><small>';
+                if (datos.numero_radicado) html += `<br>📋 Radicado: ${datos.numero_radicado}`;
+                if (datos.numero_referencia) html += `<br>📋 Referencia: ${datos.numero_referencia}`;
+                if (datos.modo) html += `<br>🧪 Modo: ${datos.modo}`;
+                if (datos.email_enviado !== undefined) html += `<br>📧 Email usuario: ${datos.email_enviado ? 'Enviado' : 'Error'}`;
+                if (datos.soporte_notificado !== undefined) html += `<br>🔔 Soporte notificado: ${datos.soporte_notificado ? 'Sí' : 'Error'}`;
+                html += '</small>';
+            }
+            
+            elemento.innerHTML = html;
+        }
+
+        // Formulario PQRS TEST
+        document.getElementById('pqrsTestForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const resultadoElement = document.getElementById('pqrsResult');
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Deshabilitar botón
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/test-email/pqrs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostrarResultado(resultadoElement, true, result.msg, result.data);
+                } else {
+                    mostrarResultado(resultadoElement, false, result.msg || 'Error desconocido');
+                }
+            } catch (error) {
+                mostrarResultado(resultadoElement, false, 'Error de conexión: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Formulario Contacto TEST
+        document.getElementById('contactoTestForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const resultadoElement = document.getElementById('contactoResult');
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Deshabilitar botón
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/test-email/contacto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostrarResultado(resultadoElement, true, result.msg, result.data);
+                } else {
+                    mostrarResultado(resultadoElement, false, result.msg || 'Error desconocido');
+                }
+            } catch (error) {
+                mostrarResultado(resultadoElement, false, 'Error de conexión: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

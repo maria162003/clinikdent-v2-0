@@ -1,0 +1,124 @@
+/* Carrusel principal */
+.carousel-indicators button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin: 0 5px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.carousel-indicators .active {
+  background-color: white;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+  width: 5%;
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  background-size: 100% 100%;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.3);
+  transition: all 0.3s;
+}
+
+.carousel-control-prev:hover .carousel-control-prev-icon,
+.carousel-control-next:hover .carousel-control-next-icon {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Asegurar que la sección de testimonios sea visible */
+#testimonios {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 500px;
+}
+
+/* Carrusel de testimonios */
+#testimonialsCarousel {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+#testimonialsCarousel .carousel-indicators {
+  bottom: -50px;
+}
+
+#testimonialsCarousel .carousel-indicators button {
+  background-color: var(--gray-text);
+}
+
+#testimonialsCarousel .carousel-indicators .active {
+  background-color: var(--primary-color);
+}
+
+#testimonialsCarousel .carousel-control-prev,
+#testimonialsCarousel .carousel-control-next {
+  width: 40px;
+  height: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--primary-color);
+  border-radius: 50%;
+  opacity: 1;
+}
+
+#testimonialsCarousel .carousel-control-prev {
+  left: -20px;
+}
+
+#testimonialsCarousel .carousel-control-next {
+  right: -20px;
+}
+
+#testimonialsCarousel .carousel-control-prev-icon,
+#testimonialsCarousel .carousel-control-next-icon {
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+}
+
+/* Estilos adicionales para testimonios */
+.testimonial-box {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.testimonial-box .tst-image img {
+  transition: transform 0.3s ease;
+}
+
+.testimonial-box .tst-image img:hover {
+  transform: scale(1.05);
+}
+
+.testimonial-box p {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .testimonial-box {
+    padding: 30px 20px !important;
+    min-height: 350px;
+  }
+  
+  .testimonial-box p {
+    font-size: 16px !important;
+  }
+  
+  .testimonial-box .tst-image img {
+    width: 80px !important;
+    height: 80px !important;
+  }
+}

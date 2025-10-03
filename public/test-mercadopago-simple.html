@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Pagos MercadoPago</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .button { background: #009ee3; color: white; padding: 10px 20px; border: none; cursor: pointer; margin: 5px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; color: #d00; }
+        .success { background: #e6ffe6; color: #090; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Pagos MercadoPago</h1>
+        
+        <h3>Probar Endpoints</h3>
+        <button class="button" onclick="testHistorialPagos()">📊 Historial de Pagos</button>
+        <button class="button" onclick="testFacturasPendientes()">📄 Facturas Pendientes</button>
+        <button class="button" onclick="testCrearPreferencia()">💳 Crear Preferencia</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function showResult(title, data, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result ' + (isError ? 'error' : 'success');
+            div.innerHTML = `<h4>${title}</h4><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            results.appendChild(div);
+        }
+
+        async function testHistorialPagos() {
+            try {
+                const response = await fetch('/api/pagos-extendido/paciente/historial', {
+                    headers: {
+                        'user-id': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                showResult('✅ Historial de Pagos', data);
+            } catch (error) {
+                showResult('❌ Error Historial', error.message, true);
+            }
+        }
+
+        async function testFacturasPendientes() {
+            try {
+                const response = await fetch('/api/pagos-extendido/paciente/pendientes', {
+                    headers: {
+                        'user-id': '1',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                showResult('✅ Facturas Pendientes', data);
+            } catch (error) {
+                showResult('❌ Error Facturas', error.message, true);
+            }
+        }
+
+        async function testCrearPreferencia() {
+            try {
+                const response = await fetch('/api/mercadopago/crear-preferencia', {
+                    method: 'POST',
+                    headers: {
+                        'user-id': '1',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        titulo: 'Consulta Odontológica Test',
+                        descripcion: 'Limpieza y revisión general',
+                        precio: 150000,
+                        cantidad: 1,
+                        usuario_id: 1
+                    })
+                });
+                const data = await response.json();
+                showResult('✅ Preferencia Creada', data);
+            } catch (error) {
+                showResult('❌ Error Crear Preferencia', error.message, true);
+            }
+        }
+
+        // Auto-ejecutar tests al cargar
+        window.onload = function() {
+            console.log('🧪 Página de test cargada - Lista para pruebas');
+        };
+    </script>
+</body>
+</html>

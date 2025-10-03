@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Test Final - Navegación y Paginación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid p-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center mb-4">
+                    <h1 class="display-5">✅ Test Final - Navegación y Paginación</h1>
+                    <p class="lead">Verificación completa del sistema de paginación para todas las secciones</p>
+                </div>
+
+                <!-- Panel de Pruebas -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-grid-3x3-gap"></i> Panel de Pruebas de Secciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-primary w-100" onclick="testSection('usuarios')">
+                                    <i class="bi bi-people"></i><br>Usuarios
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-success w-100" onclick="testSection('citas')">
+                                    <i class="bi bi-calendar-check"></i><br>Citas
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-info w-100" onclick="testSection('evaluaciones')">
+                                    <i class="bi bi-star"></i><br>Evaluaciones
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-warning w-100" onclick="testSection('faqs')">
+                                    <i class="bi bi-question-circle"></i><br>FAQs
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-secondary w-100" onclick="testSection('reportes')">
+                                    <i class="bi bi-graph-up"></i><br>Reportes
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-danger w-100" onclick="testSection('pagos')">
+                                    <i class="bi bi-credit-card"></i><br>Pagos
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-dark w-100" onclick="testSection('inventario')">
+                                    <i class="bi bi-boxes"></i><br>Inventario
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-primary w-100" onclick="testAllSections()">
+                                    <i class="bi bi-lightning"></i><br>Probar Todo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultados -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> Resultados de Pruebas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="testResults">
+                            <div class="text-center text-muted">
+                                <i class="bi bi-arrow-up fs-3"></i>
+                                <p>Selecciona una sección para probar la paginación</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/pagination-system.js"></script>
+    <script>
+        const testResults = document.getElementById('testResults');
+
+        function addResult(message, type = 'info', details = '') {
+            const alertClass = type === 'success' ? 'alert-success' : 
+                             type === 'error' ? 'alert-danger' : 
+                             type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            const html = `
+                <div class="alert ${alertClass} alert-sm" role="alert">
+                    <strong>${message}</strong>
+                    ${details ? `<br><small>${details}</small>` : ''}
+                </div>
+            `;
+            testResults.insertAdjacentHTML('beforeend', html);
+            testResults.scrollTop = testResults.scrollHeight;
+        }
+
+        function clearResults() {
+            testResults.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="bi bi-arrow-up fs-3"></i>
+                    <p>Selecciona una sección para probar la paginación</p>
+                </div>
+            `;
+        }
+
+        function testSection(section) {
+            clearResults();
+            addResult(`🔄 Probando sección: ${section.toUpperCase()}`, 'info');
+
+            // Verificar que el sistema de paginación esté disponible
+            if (typeof window.paginationModules !== 'object') {
+                addResult('❌ Sistema de paginación no cargado', 'error');
+                return;
+            }
+
+            if (!window.paginationModules[section]) {
+                addResult(`❌ Sección "${section}" no configurada en paginationModules`, 'error');
+                return;
+            }
+
+            const module = window.paginationModules[section];
+            addResult(`✅ Módulo encontrado: ${section}`, 'success', 
+                     `Items por página: ${module.itemsPerPage}`);
+
+            // Verificar función de inicialización
+            if (typeof initializePaginationAdmin === 'function') {
+                addResult('✅ Función initializePaginationAdmin disponible', 'success');
+                
+                try {
+                    // Intentar inicializar
+                    initializePaginationAdmin(section);
+                    addResult(`🚀 Inicialización ejecutada para: ${section}`, 'success');
+                    
+                    // Verificar datos después de inicializar
+                    setTimeout(() => {
+                        const updatedModule = window.paginationModules[section];
+                        if (updatedModule.totalItems > 0) {
+                            addResult(`📊 Datos cargados: ${updatedModule.totalItems} elementos`, 'success',
+                                     `Páginas totales: ${updatedModule.totalPages}, Página actual: ${updatedModule.currentPage}`);
+                            
+                            // Verificar elementos HTML
+                            const paginationInfo = document.getElementById(`${section}PaginationInfo`);
+                            const paginationControls = document.getElementById(`${section}Pagination`);
+                            
+                            if (paginationInfo) {
+                                addResult('✅ Elementos de información de paginación encontrados', 'success');
+                            } else {
+                                addResult('⚠️ Elementos de información de paginación NO encontrados', 'warning',
+                                         'La sección puede no estar visible en esta página');
+                            }
+                            
+                            if (paginationControls) {
+                                addResult('✅ Controles de navegación disponibles', 'success');
+                            } else {
+                                addResult('⚠️ Controles de navegación NO encontrados', 'warning');
+                            }
+                        } else {
+                            addResult('⚠️ No se cargaron datos de prueba', 'warning');
+                        }
+                    }, 500);
+                    
+                } catch (error) {
+                    addResult(`❌ Error al inicializar: ${error.message}`, 'error');
+                }
+            } else {
+                addResult('❌ Función initializePaginationAdmin NO disponible', 'error');
+            }
+        }
+
+        function testAllSections() {
+            clearResults();
+            addResult('🚀 Iniciando prueba completa de todas las secciones', 'info');
+
+            const sections = ['usuarios', 'citas', 'evaluaciones', 'faqs', 'reportes', 'pagos', 'inventario'];
+            let currentIndex = 0;
+
+            function testNext() {
+                if (currentIndex >= sections.length) {
+                    addResult('🎉 Prueba completa finalizada', 'success', 
+                             `${sections.length} secciones probadas`);
+                    return;
+                }
+
+                const section = sections[currentIndex];
+                addResult(`📋 [${currentIndex + 1}/${sections.length}] Probando: ${section}`, 'info');
+
+                if (typeof initializePaginationAdmin === 'function') {
+                    try {
+                        initializePaginationAdmin(section);
+                        addResult(`✅ ${section} inicializado`, 'success');
+                    } catch (error) {
+                        addResult(`❌ Error en ${section}: ${error.message}`, 'error');
+                    }
+                } else {
+                    addResult(`❌ Función no disponible para ${section}`, 'error');
+                }
+
+                currentIndex++;
+                setTimeout(testNext, 800);
+            }
+
+            testNext();
+        }
+
+        // Auto-mostrar info del sistema al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (typeof window.paginationModules === 'object') {
+                    const sections = Object.keys(window.paginationModules);
+                    addResult('🎯 Sistema de paginación cargado correctamente', 'success',
+                             `${sections.length} secciones disponibles: ${sections.join(', ')}`);
+                } else {
+                    addResult('⚠️ Sistema de paginación no detectado', 'warning');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

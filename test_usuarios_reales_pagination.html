@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Paginación Usuarios Reales - ClinikDent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h2><i class="bi bi-people"></i> Test Paginación - Usuarios Reales</h2>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-people"></i> Gestión de Usuarios</h5>
+                <button class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Nuevo Usuario
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Información de paginación -->
+                <div id="usuariosPaginationInfo" class="pagination-info-container d-flex justify-content-between align-items-center mb-3" style="display: none;">
+                    <!-- Se genera dinámicamente -->
+                </div>
+
+                <!-- Tabla de usuarios -->
+                <div class="table-responsive">
+                    <table id="usuariosTable" class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Controles de paginación -->
+                <div id="usuariosPagination" class="d-flex justify-content-center" style="display: none;">
+                    <!-- Los controles se generan dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de control -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-gear"></i> Panel de Control de Test</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <button id="simulateRealUsers" class="btn btn-success me-2">
+                            <i class="bi bi-database"></i> Simular Usuarios Reales (25)
+                        </button>
+                        <button id="simulateFewUsers" class="btn btn-info me-2">
+                            <i class="bi bi-people"></i> Simular Pocos Usuarios (5)
+                        </button>
+                        <button id="clearUsers" class="btn btn-warning me-2">
+                            <i class="bi bi-trash"></i> Limpiar
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-end">
+                            <span class="text-muted">Paginación: </span>
+                            <span id="paginationStatus" class="badge bg-secondary">Inactiva</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de información -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Información del Test</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle text-success"></i> <strong>Usuarios reales (≥10):</strong> Se activa paginación nativa</li>
+                    <li><i class="bi bi-check-circle text-info"></i> <strong>Pocos usuarios (<10):</strong> Sin paginación</li>
+                    <li><i class="bi bi-check-circle text-warning"></i> <strong>Sistema inteligente:</strong> No usa datos de prueba si hay datos reales</li>
+                    <li><i class="bi bi-check-circle text-primary"></i> <strong>Elementos por página:</strong> 10 usuarios</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Mock del dashboard admin simplificado para test
+        class TestDashboardAdmin {
+            constructor() {
+                this.users = [];
+                this.usersPagination = {
+                    currentPage: 1,
+                    itemsPerPage: 10,
+                    totalPages: 1,
+                    totalItems: 0
+                };
+            }
+            
+            // Simular usuarios reales (nombres reales)
+            generateRealUsers(count) {
+                const realNames = [
+                    {nombre: 'alcira', apellido: 'bejarano', correo: 'alcira@gmail.com', rol: 'paciente'},
+                    {nombre: 'angelo', apellido: 'rayo', correo: 'angelo@gmail.com', rol: 'paciente'},
+                    {nombre: 'Camila', apellido: 'Lopez', correo: 'camilafontalvolopez@gmail.com', rol: 'administrador'},
+                    {nombre: 'Carlos andres', apellido: 'Rodriguez Fajardo', correo: 'carlos@gmail.com', rol: 'odontologo'},
+                    {nombre: 'cindy', apellido: 'rayo', correo: 'cindy@gmail.com', rol: 'paciente'},
+                    {nombre: 'Fernando', apellido: 'Morales', correo: 'fernando@clinica.com', rol: 'odontologo'},
+                    {nombre: 'Isabella', apellido: 'Vargas', correo: 'isabella@clinica.com', rol: 'asistente'},
+                    {nombre: 'Jacobo', apellido: 'Mendez', correo: 'jacobo@clinica.com', rol: 'paciente'},
+                    {nombre: 'Tatiana', apellido: 'Silva', correo: 'tatiana@clinica.com', rol: 'paciente'},
+                    {nombre: 'Alejandro', apellido: 'Castro', correo: 'alejandro@clinica.com', rol: 'odontologo'},
+                    {nombre: 'Beatriz', apellido: 'Torres', correo: 'beatriz@clinica.com', rol: 'paciente'},
+                    {nombre: 'Diego', apellido: 'Ramirez', correo: 'diego@clinica.com', rol: 'asistente'},
+                    {nombre: 'Elena', apellido: 'Jimenez', correo: 'elena@clinica.com', rol: 'paciente'},
+                    {nombre: 'Francisco', apellido: 'Medina', correo: 'francisco@clinica.com', rol: 'odontologo'},
+                    {nombre: 'Gloria', apellido: 'Ruiz', correo: 'gloria@clinica.com', rol: 'paciente'},
+                    {nombre: 'Hector', apellido: 'Soto', correo: 'hector@clinica.com', rol: 'paciente'},
+                    {nombre: 'Irene', apellido: 'Vega', correo: 'irene@clinica.com', rol: 'asistente'},
+                    {nombre: 'Jaime', apellido: 'Herrera', correo: 'jaime@clinica.com', rol: 'odontologo'},
+                    {nombre: 'Karla', apellido: 'Peña', correo: 'karla@clinica.com', rol: 'paciente'},
+                    {nombre: 'Luis', apellido: 'Guerrero', correo: 'luis@clinica.com', rol: 'paciente'},
+                    {nombre: 'Monica', apellido: 'Ortiz', correo: 'monica@clinica.com', rol: 'asistente'},
+                    {nombre: 'Nicolas', apellido: 'Delgado', correo: 'nicolas@clinica.com', rol: 'odontologo'},
+                    {nombre: 'Olga', apellido: 'Navarro', correo: 'olga@clinica.com', rol: 'paciente'},
+                    {nombre: 'Pablo', apellido: 'Cano', correo: 'pablo@clinica.com', rol: 'paciente'},
+                    {nombre: 'Quintana', apellido: 'Lara', correo: 'quintana@clinica.com', rol: 'asistente'}
+                ];
+                
+                this.users = [];
+                for (let i = 0; i < count; i++) {
+                    const template = realNames[i % realNames.length];
+                    this.users.push({
+                        id: i + 1,
+                        nombre: template.nombre + (i > realNames.length - 1 ? ` ${Math.floor(i / realNames.length) + 1}` : ''),
+                        apellido: template.apellido,
+                        correo: template.correo.replace('@', `${i}@`),
+                        rol: template.rol,
+                        estado: 'activo'
+                    });
+                }
+                
+                console.log(`✅ Generados ${count} usuarios reales simulados`);
+            }
+            
+            getRolBadgeClass(rol) {
+                switch (rol) {
+                    case 'administrador': return 'warning';
+                    case 'odontologo': return 'primary';
+                    case 'asistente': return 'info';
+                    case 'paciente': return 'success';
+                    default: return 'secondary';
+                }
+            }
+            
+            // Copiar las funciones del dashboard real
+            initializeRealUsersPagination() {
+                console.log('🔄 Inicializando paginación para usuarios reales...');
+                
+                this.usersPagination.totalItems = this.users.length;
+                this.usersPagination.totalPages = Math.ceil(this.usersPagination.totalItems / this.usersPagination.itemsPerPage);
+                this.usersPagination.currentPage = 1;
+                
+                this.renderUsersPage();
+                this.renderUsersPaginationControls();
+                this.showUsersPaginationInfo();
+                
+                document.getElementById('paginationStatus').textContent = 'Activa';
+                document.getElementById('paginationStatus').className = 'badge bg-success';
+                
+                console.log(`✅ Paginación usuarios: ${this.usersPagination.totalItems} usuarios, ${this.usersPagination.totalPages} páginas`);
+            }
+            
+            renderUsersPage() {
+                const startIndex = (this.usersPagination.currentPage - 1) * this.usersPagination.itemsPerPage;
+                const endIndex = startIndex + this.usersPagination.itemsPerPage;
+                const pageUsers = this.users.slice(startIndex, endIndex);
+                
+                const tbody = document.querySelector('#usuariosTable tbody');
+                if (!tbody) {
+                    console.error('No se encontró la tabla de usuarios');
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                
+                if (pageUsers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay usuarios en esta página</td></tr>';
+                    return;
+                }
+                
+                pageUsers.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.nombre} ${user.apellido}</td>
+                        <td>${user.correo}</td>
+                        <td>
+                            <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            renderUsersPaginationControls() {
+                const paginationContainer = document.getElementById('usuariosPagination');
+                if (!paginationContainer) {
+                    console.warn('No se encontró el contenedor de paginación de usuarios');
+                    return;
+                }
+                
+                if (this.usersPagination.totalPages <= 1) {
+                    paginationContainer.style.display = 'none';
+                    return;
+                }
+                
+                paginationContainer.style.display = 'flex';
+                
+                let paginationHTML = '<nav aria-label="Navegación de usuarios"><ul class="pagination pagination-sm mb-0">';
+                
+                // Botón Anterior
+                const prevDisabled = this.usersPagination.currentPage === 1 ? 'disabled' : '';
+                paginationHTML += `
+                    <li class="page-item ${prevDisabled}">
+                        <a class="page-link" href="#" onclick="testDashboard.goToUsersPage(${this.usersPagination.currentPage - 1})" ${prevDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                `;
+                
+                // Números de página
+                let startPage = Math.max(1, this.usersPagination.currentPage - 2);
+                let endPage = Math.min(this.usersPagination.totalPages, this.usersPagination.currentPage + 2);
+                
+                // Páginas visibles
+                for (let i = startPage; i <= endPage; i++) {
+                    const isActive = i === this.usersPagination.currentPage ? 'active' : '';
+                    paginationHTML += `
+                        <li class="page-item ${isActive}">
+                            <a class="page-link" href="#" onclick="testDashboard.goToUsersPage(${i})">${i}</a>
+                        </li>
+                    `;
+                }
+                
+                // Botón Siguiente
+                const nextDisabled = this.usersPagination.currentPage === this.usersPagination.totalPages ? 'disabled' : '';
+                paginationHTML += `
+                    <li class="page-item ${nextDisabled}">
+                        <a class="page-link" href="#" onclick="testDashboard.goToUsersPage(${this.usersPagination.currentPage + 1})" ${nextDisabled ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                `;
+                
+                paginationHTML += '</ul></nav>';
+                paginationContainer.innerHTML = paginationHTML;
+            }
+            
+            showUsersPaginationInfo() {
+                const infoContainer = document.getElementById('usuariosPaginationInfo');
+                if (!infoContainer) return;
+                
+                if (this.usersPagination.totalItems > 0) {
+                    const startItem = (this.usersPagination.currentPage - 1) * this.usersPagination.itemsPerPage + 1;
+                    const endItem = Math.min(startItem + this.usersPagination.itemsPerPage - 1, this.usersPagination.totalItems);
+                    
+                    infoContainer.style.display = 'flex';
+                    infoContainer.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted">
+                                Mostrando <strong>${endItem - startItem + 1}</strong> de <strong>${this.usersPagination.totalItems}</strong> usuarios
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted">
+                                Página <strong>${this.usersPagination.currentPage}</strong> de <strong>${this.usersPagination.totalPages}</strong>
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    infoContainer.style.display = 'none';
+                }
+            }
+            
+            goToUsersPage(page) {
+                if (page < 1 || page > this.usersPagination.totalPages) return;
+                
+                this.usersPagination.currentPage = page;
+                this.renderUsersPage();
+                this.renderUsersPaginationControls();
+                this.showUsersPaginationInfo();
+                
+                console.log(`📄 Navegando a página ${page} de usuarios`);
+            }
+            
+            renderUsuariosTable() {
+                const tbody = document.querySelector('#usuariosTable tbody');
+                if (!tbody) {
+                    console.error('No se encontró la tabla de usuarios');
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                
+                if (!this.users || this.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay usuarios registrados</td></tr>';
+                    document.getElementById('paginationStatus').textContent = 'Inactiva';
+                    document.getElementById('paginationStatus').className = 'badge bg-secondary';
+                    return;
+                }
+                
+                this.users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.nombre} ${user.apellido}</td>
+                        <td>${user.correo}</td>
+                        <td>
+                            <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                document.getElementById('paginationStatus').textContent = 'Sin paginación';
+                document.getElementById('paginationStatus').className = 'badge bg-info';
+            }
+        }
+
+        // Inicializar test
+        let testDashboard;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            testDashboard = new TestDashboardAdmin();
+            
+            // Simular muchos usuarios (activa paginación)
+            document.getElementById('simulateRealUsers').addEventListener('click', function() {
+                testDashboard.generateRealUsers(25);
+                if (testDashboard.users.length > 10) {
+                    testDashboard.initializeRealUsersPagination();
+                } else {
+                    testDashboard.renderUsuariosTable();
+                }
+            });
+            
+            // Simular pocos usuarios (sin paginación)
+            document.getElementById('simulateFewUsers').addEventListener('click', function() {
+                testDashboard.generateRealUsers(5);
+                testDashboard.renderUsuariosTable();
+                
+                // Ocultar paginación
+                document.getElementById('usuariosPagination').style.display = 'none';
+                document.getElementById('usuariosPaginationInfo').style.display = 'none';
+            });
+            
+            // Limpiar
+            document.getElementById('clearUsers').addEventListener('click', function() {
+                testDashboard.users = [];
+                testDashboard.renderUsuariosTable();
+                
+                // Ocultar paginación
+                document.getElementById('usuariosPagination').style.display = 'none';
+                document.getElementById('usuariosPaginationInfo').style.display = 'none';
+            });
+            
+            console.log('✅ Test de paginación de usuarios reales configurado');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - Clinik Dent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>🧪 Test de Login - Sistema Clinik Dent</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="correo" class="form-label">Email:</label>
+                                <select class="form-select" id="correo" required>
+                                    <option value="">Selecciona un usuario...</option>
+                                    <option value="admin@clinikdent.com">admin@clinikdent.com (Administrador)</option>
+                                    <option value="doctor@clinikdent.com">doctor@clinikdent.com (Odontólogo)</option>
+                                    <option value="paciente@clinikdent.com">paciente@clinikdent.com (Paciente)</option>
+                                    <option value="juan@example.com">juan@example.com (Administrador)</option>
+                                    <option value="fernanda@example.com">fernanda@example.com (Odontólogo)</option>
+                                    <option value="camila@example.com">camila@example.com (Paciente)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Contraseña:</label>
+                                <input type="password" class="form-control" id="password" value="123456" required>
+                                <div class="form-text">Todos los usuarios de prueba tienen la contraseña: 123456</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rol" class="form-label">Rol:</label>
+                                <select class="form-select" id="rol" required>
+                                    <option value="">Selecciona un rol...</option>
+                                    <option value="administrador">Administrador</option>
+                                    <option value="odontologo">Odontólogo</option>
+                                    <option value="paciente">Paciente</option>
+                                </select>
+                                <div class="form-text">⚠️ El rol debe coincidir con el rol del usuario en la BD</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-sign-in-alt"></i> Probar Login
+                            </button>
+                        </form>
+                        
+                        <div id="result" class="result" style="display: none;"></div>
+                        
+                        <div class="mt-4">
+                            <h6>📋 Usuarios disponibles:</h6>
+                            <ul class="list-group list-group-flush small">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>admin@clinikdent.com</strong></span>
+                                    <span class="badge bg-danger">administrador</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>doctor@clinikdent.com</strong></span>
+                                    <span class="badge bg-info">odontologo</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>paciente@clinikdent.com</strong></span>
+                                    <span class="badge bg-success">paciente</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>juan@example.com</strong></span>
+                                    <span class="badge bg-danger">administrador</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>fernanda@example.com</strong></span>
+                                    <span class="badge bg-info">odontologo</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>camila@example.com</strong></span>
+                                    <span class="badge bg-success">paciente</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const correo = document.getElementById('correo').value;
+            const password = document.getElementById('password').value;
+            const rol = document.getElementById('rol').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!correo || !password || !rol) {
+                showResult('Por favor completa todos los campos', 'error');
+                return;
+            }
+            
+            try {
+                showResult('🔄 Intentando login...', 'info');
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ correo, password, rol })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(
+                        `✅ <strong>Login exitoso!</strong><br>
+                         📧 Email: ${data.nombre} ${data.apellido}<br>
+                         👤 Rol: ${data.rol}<br>
+                         🆔 ID: ${data.id}<br>
+                         💬 Mensaje: ${data.msg}`, 
+                        'success'
+                    );
+                } else {
+                    showResult(`❌ <strong>Error de login:</strong><br>${data.msg}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ <strong>Error de conexión:</strong><br>${error.message}`, 'error');
+            }
+        });
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+        
+        // Auto-completar rol basado en el usuario seleccionado
+        document.getElementById('correo').addEventListener('change', function() {
+            const email = this.value;
+            const rolSelect = document.getElementById('rol');
+            
+            if (email.includes('admin')) {
+                rolSelect.value = 'administrador';
+            } else if (email.includes('doctor') || email === 'fernanda@example.com') {
+                rolSelect.value = 'odontologo';
+            } else if (email.includes('paciente') || email === 'camila@example.com') {
+                rolSelect.value = 'paciente';
+            } else if (email === 'juan@example.com') {
+                rolSelect.value = 'administrador';
+            }
+        });
+    </script>
+</body>
+</html>

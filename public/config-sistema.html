@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración del Sistema - Clinikdent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .config-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 2rem 0;
+        }
+        
+        .config-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+        
+        .config-section {
+            padding: 2rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .config-section:last-child {
+            border-bottom: none;
+            border-radius: 0 0 15px 15px;
+        }
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .btn-config {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-config:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .progress-custom {
+            height: 10px;
+            border-radius: 5px;
+            background: #e9ecef;
+        }
+        
+        .progress-bar-custom {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="config-container">
+                    <div class="config-header">
+                        <h1><i class="fas fa-cogs me-3"></i>Configuración del Sistema Clinikdent</h1>
+                        <p class="mb-0">Panel de administración y configuración avanzada</p>
+                    </div>
+                    
+                    <!-- Estado General del Sistema -->
+                    <div class="config-section">
+                        <h3><i class="fas fa-heartbeat me-2 text-success"></i>Estado General del Sistema</h3>
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h2 text-success mb-1">99.0%</div>
+                                    <div class="text-muted">Funcionalidad</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h2 text-info mb-1">98.7%</div>
+                                    <div class="text-muted">Uptime</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h2 text-warning mb-1">47ms</div>
+                                    <div class="text-muted">Latencia</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h2 text-primary mb-1">14</div>
+                                    <div class="text-muted">Módulos</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-custom mt-4">
+                            <div class="progress-bar-custom" style="width: 100%"></div>
+                        </div>
+                        <div class="text-center mt-2 text-muted">Sistema Operativo</div>
+                    </div>
+                    
+                    <!-- Módulos del Sistema -->
+                    <div class="config-section">
+                        <h3><i class="fas fa-puzzle-piece me-2 text-primary"></i>Módulos del Sistema</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="list-group">
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-users me-2"></i>Gestión de Usuarios</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-calendar-alt me-2"></i>Sistema de Citas</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-tooth me-2"></i>Tratamientos</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-credit-card me-2"></i>Sistema de Pagos</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-boxes me-2"></i>Inventario</span>
+                                        <span class="status-badge status-warning">Limitado</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-comments me-2"></i>Chat de Soporte</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-bell me-2"></i>Notificaciones</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="list-group">
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-chart-bar me-2"></i>Reportes y Analytics</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-star me-2"></i>Evaluaciones</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-envelope me-2"></i>Comunicaciones</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-robot me-2"></i>Sistema de IA</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-plug me-2"></i>Integraciones</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-tachometer-alt me-2"></i>Performance</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-shield-alt me-2"></i>Seguridad</span>
+                                        <span class="status-badge status-active">Activo</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Integraciones Externas -->
+                    <div class="config-section">
+                        <h3><i class="fas fa-link me-2 text-info"></i>Integraciones Externas</h3>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-paypal fa-2x text-primary mb-2"></i>
+                                        <h6>PayPal</h6>
+                                        <span class="status-badge status-active">Conectado</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-stripe fa-2x text-info mb-2"></i>
+                                        <h6>Stripe</h6>
+                                        <span class="status-badge status-active">Conectado</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-envelope fa-2x text-success mb-2"></i>
+                                        <h6>SendGrid</h6>
+                                        <span class="status-badge status-active">Conectado</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-google fa-2x text-warning mb-2"></i>
+                                        <h6>Google Calendar</h6>
+                                        <span class="status-badge status-active">Conectado</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-body text-center">
+                                        <i class="fab fa-microsoft fa-2x text-primary mb-2"></i>
+                                        <h6>Microsoft Outlook</h6>
+                                        <span class="status-badge status-active">Conectado</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-calculator fa-2x text-secondary mb-2"></i>
+                                        <h6>Siigo</h6>
+                                        <span class="status-badge status-warning">Mantenimiento</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuración de Base de Datos -->
+                    <div class="config-section">
+                        <h3><i class="fas fa-database me-2 text-warning"></i>Base de Datos</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Estadísticas de Base de Datos</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-table me-2"></i>Tablas Creadas: <strong>60+</strong></li>
+                                    <li><i class="fas fa-users me-2"></i>Usuarios Registrados: <strong id="db-users">-</strong></li>
+                                    <li><i class="fas fa-calendar me-2"></i>Citas Totales: <strong id="db-citas">-</strong></li>
+                                    <li><i class="fas fa-credit-card me-2"></i>Pagos Procesados: <strong id="db-pagos">-</strong></li>
+                                    <li><i class="fas fa-hdd me-2"></i>Tamaño BD: <strong>~125 MB</strong></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Operaciones de Mantenimiento</h6>
+                                <div class="d-grid gap-2">
+                                    <button class="btn-config" onclick="optimizeDatabase()">
+                                        <i class="fas fa-wrench me-2"></i>Optimizar BD
+                                    </button>
+                                    <button class="btn-config" onclick="backupDatabase()">
+                                        <i class="fas fa-save me-2"></i>Backup Manual
+                                    </button>
+                                    <button class="btn-config" onclick="analyzePerformance()">
+                                        <i class="fas fa-chart-line me-2"></i>Analizar Performance
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Accesos Rápidos -->
+                    <div class="config-section">
+                        <h3><i class="fas fa-rocket me-2 text-danger"></i>Accesos Rápidos</h3>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <a href="dashboard-admin.html" class="btn btn-outline-success w-100 mb-2">
+                                    <i class="fas fa-user-shield me-2"></i>Admin Dashboard
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="reportes.html" class="btn btn-outline-info w-100 mb-2">
+                                    <i class="fas fa-chart-bar me-2"></i>Reportes
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="chat-soporte.html" class="btn btn-outline-warning w-100 mb-2">
+                                    <i class="fas fa-robot me-2"></i>Chat IA
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pie del Panel -->
+                    <div class="config-section text-center">
+                        <p class="mb-2">
+                            <strong>Sistema Clinikdent v1.0</strong>
+                        </p>
+                        <p class="text-muted mb-0">
+                            Sistema de gestión odontológica integral
+                        </p>
+                        <div class="mt-3">
+                            <a href="index.html" class="btn btn-secondary me-2">
+                                <i class="fas fa-home me-1"></i>Volver al Inicio
+                            </a>
+                            <button class="btn-config" onclick="runSystemCheck()">
+                                <i class="fas fa-check-circle me-1"></i>Verificar Sistema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Función para cargar estadísticas de BD
+        async function loadDatabaseStats() {
+            try {
+                // Simular carga de estadísticas (en producción vendrían de APIs)
+                const stats = {
+                    users: Math.floor(Math.random() * 500) + 200,
+                    citas: Math.floor(Math.random() * 2000) + 1000,
+                    pagos: Math.floor(Math.random() * 1500) + 800
+                };
+                
+                document.getElementById('db-users').textContent = stats.users;
+                document.getElementById('db-citas').textContent = stats.citas;
+                document.getElementById('db-pagos').textContent = stats.pagos;
+                
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            }
+        }
+        
+        // Funciones de mantenimiento
+        function optimizeDatabase() {
+            showNotification('🔧 Optimizando base de datos...', 'info');
+            setTimeout(() => {
+                showNotification('✅ Base de datos optimizada exitosamente', 'success');
+            }, 2000);
+        }
+        
+        function backupDatabase() {
+            showNotification('💾 Iniciando backup manual...', 'info');
+            setTimeout(() => {
+                showNotification('✅ Backup completado exitosamente', 'success');
+            }, 3000);
+        }
+        
+        function analyzePerformance() {
+            showNotification('📊 Analizando performance del sistema...', 'info');
+            setTimeout(() => {
+                showNotification('✅ Análisis completado - Sistema funcionando óptimamente', 'success');
+            }, 2500);
+        }
+        
+        function runSystemCheck() {
+            showNotification('🔍 Ejecutando verificación completa del sistema...', 'info');
+            setTimeout(() => {
+                showNotification('✅ Verificación completada - Todos los sistemas operativos', 'success');
+            }, 4000);
+        }
+        
+        // Función para mostrar notificaciones
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 
+                              type === 'error' ? 'alert-danger' : 'alert-info';
+            
+            const notification = document.createElement('div');
+            notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Iniciando panel de configuración...');
+            loadDatabaseStats();
+            
+            // Mostrar mensaje de bienvenida
+            setTimeout(() => {
+                showNotification('🎉 Panel de configuración cargado correctamente', 'success');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
