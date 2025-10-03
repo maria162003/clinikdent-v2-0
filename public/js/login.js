@@ -223,3 +223,5 @@ function redirigirAlDashboard(rol) {
     window.location.href = '/dashboard-admin.html';
   }
 }
+/ /   N u e v a s   f u n c i o n a l i d a d e s   d e   a u t e n t i c a c i ó n  
+ 
