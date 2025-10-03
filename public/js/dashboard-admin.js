@@ -6744,3 +6744,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 });
 
+/ /   O p t i m i z a c i o n e s   d e   r e n d i m i e n t o  
+ 
