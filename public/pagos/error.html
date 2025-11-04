@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error en el Pago - Clinikdent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="../css/styles.css" rel="stylesheet">
+    <style>
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ff7b7b 0%, #d63384 100%);
+        }
+        .error-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: 2rem;
+        }
+        .error-icon {
+            font-size: 4rem;
+            color: #dc3545;
+            margin-bottom: 1rem;
+        }
+        .error-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-icon">
+                <i class="bi bi-x-circle-fill"></i>
+            </div>
+            
+            <h1 class="text-danger mb-3">Error en el Pago</h1>
+            <p class="lead text-muted mb-4">
+                Lo sentimos, hubo un problema procesando tu pago. No se realizó ningún cargo.
+            </p>
+            
+            <div class="error-info">
+                <h6 class="text-danger mb-3">¿Qué puedes hacer?</h6>
+                <ul class="list-unstyled text-start">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Verifica que tus datos de pago sean correctos
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Asegúrate de tener fondos suficientes
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Intenta con otro método de pago
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Contacta a tu banco si el problema persiste
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Código de error:</strong> <span id="errorCode">No especificado</span><br>
+                <small>Anota este código si necesitas contactar soporte</small>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary btn-lg" onclick="intentarNuevamente()">
+                    <i class="bi bi-arrow-repeat me-2"></i>
+                    Intentar Nuevamente
+                </button>
+                <a href="../dashboard-paciente.html" class="btn btn-outline-secondary">
+                    <i class="bi bi-house-door me-2"></i>
+                    Volver al Dashboard
+                </a>
+            </div>
+            
+            <div class="mt-4 pt-3 border-top">
+                <small class="text-muted">
+                    ¿Necesitas ayuda? <a href="tel:+573001234567" class="text-decoration-none">
+                        <i class="bi bi-telephone me-1"></i>
+                        Llámanos: 300 123 4567
+                    </a>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Obtener parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get('payment_id');
+        const status = urlParams.get('status');
+        const statusDetail = urlParams.get('status_detail');
+        const externalReference = urlParams.get('external_reference');
+        
+        // Mostrar código de error si está disponible
+        if (statusDetail) {
+            document.getElementById('errorCode').textContent = statusDetail;
+        } else if (status) {
+            document.getElementById('errorCode').textContent = status;
+        } else if (paymentId) {
+            document.getElementById('errorCode').textContent = paymentId;
+        }
+        
+        // Función para intentar nuevamente
+        function intentarNuevamente() {
+            // Volver a la sección de pagos del dashboard
+            window.location.href = '../dashboard-paciente.html#pagos';
+        }
+        
+        // Mensajes específicos según el error
+        const errorMessages = {
+            'cc_rejected_insufficient_amount': 'Fondos insuficientes en tu tarjeta',
+            'cc_rejected_bad_filled_card_number': 'Número de tarjeta incorrecto',
+            'cc_rejected_bad_filled_date': 'Fecha de vencimiento incorrecta',
+            'cc_rejected_bad_filled_security_code': 'Código de seguridad incorrecto',
+            'cc_rejected_bad_filled_other': 'Revisa los datos de tu tarjeta',
+            'cc_rejected_blacklist': 'Tarjeta no autorizada',
+            'cc_rejected_call_for_authorize': 'Autoriza el pago con tu banco',
+            'cc_rejected_card_disabled': 'Tarjeta inhabilitada',
+            'cc_rejected_card_error': 'Error en la tarjeta',
+            'cc_rejected_duplicated_payment': 'Pago duplicado',
+            'cc_rejected_high_risk': 'Pago rechazado por seguridad',
+            'cc_rejected_max_attempts': 'Demasiados intentos fallidos',
+            'cc_rejected_other_reason': 'Pago rechazado por el banco'
+        };
+        
+        // Mostrar mensaje específico si está disponible
+        if (statusDetail && errorMessages[statusDetail]) {
+            const alertDiv = document.querySelector('.alert-warning');
+            alertDiv.innerHTML = `
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Motivo:</strong> ${errorMessages[statusDetail]}<br>
+                <small>Código: ${statusDetail}</small>
+            `;
+        }
+    </script>
+</body>
+</html>

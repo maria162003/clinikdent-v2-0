@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Seguridad - Clinikdent</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .security-card {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .security-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        
+        .status-excellent { border-left: 5px solid #28a745; }
+        .status-warning { border-left: 5px solid #ffc107; }
+        .status-danger { border-left: 5px solid #dc3545; }
+        .status-critical { border-left: 5px solid #6f42c1; }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        
+        .log-entry {
+            border-left: 3px solid transparent;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .log-debug { border-left-color: #6c757d; background-color: #f8f9fa; }
+        .log-info { border-left-color: #0dcaf0; background-color: #d1ecf1; }
+        .log-warn { border-left-color: #ffc107; background-color: #fff3cd; }
+        .log-error { border-left-color: #dc3545; background-color: #f8d7da; }
+        
+        .activity-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .refresh-btn {
+            transition: transform 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            transform: rotate(180deg);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .recommendation-card {
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .priority-alta {
+            border-left: 4px solid #dc3545;
+            background-color: #f8d7da;
+        }
+        
+        .priority-media {
+            border-left: 4px solid #ffc107;
+            background-color: #fff3cd;
+        }
+        
+        .priority-baja {
+            border-left: 4px solid #28a745;
+            background-color: #d1edcc;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-shield-check me-2"></i>
+                Panel de Seguridad - Clinikdent
+            </a>
+            <div class="navbar-nav ms-auto">
+                <button class="btn btn-outline-light btn-sm me-2" onclick="refreshData()">
+                    <i class="bi bi-arrow-clockwise refresh-btn" id="refreshIcon"></i>
+                    Actualizar
+                </button>
+                <button class="btn btn-outline-light btn-sm" onclick="exportReport()">
+                    <i class="bi bi-download me-1"></i>
+                    Exportar
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Header con métricas principales -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card metric-card text-center p-3">
+                    <h3 id="totalLogs" class="mb-1">-</h3>
+                    <small>Total de Logs</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card text-center p-3">
+                    <h3 id="securityEvents" class="mb-1">-</h3>
+                    <small>Eventos de Seguridad</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card text-center p-3">
+                    <h3 id="recentErrors" class="mb-1">-</h3>
+                    <small>Errores Recientes</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card text-center p-3">
+                    <h3 id="systemHealth" class="mb-1">-</h3>
+                    <small>Estado del Sistema</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Panel de Estado del Sistema -->
+            <div class="col-lg-6 mb-4">
+                <div class="card security-card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-activity me-2"></i>
+                            Estado del Sistema
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="systemStatus">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Actividad -->
+            <div class="col-lg-6 mb-4">
+                <div class="card security-card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Actividad por Categoría
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="activityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Feed de Actividad Reciente -->
+            <div class="col-lg-8 mb-4">
+                <div class="card security-card">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul me-2"></i>
+                            Actividad Reciente
+                        </h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="logLevel" id="allLogs" autocomplete="off" checked>
+                            <label class="btn btn-outline-light" for="allLogs">Todos</label>
+                            
+                            <input type="radio" class="btn-check" name="logLevel" id="errorLogs" autocomplete="off">
+                            <label class="btn btn-outline-light" for="errorLogs">Errores</label>
+                            
+                            <input type="radio" class="btn-check" name="logLevel" id="securityLogs" autocomplete="off">
+                            <label class="btn btn-outline-light" for="securityLogs">Seguridad</label>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="activity-feed p-3" id="activityFeed">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando logs...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Recomendaciones -->
+            <div class="col-lg-4 mb-4">
+                <div class="card security-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Recomendaciones
+                        </h5>
+                    </div>
+                    <div class="card-body" id="recommendationsPanel">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Generando recomendaciones...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Estadísticas Detalladas -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card security-card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bar-chart me-2"></i>
+                            Estadísticas Detalladas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="levelChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="timelineChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para exportar reportes -->
+    <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Exportar Reporte de Seguridad</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Formato de exportación:</label>
+                        <select class="form-select" id="exportFormat">
+                            <option value="json">JSON (Completo)</option>
+                            <option value="csv">CSV (Tabular)</option>
+                            <option value="report">Reporte HTML</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Período:</label>
+                        <select class="form-select" id="exportPeriod">
+                            <option value="all">Todo el historial</option>
+                            <option value="today">Hoy</option>
+                            <option value="week">Última semana</option>
+                            <option value="month">Último mes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="performExport()">Exportar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        class SecurityDashboard {
+            constructor() {
+                this.charts = {};
+                this.refreshInterval = null;
+                this.currentFilter = 'all';
+                
+                this.init();
+            }
+
+            async init() {
+                // Verificar que tenemos acceso a los sistemas de seguridad
+                if (!window.securityLogger) {
+                    console.error('Sistema de logs no disponible');
+                    this.showError('Sistema de logs no disponible. Asegúrese de cargar security-logger.js');
+                    return;
+                }
+
+                await this.loadDashboardData();
+                this.setupEventListeners();
+                this.startAutoRefresh();
+                
+                console.log('✅ Dashboard de seguridad inicializado');
+            }
+
+            async loadDashboardData() {
+                try {
+                    // Obtener datos del sistema de logs
+                    const stats = window.securityLogger.getLogStats();
+                    const securityReport = window.securityLogger.generateSecurityReport();
+                    
+                    // Actualizar métricas principales
+                    this.updateMainMetrics(stats, securityReport);
+                    
+                    // Actualizar estado del sistema
+                    this.updateSystemStatus(securityReport.summary.systemHealth);
+                    
+                    // Actualizar feed de actividad
+                    this.updateActivityFeed();
+                    
+                    // Actualizar recomendaciones
+                    this.updateRecommendations(securityReport.recommendations);
+                    
+                    // Actualizar gráficos
+                    this.updateCharts(stats, securityReport);
+                    
+                } catch (error) {
+                    console.error('Error cargando datos del dashboard:', error);
+                    this.showError('Error cargando datos del dashboard');
+                }
+            }
+
+            updateMainMetrics(stats, report) {
+                document.getElementById('totalLogs').textContent = stats.total || 0;
+                document.getElementById('securityEvents').textContent = report.summary.totalSecurityEvents || 0;
+                document.getElementById('recentErrors').textContent = report.summary.recentErrors || 0;
+                
+                const healthElement = document.getElementById('systemHealth');
+                const healthStatus = report.summary.systemHealth.status;
+                healthElement.textContent = healthStatus.charAt(0).toUpperCase() + healthStatus.slice(1);
+                
+                // Aplicar colores según el estado
+                const parentCard = healthElement.closest('.metric-card');
+                parentCard.className = 'card metric-card text-center p-3';
+                
+                switch(healthStatus) {
+                    case 'excelente':
+                        parentCard.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                        break;
+                    case 'advertencia':
+                        parentCard.style.background = 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
+                        break;
+                    case 'precaución':
+                        parentCard.style.background = 'linear-gradient(135deg, #fd7e14 0%, #dc3545 100%)';
+                        break;
+                    case 'crítico':
+                        parentCard.style.background = 'linear-gradient(135deg, #dc3545 0%, #6f42c1 100%)';
+                        break;
+                }
+            }
+
+            updateSystemStatus(systemHealth) {
+                const statusContainer = document.getElementById('systemStatus');
+                
+                const statusClass = {
+                    'excelente': 'status-excellent',
+                    'advertencia': 'status-warning',
+                    'precaución': 'status-danger',
+                    'crítico': 'status-critical'
+                }[systemHealth.status] || 'status-excellent';
+
+                statusContainer.innerHTML = `
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <div class="card ${statusClass} mb-2">
+                                <div class="card-body py-2">
+                                    <h4 class="text-primary">${systemHealth.errorRate}%</h4>
+                                    <small class="text-muted">Tasa de Errores</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card ${statusClass} mb-2">
+                                <div class="card-body py-2">
+                                    <h4 class="text-warning">${systemHealth.warningRate}%</h4>
+                                    <small class="text-muted">Advertencias</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card ${statusClass} mb-2">
+                                <div class="card-body py-2">
+                                    <h4 class="text-info">${systemHealth.totalEvents}</h4>
+                                    <small class="text-muted">Eventos (1h)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="alert alert-${this.getAlertClass(systemHealth.status)} mb-0">
+                            <strong>Estado: ${systemHealth.status.charAt(0).toUpperCase() + systemHealth.status.slice(1)}</strong>
+                            <br>
+                            <small>${this.getStatusMessage(systemHealth)}</small>
+                        </div>
+                    </div>
+                `;
+            }
+
+            updateActivityFeed() {
+                const feedContainer = document.getElementById('activityFeed');
+                const logs = this.getFilteredLogs();
+                
+                if (logs.length === 0) {
+                    feedContainer.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-4"></i>
+                            <p class="mt-2">No hay logs para mostrar</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const logElements = logs.slice(-20).reverse().map(log => {
+                    const time = new Date(log.timestamp).toLocaleString();
+                    const levelClass = `log-${log.level}`;
+                    
+                    return `
+                        <div class="log-entry ${levelClass}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <strong>[${log.category.toUpperCase()}]</strong> ${log.message}
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock me-1"></i>${time}
+                                        <i class="bi bi-person ms-2 me-1"></i>${log.metadata.userId}
+                                    </small>
+                                </div>
+                                <span class="badge bg-${this.getLevelBadgeColor(log.level)}">
+                                    ${log.level.toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                feedContainer.innerHTML = logElements;
+            }
+
+            updateRecommendations(recommendations) {
+                const panel = document.getElementById('recommendationsPanel');
+                
+                if (!recommendations || recommendations.length === 0) {
+                    panel.innerHTML = `
+                        <div class="text-center text-success">
+                            <i class="bi bi-shield-check display-4"></i>
+                            <p class="mt-2">¡Todo está funcionando correctamente!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const recElements = recommendations.map(rec => `
+                    <div class="recommendation-card priority-${rec.priority} p-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-${this.getPriorityIcon(rec.priority)} me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>${rec.message}</strong>
+                                <br>
+                                <small class="text-muted">${rec.action}</small>
+                            </div>
+                            <span class="badge bg-${this.getPriorityColor(rec.priority)}">
+                                ${rec.priority.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+
+                panel.innerHTML = recElements;
+            }
+
+            updateCharts(stats, report) {
+                this.updateActivityChart(stats.byCategory);
+                this.updateLevelChart(stats.byLevel);
+                this.updateTimelineChart();
+            }
+
+            updateActivityChart(categoryData) {
+                const ctx = document.getElementById('activityChart');
+                
+                if (this.charts.activity) {
+                    this.charts.activity.destroy();
+                }
+
+                const labels = Object.keys(categoryData);
+                const data = Object.values(categoryData);
+
+                this.charts.activity = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#FFCE56',
+                                '#4BC0C0',
+                                '#9966FF',
+                                '#FF9F40'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+
+            updateLevelChart(levelData) {
+                const ctx = document.getElementById('levelChart');
+                
+                if (this.charts.level) {
+                    this.charts.level.destroy();
+                }
+
+                const labels = Object.keys(levelData);
+                const data = Object.values(levelData);
+
+                this.charts.level = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Número de eventos',
+                            data: data,
+                            backgroundColor: [
+                                '#6c757d', // debug
+                                '#0dcaf0', // info
+                                '#ffc107', // warn
+                                '#dc3545'  // error
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Eventos por Nivel'
+                            }
+                        }
+                    }
+                });
+            }
+
+            updateTimelineChart() {
+                const ctx = document.getElementById('timelineChart');
+                
+                if (this.charts.timeline) {
+                    this.charts.timeline.destroy();
+                }
+
+                // Obtener datos de las últimas 24 horas agrupados por hora
+                const logs = window.securityLogger.searchLogs({
+                    fromTime: Date.now() - (24 * 60 * 60 * 1000)
+                });
+
+                const hourlyData = {};
+                for (let i = 23; i >= 0; i--) {
+                    const hour = new Date(Date.now() - (i * 60 * 60 * 1000)).getHours();
+                    hourlyData[hour] = 0;
+                }
+
+                logs.forEach(log => {
+                    const hour = new Date(log.timestamp).getHours();
+                    hourlyData[hour]++;
+                });
+
+                const labels = Object.keys(hourlyData).map(h => `${h}:00`);
+                const data = Object.values(hourlyData);
+
+                this.charts.timeline = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Eventos por hora',
+                            data: data,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Actividad en las últimas 24 horas'
+                            }
+                        }
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                // Filtros de logs
+                document.querySelectorAll('input[name="logLevel"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        this.currentFilter = e.target.id.replace('Logs', '').replace('all', 'all');
+                        this.updateActivityFeed();
+                    });
+                });
+            }
+
+            getFilteredLogs() {
+                const allLogs = window.securityLogger.logBuffer;
+                
+                switch(this.currentFilter) {
+                    case 'error':
+                        return allLogs.filter(log => log.level === 'error');
+                    case 'security':
+                        return allLogs.filter(log => log.category === 'security');
+                    default:
+                        return allLogs;
+                }
+            }
+
+            startAutoRefresh() {
+                this.refreshInterval = setInterval(() => {
+                    this.loadDashboardData();
+                }, 30000); // Cada 30 segundos
+            }
+
+            stopAutoRefresh() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                }
+            }
+
+            // Métodos utilitarios
+            getAlertClass(status) {
+                const classes = {
+                    'excelente': 'success',
+                    'advertencia': 'warning',
+                    'precaución': 'warning',
+                    'crítico': 'danger'
+                };
+                return classes[status] || 'info';
+            }
+
+            getStatusMessage(health) {
+                const messages = {
+                    'excelente': 'Sistema funcionando óptimamente sin problemas detectados.',
+                    'advertencia': 'Se detectaron algunas advertencias menores.',
+                    'precaución': 'Nivel elevado de advertencias o errores ocasionales.',
+                    'crítico': 'Se requiere atención inmediata debido a errores frecuentes.'
+                };
+                return messages[health.status] || 'Estado desconocido';
+            }
+
+            getLevelBadgeColor(level) {
+                const colors = {
+                    'debug': 'secondary',
+                    'info': 'info',
+                    'warn': 'warning',
+                    'error': 'danger'
+                };
+                return colors[level] || 'secondary';
+            }
+
+            getPriorityIcon(priority) {
+                const icons = {
+                    'alta': 'exclamation-triangle-fill',
+                    'media': 'exclamation-circle',
+                    'baja': 'info-circle'
+                };
+                return icons[priority] || 'info-circle';
+            }
+
+            getPriorityColor(priority) {
+                const colors = {
+                    'alta': 'danger',
+                    'media': 'warning',
+                    'baja': 'success'
+                };
+                return colors[priority] || 'info';
+            }
+
+            showError(message) {
+                console.error(message);
+                document.body.innerHTML = `
+                    <div class="container mt-5">
+                        <div class="alert alert-danger">
+                            <h4>Error en el Dashboard</h4>
+                            <p>${message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Funciones globales
+        function refreshData() {
+            const icon = document.getElementById('refreshIcon');
+            icon.style.animation = 'spin 1s linear';
+            
+            if (window.dashboard) {
+                window.dashboard.loadDashboardData();
+            }
+            
+            setTimeout(() => {
+                icon.style.animation = '';
+            }, 1000);
+        }
+
+        function exportReport() {
+            const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+            modal.show();
+        }
+
+        function performExport() {
+            const format = document.getElementById('exportFormat').value;
+            const period = document.getElementById('exportPeriod').value;
+            
+            if (!window.securityLogger) {
+                alert('Sistema de logs no disponible');
+                return;
+            }
+
+            let data;
+            if (format === 'report') {
+                data = window.securityLogger.generateSecurityReport();
+                downloadJSON(data, `security-report-${new Date().toISOString().split('T')[0]}.json`);
+            } else {
+                data = window.securityLogger.exportLogs(format);
+                const filename = `security-logs-${new Date().toISOString().split('T')[0]}.${format}`;
+                
+                if (format === 'json') {
+                    downloadJSON(JSON.parse(data), filename);
+                } else {
+                    downloadCSV(data, filename);
+                }
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadCSV(data, filename) {
+            const blob = new Blob([data], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Inicializar dashboard cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            window.dashboard = new SecurityDashboard();
+        });
+
+        // Agregar animación de spin
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

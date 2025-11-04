@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Dashboard Data Load - Clinik Dent</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { background: white; margin: 15px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        button { margin: 5px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        pre { font-size: 11px; overflow-x: auto; background: #f8f9fa; padding: 10px; border-radius: 4px; max-height: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Forzar Carga de Datos del Dashboard</h1>
+        
+        <div class="section">
+            <h2>🎯 Acciones de Carga</h2>
+            <button onclick="forceLoadAllData()" class="btn-success">🚀 Cargar Todo</button>
+            <button onclick="forceLoadInventario()">📦 Solo Inventario</button>
+            <button onclick="forceLoadSedes()">🏢 Solo Sedes</button>
+            <button onclick="forceLoadPagos()">💰 Solo Pagos</button>
+            <button onclick="checkCurrentState()">🔍 Verificar Estado</button>
+            <button onclick="clearResults()" class="btn-warning">🗑️ Limpiar</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Configurar usuario admin
+        localStorage.setItem('user', JSON.stringify({ id: 4, nombre: 'Admin', rol: 'administrador' }));
+        localStorage.setItem('userId', '4');
+        
+        function logResult(message, type = 'info', data = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            
+            let content = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            if (data && typeof data === 'object') {
+                content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } else if (data) {
+                content += `<br>${data}`;
+            }
+            
+            div.innerHTML = content;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        async function forceLoadInventario() {
+            logResult('📦 Forzando carga de inventario...', 'info');
+            
+            try {
+                // 1. Obtener datos de inventario
+                const response = await fetch('/api/inventario', {
+                    headers: { 'Content-Type': 'application/json', 'user-id': '4' }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const inventario = await response.json();
+                logResult(`✅ Inventario API: ${inventario.length} items`, 'success');
+                
+                // 2. Forzar renderizado en dashboard si existe
+                const dashboardWindow = window.open('dashboard-admin.html', 'dashboard');
+                if (dashboardWindow) {
+                    setTimeout(() => {
+                        try {
+                            // Inyectar datos directamente
+                            dashboardWindow.postMessage({
+                                type: 'FORCE_INVENTORY_DATA',
+                                data: inventario
+                            }, '*');
+                            logResult('📤 Datos enviados al dashboard', 'info');
+                        } catch (e) {
+                            logResult('⚠️ No se pudo comunicar con dashboard', 'warning');
+                        }
+                    }, 2000);
+                }
+                
+                return inventario;
+                
+            } catch (error) {
+                logResult(`❌ Error en inventario: ${error.message}`, 'error');
+            }
+        }
+
+        async function forceLoadSedes() {
+            logResult('🏢 Forzando carga de sedes...', 'info');
+            
+            try {
+                const response = await fetch('/api/sedes', {
+                    headers: { 'Content-Type': 'application/json', 'user-id': '4' }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const sedes = await response.json();
+                logResult(`✅ Sedes API: ${sedes.length} sedes`, 'success', sedes.slice(0, 2));
+                
+                return sedes;
+                
+            } catch (error) {
+                logResult(`❌ Error en sedes: ${error.message}`, 'error');
+            }
+        }
+
+        async function forceLoadPagos() {
+            logResult('💰 Forzando carga de pagos...', 'info');
+            
+            try {
+                const response = await fetch('/api/pagos', {
+                    headers: { 'Content-Type': 'application/json', 'user-id': '4' }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                const pagos = data.pagos || data || [];
+                logResult(`✅ Pagos API: ${pagos.length} registros`, 'success');
+                
+                return pagos;
+                
+            } catch (error) {
+                logResult(`❌ Error en pagos: ${error.message}`, 'error');
+            }
+        }
+
+        async function forceLoadAllData() {
+            logResult('🚀 INICIANDO CARGA COMPLETA...', 'info');
+            
+            const results = await Promise.allSettled([
+                forceLoadInventario(),
+                forceLoadSedes(), 
+                forceLoadPagos()
+            ]);
+            
+            let successCount = 0;
+            results.forEach((result, index) => {
+                const names = ['Inventario', 'Sedes', 'Pagos'];
+                if (result.status === 'fulfilled') {
+                    successCount++;
+                    logResult(`✅ ${names[index]} cargado exitosamente`, 'success');
+                } else {
+                    logResult(`❌ ${names[index]} falló: ${result.reason}`, 'error');
+                }
+            });
+            
+            logResult(`🎯 Carga completa: ${successCount}/3 éxitosas`, successCount === 3 ? 'success' : 'warning');
+        }
+
+        async function checkCurrentState() {
+            logResult('🔍 Verificando estado actual...', 'info');
+            
+            // Verificar si el dashboard está abierto
+            try {
+                const dashboardTest = window.open('', 'dashboard');
+                if (dashboardTest && !dashboardTest.closed) {
+                    logResult('✅ Dashboard está abierto', 'success');
+                    dashboardTest.close();
+                } else {
+                    logResult('⚠️ Dashboard no está abierto', 'warning');
+                }
+            } catch (e) {
+                logResult('⚠️ No se puede acceder al dashboard', 'warning');
+            }
+            
+            // Verificar APIs
+            const apis = [
+                ['/api/inventario', 'Inventario'],
+                ['/api/sedes', 'Sedes'],
+                ['/api/pagos', 'Pagos']
+            ];
+            
+            for (const [url, name] of apis) {
+                try {
+                    const response = await fetch(url, {
+                        headers: { 'Content-Type': 'application/json', 'user-id': '4' }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const count = Array.isArray(data) ? data.length : (data.pagos ? data.pagos.length : 'N/A');
+                        logResult(`✅ ${name}: ${count} elementos`, 'success');
+                    } else {
+                        logResult(`⚠️ ${name}: HTTP ${response.status}`, 'warning');
+                    }
+                } catch (error) {
+                    logResult(`❌ ${name}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-verificar al cargar
+        window.onload = function() {
+            logResult('🔧 Sistema de carga forzada listo', 'success');
+            checkCurrentState();
+        };
+
+        // Escuchar respuestas del dashboard
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'DASHBOARD_RESPONSE') {
+                logResult(`📨 Respuesta del dashboard: ${event.data.message}`, 'info');
+            }
+        });
+    </script>
+</body>
+</html>

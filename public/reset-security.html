@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Sistema Seguridad - Clinikdent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-danger text-white text-center">
+                        <h4>🔄 Reset Sistema de Seguridad</h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <p class="alert alert-warning">
+                            <strong>¡ATENCIÓN!</strong><br>
+                            Esto eliminará todos los bloqueos de cuentas y datos de seguridad.
+                        </p>
+                        
+                        <button id="resetBtn" class="btn btn-danger btn-lg" onclick="resetSecurity()">
+                            🔓 RESETEAR TODO EL SISTEMA
+                        </button>
+                        
+                        <div id="result" class="mt-3"></div>
+                        
+                        <div class="mt-4">
+                            <a href="/" class="btn btn-primary">Volver al Inicio</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function resetSecurity() {
+            // Limpiar TODOS los datos de seguridad
+            localStorage.removeItem('loginAttempts');
+            localStorage.removeItem('securityAttempts');
+            localStorage.removeItem('suspendedAccounts');
+            localStorage.removeItem('security_logs');
+            localStorage.removeItem('suspicious_activities');
+            localStorage.removeItem('csrf_token');
+            localStorage.removeItem('logs_last_update');
+            localStorage.removeItem('logs_last_cleanup');
+            
+            // Limpiar también sessionStorage
+            sessionStorage.clear();
+            
+            document.getElementById('result').innerHTML = `
+                <div class="alert alert-success">
+                    <h5>✅ ¡SISTEMA RESETEADO!</h5>
+                    <p>Todos los bloqueos han sido eliminados.</p>
+                    <p><strong>La cuenta de Camila ya puede acceder normalmente.</strong></p>
+                </div>
+            `;
+            
+            document.getElementById('resetBtn').disabled = true;
+            document.getElementById('resetBtn').textContent = '✅ RESETEO COMPLETADO';
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

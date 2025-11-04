@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard IA y Performance - Clinikdent</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c5aa0;
+            --secondary-color: #f8f9fa;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #0dcaf0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .metric-card {
+            text-align: center;
+            padding: 25px;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-active { background-color: var(--success-color); }
+        .status-warning { background-color: var(--warning-color); }
+        .status-error { background-color: var(--danger-color); }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .progress-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+        }
+
+        .progress-ring__circle {
+            stroke: #e9ecef;
+            stroke-width: 8;
+            fill: transparent;
+            r: 50;
+            cx: 60;
+            cy: 60;
+        }
+
+        .progress-ring__progress {
+            stroke: var(--success-color);
+            stroke-width: 8;
+            fill: transparent;
+            r: 50;
+            cx: 60;
+            cy: 60;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.5s ease-in-out;
+        }
+
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-custom {
+            border-radius: 25px;
+            padding: 8px 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .header-title {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        .system-status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .system-status.healthy {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 4px solid var(--success-color);
+        }
+
+        .system-status.warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .system-status.critical {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border-left: 4px solid var(--danger-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="header-title animate__animated animate__fadeInDown">
+                <i class="fas fa-chart-line"></i> Dashboard IA y Performance
+            </h1>
+            <p class="text-white-50">Sistema de monitoreo inteligente en tiempo real</p>
+        </div>
+
+        <!-- Métricas Principales -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card metric-card animate__animated animate__fadeInUp">
+                    <div class="metric-value text-success" id="cpu-usage">--</div>
+                    <div class="metric-label">CPU Usage</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-success" id="cpu-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card metric-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s">
+                    <div class="metric-value text-info" id="memory-usage">--</div>
+                    <div class="metric-label">Memoria</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-info" id="memory-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card metric-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+                    <div class="metric-value text-warning" id="response-time">--</div>
+                    <div class="metric-label">Tiempo Respuesta</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-warning" id="response-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card metric-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s">
+                    <div class="metric-value text-primary" id="users-online">--</div>
+                    <div class="metric-label">Usuarios Online</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-primary" id="users-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado de Sistemas -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card animate__animated animate__fadeInLeft">
+                    <div class="card-header bg-primary text-white">
+                        <h5><i class="fas fa-server"></i> Estado de Sistemas</h5>
+                    </div>
+                    <div class="card-body" id="systems-status">
+                        <div class="system-status healthy">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="status-indicator status-active"></span>
+                                    <strong>Sistema de IA</strong> - Funcionando
+                                </div>
+                                <span class="badge bg-success">99.9% Uptime</span>
+                            </div>
+                        </div>
+                        <div class="system-status healthy">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="status-indicator status-active"></span>
+                                    <strong>Integración APIs</strong> - Activo
+                                </div>
+                                <span class="badge bg-success">5/6 Conectadas</span>
+                            </div>
+                        </div>
+                        <div class="system-status warning">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="status-indicator status-warning"></span>
+                                    <strong>Performance Monitor</strong> - Advertencia
+                                </div>
+                                <span class="badge bg-warning">Alto Uso CPU</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card animate__animated animate__fadeInRight">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-bell"></i> Alertas Recientes</h5>
+                    </div>
+                    <div class="card-body" id="recent-alerts">
+                        <div class="alert alert-custom alert-warning mb-2">
+                            <small><i class="fas fa-clock"></i> Hace 5 min</small><br>
+                            CPU usage elevado detectado
+                        </div>
+                        <div class="alert alert-custom alert-info mb-2">
+                            <small><i class="fas fa-clock"></i> Hace 15 min</small><br>
+                            Sincronización Google Calendar exitosa
+                        </div>
+                        <div class="alert alert-custom alert-success mb-0">
+                            <small><i class="fas fa-clock"></i> Hace 1 hora</small><br>
+                            Backup automático completado
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controles y Acciones -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card animate__animated animate__fadeInUp">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-robot"></i> Sistema IA</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary btn-custom w-100" onclick="testIA()">
+                                    <i class="fas fa-brain"></i><br>Test IA
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-success btn-custom w-100" onclick="viewPredictions()">
+                                    <i class="fas fa-chart-line"></i><br>Predicciones
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-info btn-custom w-100" onclick="chatBot()">
+                                    <i class="fas fa-comments"></i><br>Chatbot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+                    <div class="card-header bg-warning text-white">
+                        <h5><i class="fas fa-tachometer-alt"></i> Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <button class="btn btn-outline-danger btn-custom w-100" onclick="runStressTest()">
+                                    <i class="fas fa-weight-hanging"></i><br>Stress Test
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-warning btn-custom w-100" onclick="optimizeSystem()">
+                                    <i class="fas fa-magic"></i><br>Optimizar
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-success btn-custom w-100" onclick="viewReports()">
+                                    <i class="fas fa-chart-bar"></i><br>Reportes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Ring -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card text-center animate__animated animate__fadeIn">
+                    <div class="card-body">
+                        <h5 class="card-title">Salud General del Sistema</h5>
+                        <div class="progress-ring">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring__circle"></circle>
+                                <circle class="progress-ring__progress" id="health-progress"></circle>
+                            </svg>
+                        </div>
+                        <div class="mt-3">
+                            <span id="health-percentage" class="h3 text-success">95%</span>
+                            <p class="text-muted">Sistema funcionando óptimamente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        // Variables globales
+        let updateInterval;
+        const API_BASE = '';
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            startRealTimeUpdates();
+            setProgressRing(95); // Salud general del sistema
+        });
+
+        function initializeDashboard() {
+            console.log('🚀 Inicializando Dashboard IA y Performance...');
+            loadMetrics();
+        }
+
+        function startRealTimeUpdates() {
+            updateInterval = setInterval(() => {
+                loadMetrics();
+                updateSystemStatus();
+            }, 30000); // Actualizar cada 30 segundos
+        }
+
+        async function loadMetrics() {
+            try {
+                // Simular llamada a API de métricas reales
+                const response = await fetch(`${API_BASE}/api/performance/demo/simulador`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateMetricsDisplay(data.metricas_tiempo_real);
+                } else {
+                    // Usar datos simulados si no hay conexión
+                    const simulatedData = generateSimulatedMetrics();
+                    updateMetricsDisplay(simulatedData);
+                }
+            } catch (error) {
+                console.log('📊 Usando métricas simuladas...');
+                const simulatedData = generateSimulatedMetrics();
+                updateMetricsDisplay(simulatedData);
+            }
+        }
+
+        function generateSimulatedMetrics() {
+            return {
+                servidor_principal: {
+                    cpu_usage: Math.round(Math.random() * 40 + 30),
+                    memoria_usage: Math.round(Math.random() * 30 + 50),
+                },
+                aplicacion: {
+                    usuarios_concurrentes: Math.round(Math.random() * 50 + 20),
+                    tiempo_carga_promedio_ms: Math.round(Math.random() * 300 + 200)
+                }
+            };
+        }
+
+        function updateMetricsDisplay(metrics) {
+            // CPU Usage
+            const cpuUsage = metrics.servidor_principal.cpu_usage;
+            document.getElementById('cpu-usage').textContent = cpuUsage + '%';
+            document.getElementById('cpu-progress').style.width = cpuUsage + '%';
+            
+            // Memoria
+            const memoryUsage = metrics.servidor_principal.memoria_usage;
+            document.getElementById('memory-usage').textContent = memoryUsage + '%';
+            document.getElementById('memory-progress').style.width = memoryUsage + '%';
+            
+            // Tiempo de respuesta
+            const responseTime = metrics.aplicacion.tiempo_carga_promedio_ms;
+            document.getElementById('response-time').textContent = responseTime + 'ms';
+            document.getElementById('response-progress').style.width = Math.min(responseTime / 10, 100) + '%';
+            
+            // Usuarios online
+            const usersOnline = metrics.aplicacion.usuarios_concurrentes;
+            document.getElementById('users-online').textContent = usersOnline;
+            document.getElementById('users-progress').style.width = (usersOnline / 100 * 100) + '%';
+        }
+
+        function updateSystemStatus() {
+            // Esta función se puede expandir para actualizar el estado de sistemas en tiempo real
+            console.log('🔄 Actualizando estado de sistemas...');
+        }
+
+        function setProgressRing(percentage) {
+            const circle = document.getElementById('health-progress');
+            const radius = 50;
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (percentage / 100) * circumference;
+            
+            circle.style.strokeDasharray = circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+
+        // Funciones de acciones
+        async function testIA() {
+            showLoading('Probando sistema de IA...');
+            try {
+                const response = await fetch(`${API_BASE}/api/ia-automatizacion/demo/dashboard`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', '🤖 Test de IA completado exitosamente');
+                } else {
+                    showAlert('warning', '⚠️ IA funcionando en modo simulado');
+                }
+            } catch (error) {
+                showAlert('info', '📡 Test de IA ejecutado en modo offline');
+            }
+        }
+
+        async function runStressTest() {
+            showLoading('Ejecutando stress test...');
+            try {
+                const response = await fetch(`${API_BASE}/api/performance/demo/stress-test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tipo_test: 'cpu', intensidad: 'medium' })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showAlert('success', '🔥 Stress test completado - Sistema estable');
+                } else {
+                    showAlert('warning', '⚠️ Stress test simulado ejecutado');
+                }
+            } catch (error) {
+                showAlert('info', '📊 Ejecutando stress test simulado...');
+            }
+        }
+
+        async function optimizeSystem() {
+            showLoading('Optimizando sistema...');
+            try {
+                const response = await fetch(`${API_BASE}/api/performance/demo/auto-optimizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tipo_optimizacion: 'sistema' })
+                });
+                
+                if (response.ok) {
+                    showAlert('success', '⚡ Sistema optimizado exitosamente');
+                    // Actualizar métricas después de optimización
+                    setTimeout(loadMetrics, 2000);
+                } else {
+                    showAlert('info', '🔧 Optimización simulada aplicada');
+                }
+            } catch (error) {
+                showAlert('info', '🔧 Aplicando optimizaciones automáticas...');
+            }
+        }
+
+        function viewPredictions() {
+            showAlert('info', '📈 Abriendo panel de predicciones de IA...');
+            // Aquí se podría abrir un modal con las predicciones
+        }
+
+        function chatBot() {
+            showAlert('info', '💬 Iniciando sesión de chatbot...');
+            // Aquí se podría abrir el chat integrado
+        }
+
+        function viewReports() {
+            showAlert('info', '📊 Generando reportes de performance...');
+            // Aquí se podría redirigir a la página de reportes
+        }
+
+        // Utilidades
+        function showLoading(message) {
+            // Crear toast de loading
+            const toast = `
+                <div class="toast align-items-center" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <span class="loading-spinner me-2"></span>${message}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showToast(toast);
+        }
+
+        function showAlert(type, message) {
+            const alertClass = `alert-${type}`;
+            const alert = `
+                <div class="alert ${alertClass} alert-dismissible fade show animate__animated animate__fadeInDown" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            const container = document.querySelector('.dashboard-container');
+            container.insertAdjacentHTML('afterbegin', alert);
+            
+            // Auto-dismiss después de 3 segundos
+            setTimeout(() => {
+                const alertElement = container.querySelector('.alert');
+                if (alertElement) {
+                    alertElement.classList.add('animate__fadeOut');
+                    setTimeout(() => alertElement.remove(), 500);
+                }
+            }, 3000);
+        }
+
+        function showToast(toast) {
+            // Implementación de toast personalizada
+            console.log('Toast:', toast);
+        }
+
+        // Cleanup al cerrar la página
+        window.addEventListener('beforeunload', function() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

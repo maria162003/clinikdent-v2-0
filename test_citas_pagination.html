@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Paginación Citas - ClinikDent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h2><i class="bi bi-calendar-check"></i> Test Paginación - Sección Citas</h2>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-calendar-check"></i> Gestión de Citas</h5>
+                <button class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Nueva Cita
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Información de paginación -->
+                <div id="citasPaginationInfo" class="pagination-info-container d-flex justify-content-between align-items-center mb-3" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted">
+                            Mostrando <strong id="citasShowing">0</strong> de <strong id="citasTotal">0</strong> citas
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-2">
+                            Página <strong id="citasCurrentPage">1</strong> de <strong id="citasTotalPages">1</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Tabla de citas -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Paciente</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Odontólogo</th>
+                                <th>Tratamiento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="citasTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Controles de paginación -->
+                <div id="citasPagination" class="d-flex justify-content-center" style="display: none;">
+                    <!-- Los controles se generan dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de control -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-gear"></i> Panel de Control</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <button id="btnInicializar" class="btn btn-success me-2">
+                            <i class="bi bi-play-circle"></i> Inicializar Paginación
+                        </button>
+                        <button id="btnRecargar" class="btn btn-info me-2">
+                            <i class="bi bi-arrow-clockwise"></i> Recargar Datos
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-end">
+                            <span class="text-muted">Estado del sistema: </span>
+                            <span id="estadoSistema" class="badge bg-warning">No inicializado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de información -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Información del Test</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle text-success"></i> Total de citas de prueba: <strong>22 citas</strong></li>
+                    <li><i class="bi bi-check-circle text-success"></i> Elementos por página: <strong>10 citas</strong></li>
+                    <li><i class="bi bi-check-circle text-success"></i> Páginas esperadas: <strong>3 páginas</strong></li>
+                    <li><i class="bi bi-check-circle text-success"></i> Navegación: <strong>Anterior/Siguiente + números</strong></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/pagination-system.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Test de paginación para citas iniciado');
+            
+            // Actualizar estado
+            function actualizarEstado(mensaje, tipo = 'warning') {
+                const estado = document.getElementById('estadoSistema');
+                estado.textContent = mensaje;
+                estado.className = `badge bg-${tipo}`;
+            }
+
+            // Inicializar paginación
+            document.getElementById('btnInicializar').addEventListener('click', function() {
+                console.log('📊 Iniciando paginación para citas...');
+                actualizarEstado('Inicializando...', 'info');
+                
+                try {
+                    // Verificar que el módulo existe
+                    if (!window.paginationModules || !window.paginationModules['citas']) {
+                        throw new Error('Módulo de paginación para citas no encontrado');
+                    }
+                    
+                    // Inicializar con datos de prueba
+                    initializePaginationAdmin('citas');
+                    
+                    setTimeout(() => {
+                        const modulo = window.paginationModules['citas'];
+                        console.log('✅ Paginación inicializada:', modulo);
+                        actualizarEstado(`Activo (${modulo.totalItems} citas, ${modulo.totalPages} páginas)`, 'success');
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('❌ Error al inicializar:', error);
+                    actualizarEstado('Error al inicializar', 'danger');
+                }
+            });
+
+            // Recargar datos
+            document.getElementById('btnRecargar').addEventListener('click', function() {
+                console.log('🔄 Recargando datos de citas...');
+                actualizarEstado('Recargando...', 'info');
+                
+                setTimeout(() => {
+                    if (window.paginationModules && window.paginationModules['citas']) {
+                        renderCurrentPage('citas');
+                        updatePagination('citas');
+                        actualizarEstado('Datos recargados', 'success');
+                        console.log('✅ Datos recargados correctamente');
+                    }
+                }, 300);
+            });
+
+            // Funciones auxiliares para las acciones de la tabla
+            window.editarCita = function(id) {
+                console.log('✏️ Editar cita:', id);
+                alert(`Editar cita #${id}`);
+            };
+
+            window.verDetallesCita = function(id) {
+                console.log('👁️ Ver detalles cita:', id);
+                alert(`Ver detalles de cita #${id}`);
+            };
+
+            window.cancelarCita = function(id) {
+                console.log('❌ Cancelar cita:', id);
+                if (confirm(`¿Está seguro de cancelar la cita #${id}?`)) {
+                    alert(`Cita #${id} cancelada`);
+                }
+            };
+
+            console.log('✅ Test de citas configurado correctamente');
+            actualizarEstado('Listo para inicializar', 'secondary');
+        });
+    </script>
+</body>
+</html>

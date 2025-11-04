@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña - Clinik Dent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .recovery-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        .recovery-header {
+            background: linear-gradient(135deg, #0077b6, #00a3e1);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .recovery-body {
+            padding: 2rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0077b6, #00a3e1);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,119,182,0.3);
+        }
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+        }
+        .form-control:focus {
+            border-color: #0077b6;
+            box-shadow: 0 0 0 0.2rem rgba(0,119,182,0.25);
+        }
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="recovery-container">
+                    <div class="recovery-header">
+                        <i class="fas fa-key fa-3x mb-3"></i>
+                        <h2>Recuperar Contraseña</h2>
+                        <p class="mb-0">Te ayudaremos a recuperar el acceso a tu cuenta</p>
+                    </div>
+                    
+                    <div class="recovery-body">
+                        <!-- Info Box -->
+                        <div class="info-box">
+                            <h6><i class="fas fa-info-circle text-primary"></i> ¿Cómo funciona?</h6>
+                            <ul class="mb-0 small">
+                                <li>Ingresa tu correo y número de documento</li>
+                                <li>Recibirás un enlace en tu email</li>
+                                <li>Haz clic en el enlace para crear una nueva contraseña</li>
+                                <li>El enlace expira en 1 hora por seguridad</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Alert Container -->
+                        <div id="alertContainer"></div>
+                        
+                        <!-- Loading State -->
+                        <div id="loadingState" class="text-center loading-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Enviando...</span>
+                            </div>
+                            <p class="mt-2">Enviando instrucciones de recuperación...</p>
+                        </div>
+                        
+                        <!-- Recovery Form -->
+                        <form id="recuperarForm">
+                            <div class="mb-3">
+                                <label for="correo" class="form-label">
+                                    <i class="fas fa-envelope"></i> Correo Electrónico
+                                </label>
+                                <input type="email" class="form-control" id="correo" name="correo" 
+                                       placeholder="tu-email@ejemplo.com" required>
+                                <div class="form-text">Ingresa el email con el que te registraste</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="numero_documento" class="form-label">
+                                    <i class="fas fa-id-card"></i> Número de Documento
+                                </label>
+                                <input type="text" class="form-control" id="numero_documento" name="numero_documento" 
+                                       placeholder="Número de identificación" required>
+                                <div class="form-text">Ingresa tu número de cédula o documento de identidad</div>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="fas fa-paper-plane"></i> Enviar Instrucciones
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Success State -->
+                        <div id="successState" style="display: none;" class="text-center">
+                            <i class="fas fa-envelope-circle-check fa-3x text-success mb-3"></i>
+                            <h5 class="text-success">¡Instrucciones Enviadas!</h5>
+                            <p class="text-muted">Revisa tu correo electrónico (incluyendo spam) y sigue las instrucciones para restablecer tu contraseña.</p>
+                            <small class="text-muted">Si no recibes el email en unos minutos, verifica que el correo y documento sean correctos.</small>
+                        </div>
+                        
+                        <!-- Back to Login -->
+                        <div class="text-center mt-4">
+                            <a href="/" class="text-decoration-none">
+                                <i class="fas fa-arrow-left"></i> Volver al inicio
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class PasswordRecovery {
+            constructor() {
+                this.form = document.getElementById('recuperarForm');
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.submitRecovery();
+                });
+            }
+
+            async submitRecovery() {
+                const correo = document.getElementById('correo').value;
+                const numero_documento = document.getElementById('numero_documento').value;
+                const submitBtn = document.getElementById('submitBtn');
+                
+                // Validaciones
+                if (!correo || !numero_documento) {
+                    this.showError('Todos los campos son obligatorios');
+                    return;
+                }
+
+                // Mostrar estado de carga
+                this.showLoading(true);
+                submitBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/api/auth/recuperar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ correo, numero_documento })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.showSuccess();
+                        
+                        // Si estamos en modo desarrollo, mostrar el token
+                        if (data.debug && data.debug.token) {
+                            console.log('🔧 DEBUG - Token de recuperación:', data.debug.token);
+                            console.log('🔗 URL de prueba:', `http://localhost:3000/reset-password.html?token=${data.debug.token}`);
+                        }
+                    } else {
+                        this.showError(data.msg || 'Error al procesar la solicitud');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.showError('Error de conexión. Verifica tu conexión a internet.');
+                }
+
+                this.showLoading(false);
+                submitBtn.disabled = false;
+            }
+
+            showLoading(show) {
+                const loadingState = document.getElementById('loadingState');
+                const form = document.getElementById('recuperarForm');
+                
+                if (show) {
+                    loadingState.style.display = 'block';
+                    form.style.display = 'none';
+                } else {
+                    loadingState.style.display = 'none';
+                    form.style.display = 'block';
+                }
+            }
+
+            showSuccess() {
+                const form = document.getElementById('recuperarForm');
+                const successState = document.getElementById('successState');
+                
+                form.style.display = 'none';
+                successState.style.display = 'block';
+            }
+
+            showError(message) {
+                this.showAlert(message, 'danger');
+            }
+
+            showAlert(message, type) {
+                const container = document.getElementById('alertContainer');
+                container.innerHTML = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+            }
+        }
+
+        // Inicializar cuando la página cargue
+        document.addEventListener('DOMContentLoaded', () => {
+            new PasswordRecovery();
+        });
+    </script>
+</body>
+</html>
