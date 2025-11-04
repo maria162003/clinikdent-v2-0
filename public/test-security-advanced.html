@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba del Sistema de Seguridad Avanzado - Clinikdent</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Estilos del Sistema -->
+    <link rel="stylesheet" href="/css/alerts-mejoradas.css">
+    <link rel="stylesheet" href="/css/password-validator.css">
+    
+    <style>
+        .test-section {
+            margin: 2rem 0;
+            padding: 2rem;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 4px solid #007bff;
+        }
+        
+        .security-status {
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        .status-active { background: linear-gradient(135deg, #d4edda, #c3e6cb); }
+        .status-warning { background: linear-gradient(135deg, #fff3cd, #ffeaa7); }
+        .status-danger { background: linear-gradient(135deg, #f8d7da, #f1b6bb); }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand">
+                <i class="bi bi-shield-check me-2"></i>
+                Prueba del Sistema de Seguridad Avanzado
+            </span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Estado del Sistema -->
+        <div class="test-section">
+            <h3><i class="bi bi-activity me-2"></i>Estado del Sistema</h3>
+            <div id="systemStatus" class="security-status status-active">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Verificando...</span>
+                </div>
+                <p class="mt-2">Verificando estado del sistema...</p>
+            </div>
+        </div>
+
+        <!-- Prueba de Login -->
+        <div class="test-section">
+            <h3><i class="bi bi-box-arrow-in-right me-2"></i>Prueba de Login con Seguridad</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <form id="test-login-form">
+                        <div class="mb-3">
+                            <label class="form-label">Email:</label>
+                            <input type="email" class="form-control" id="test-email" value="test@clinikdent.com" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña:</label>
+                            <input type="password" class="form-control" id="test-password" value="contraseña_incorrecta" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-shield-lock me-2"></i>Probar Login (Fallará)
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-2"></i>Instrucciones de Prueba:</h6>
+                        <ol>
+                            <li>Haz clic en "Probar Login" para simular un fallo</li>
+                            <li>Repite 3 veces para ver el bloqueo progresivo</li>
+                            <li>Observa cómo cambian las alertas</li>
+                            <li>Verifica las notificaciones por email</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prueba de Validador de Contraseñas -->
+        <div class="test-section">
+            <h3><i class="bi bi-key me-2"></i>Prueba del Validador de Contraseñas</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Nueva Contraseña:</label>
+                        <input type="password" class="form-control" id="test-new-password" placeholder="Escribe una contraseña...">
+                        <div id="password-strength-container"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-success">
+                        <h6><i class="bi bi-lightbulb me-2"></i>Prueba la Validación:</h6>
+                        <ul>
+                            <li>Escribe caracteres uno por uno</li>
+                            <li>Observa la barra de fortaleza</li>
+                            <li>Ve las sugerencias en tiempo real</li>
+                            <li>Intenta diferentes combinaciones</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Prueba -->
+        <div class="test-section">
+            <h3><i class="bi bi-lightning me-2"></i>Pruebas Rápidas</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <button class="btn btn-success w-100 mb-2" onclick="testSuccessAlert()">
+                        <i class="bi bi-check-circle me-2"></i>Alerta de Éxito
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-warning w-100 mb-2" onclick="testWarningAlert()">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Alerta de Advertencia
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-danger w-100 mb-2" onclick="testErrorAlert()">
+                        <i class="bi bi-x-circle me-2"></i>Alerta de Error
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-info w-100 mb-2" onclick="testConfirmAlert()">
+                        <i class="bi bi-question-circle me-2"></i>Confirmación
+                    </button>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <button class="btn btn-primary w-100 mb-2" onclick="openSecurityDashboard()">
+                        <i class="bi bi-speedometer2 me-2"></i>Abrir Dashboard
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-secondary w-100 mb-2" onclick="resetSecuritySystem()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Resetear Sistema
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-outline-primary w-100 mb-2" onclick="generateSecurityReport()">
+                        <i class="bi bi-file-text me-2"></i>Generar Reporte
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log de Actividad -->
+        <div class="test-section">
+            <h3><i class="bi bi-list-ul me-2"></i>Log de Actividad de Prueba</h3>
+            <div id="activity-log" class="bg-dark text-light p-3 rounded" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.85em;">
+                <div class="text-success">Sistema de prueba inicializado...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts del Sistema -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/alerts-override.js"></script>
+    <script src="/js/alerts-init.js"></script>
+    <script src="/js/advanced-security-system.js"></script>
+    <script src="/js/password-validator.js"></script>
+    <script src="/js/light-security.js"></script>
+    <script src="/js/security-logger.js"></script>
+
+    <script>
+        // Variables globales para la prueba
+        let testPasswordValidator = null;
+        
+        // Inicialización del sistema de prueba
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🔐 Inicializando sistema de prueba de seguridad...');
+            
+            // Verificar estado del sistema
+            setTimeout(checkSystemStatus, 1000);
+            
+            // Inicializar validador de contraseñas para prueba
+            setTimeout(() => {
+                testPasswordValidator = new PasswordValidator('test-new-password');
+                log('✅ Validador de contraseñas de prueba inicializado');
+            }, 2000);
+            
+            // Configurar formulario de login de prueba
+            setupTestLogin();
+            
+            log('✅ Sistema de prueba listo');
+        });
+
+        // Verificar estado del sistema
+        function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            const components = [
+                { name: 'SecurityManager', obj: window.securityManager },
+                { name: 'AlertSystem', obj: window.showCustomAlert },
+                { name: 'PasswordValidator', obj: window.PasswordValidator },
+                { name: 'SecurityLogger', obj: window.securityLogger },
+                { name: 'LightSecurity', obj: window.lightSecurity }
+            ];
+            
+            const loaded = components.filter(comp => comp.obj).length;
+            const total = components.length;
+            
+            if (loaded === total) {
+                statusDiv.className = 'security-status status-active';
+                statusDiv.innerHTML = `
+                    <i class="bi bi-check-circle-fill text-success display-4"></i>
+                    <h5 class="text-success mt-2">Sistema Completamente Funcional</h5>
+                    <p>Todos los componentes (${loaded}/${total}) cargados correctamente</p>
+                `;
+                log(`✅ Sistema 100% operativo: ${loaded}/${total} componentes activos`);
+            } else if (loaded > 0) {
+                statusDiv.className = 'security-status status-warning';
+                statusDiv.innerHTML = `
+                    <i class="bi bi-exclamation-triangle-fill text-warning display-4"></i>
+                    <h5 class="text-warning mt-2">Sistema Parcialmente Operativo</h5>
+                    <p>Componentes cargados: ${loaded}/${total}</p>
+                `;
+                log(`⚠️ Sistema parcial: ${loaded}/${total} componentes activos`);
+            } else {
+                statusDiv.className = 'security-status status-danger';
+                statusDiv.innerHTML = `
+                    <i class="bi bi-x-circle-fill text-danger display-4"></i>
+                    <h5 class="text-danger mt-2">Sistema No Operativo</h5>
+                    <p>No se pudieron cargar los componentes de seguridad</p>
+                `;
+                log(`❌ Sistema inoperativo: 0/${total} componentes activos`);
+            }
+        }
+
+        // Configurar login de prueba
+        function setupTestLogin() {
+            const form = document.getElementById('test-login-form');
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('test-email').value;
+                const password = document.getElementById('test-password').value;
+                
+                log(`🔐 Probando login con: ${email}`);
+                
+                // Simular fallo de login
+                if (window.securityManager) {
+                    window.securityManager.onLoginFailure(email);
+                    log(`❌ Login fallido simulado para: ${email}`);
+                } else {
+                    log(`⚠️ SecurityManager no disponible`);
+                    alert('Sistema de seguridad no disponible');
+                }
+            });
+        }
+
+        // Funciones de prueba de alertas
+        function testSuccessAlert() {
+            if (window.showCustomAlert) {
+                showCustomAlert({
+                    type: 'success',
+                    title: '✅ Prueba Exitosa',
+                    message: 'Esta es una alerta de éxito del nuevo sistema. ¡Funciona perfectamente!',
+                    confirmText: 'Genial'
+                });
+                log('✅ Alerta de éxito mostrada');
+            }
+        }
+
+        function testWarningAlert() {
+            if (window.showCustomAlert) {
+                showCustomAlert({
+                    type: 'warning',
+                    title: '⚠️ Advertencia de Prueba',
+                    message: 'Esta es una advertencia del sistema de seguridad. Todo está funcionando correctamente.',
+                    confirmText: 'Entendido'
+                });
+                log('⚠️ Alerta de advertencia mostrada');
+            }
+        }
+
+        function testErrorAlert() {
+            if (window.showCustomAlert) {
+                showCustomAlert({
+                    type: 'error',
+                    title: '❌ Error de Prueba',
+                    message: 'Esta es una simulación de error. El sistema está funcionando correctamente.',
+                    confirmText: 'Entendido'
+                });
+                log('❌ Alerta de error mostrada');
+            }
+        }
+
+        function testConfirmAlert() {
+            if (window.showCustomAlert) {
+                showCustomAlert({
+                    type: 'info',
+                    title: '❓ Confirmación de Prueba',
+                    message: '¿Quieres continuar con la prueba del sistema?',
+                    confirmText: 'Sí, continuar',
+                    cancelText: 'No, cancelar'
+                }).then(result => {
+                    if (result) {
+                        log('✅ Usuario confirmó la acción');
+                    } else {
+                        log('❌ Usuario canceló la acción');
+                    }
+                });
+            }
+        }
+
+        // Funciones del sistema
+        function openSecurityDashboard() {
+            window.open('/security-dashboard.html', '_blank');
+            log('📊 Dashboard de seguridad abierto');
+        }
+
+        function resetSecuritySystem() {
+            if (window.securityManager && window.securityManager.resetSecuritySystem) {
+                const password = prompt('Ingrese la contraseña de administrador:');
+                if (password) {
+                    const success = window.securityManager.resetSecuritySystem(password);
+                    if (success) {
+                        log('🔄 Sistema de seguridad reiniciado');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        log('❌ Contraseña de administrador incorrecta');
+                    }
+                }
+            } else {
+                log('⚠️ Función de reset no disponible');
+            }
+        }
+
+        function generateSecurityReport() {
+            if (window.securityLogger) {
+                const report = window.securityLogger.generateSecurityReport();
+                const reportWindow = window.open('', '_blank');
+                reportWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Reporte de Seguridad - ${new Date().toLocaleDateString()}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 20px; }
+                                pre { background: #f8f9fa; padding: 15px; border-radius: 5px; }
+                            </style>
+                        </head>
+                        <body>
+                            <h1>Reporte de Seguridad</h1>
+                            <p>Generado: ${new Date().toLocaleString()}</p>
+                            <pre>${JSON.stringify(report, null, 2)}</pre>
+                        </body>
+                    </html>
+                `);
+                reportWindow.document.close();
+                log('📄 Reporte de seguridad generado');
+            } else {
+                log('⚠️ SecurityLogger no disponible');
+            }
+        }
+
+        // Función de logging para la consola de prueba  
+        function log(message) {
+            const logDiv = document.getElementById('activity-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            
+            // Asignar colores según el tipo de mensaje
+            let className = 'text-light';
+            if (message.includes('✅')) className = 'text-success';
+            else if (message.includes('⚠️')) className = 'text-warning';
+            else if (message.includes('❌')) className = 'text-danger';
+            else if (message.includes('🔐') || message.includes('🔒')) className = 'text-info';
+            else if (message.includes('📊') || message.includes('📄')) className = 'text-primary';
+            
+            logEntry.className = className;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // También log a consola
+            console.log(message);
+        }
+
+        // Auto-actualizar estado cada 30 segundos
+        setInterval(checkSystemStatus, 30000);
+    </script>
+</body>
+</html>

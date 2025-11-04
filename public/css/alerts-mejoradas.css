@@ -1,0 +1,305 @@
+/* ============================================================================
+   ALERTAS MEJORADAS - CLINIKDENT
+   Sistema de alertas con estilos modernos y animaciones
+   ============================================================================ */
+
+/* Alertas base con animaciones mejoradas */
+.alert {
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 1rem 1.25rem !important;
+    margin-bottom: 1rem !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    animation: alertSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Animaciones */
+@keyframes alertSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes alertSlideOut {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+}
+
+.alert.fade-out {
+    animation: alertSlideOut 0.3s ease-in-out forwards !important;
+}
+
+/* Efecto de brillo sutil */
+.alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.alert:hover::before {
+    left: 100%;
+}
+
+/* Alertas de éxito */
+.alert-success {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
+    border-left: 4px solid #28a745 !important;
+    color: #155724 !important;
+}
+
+.alert-success .alert-icon {
+    color: #28a745;
+    font-size: 1.2em;
+    margin-right: 0.75rem;
+}
+
+/* Alertas de error */
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da, #f1b6bb) !important;
+    border-left: 4px solid #dc3545 !important;
+    color: #721c24 !important;
+}
+
+.alert-danger .alert-icon {
+    color: #dc3545;
+    font-size: 1.2em;
+    margin-right: 0.75rem;
+}
+
+/* Alertas de advertencia */
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+    border-left: 4px solid #ffc107 !important;
+    color: #856404 !important;
+}
+
+.alert-warning .alert-icon {
+    color: #ffc107;
+    font-size: 1.2em;
+    margin-right: 0.75rem;
+}
+
+/* Alertas informativas */
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb) !important;
+    border-left: 4px solid #17a2b8 !important;
+    color: #0c5460 !important;
+}
+
+.alert-info .alert-icon {
+    color: #17a2b8;
+    font-size: 1.2em;
+    margin-right: 0.75rem;
+}
+
+/* Alertas primarias */
+.alert-primary {
+    background: linear-gradient(135deg, #d6e9ff, #cce7ff) !important;
+    border-left: 4px solid #007bff !important;
+    color: #004085 !important;
+}
+
+.alert-primary .alert-icon {
+    color: #007bff;
+    font-size: 1.2em;
+    margin-right: 0.75rem;
+}
+
+/* Botón de cerrar mejorado */
+.alert .btn-close {
+    background: none !important;
+    border: none !important;
+    font-size: 1.2em !important;
+    opacity: 0.6 !important;
+    transition: all 0.2s ease !important;
+    padding: 0.25rem !important;
+    margin: -0.25rem -0.25rem -0.25rem 0 !important;
+}
+
+.alert .btn-close:hover {
+    opacity: 1 !important;
+    transform: scale(1.1) !important;
+}
+
+/* Alertas posicionadas (notificaciones flotantes) */
+.alert.position-fixed {
+    z-index: 9999 !important;
+    min-width: 350px !important;
+    max-width: 500px !important;
+    top: 20px !important;
+    right: 20px !important;
+}
+
+/* Contenedor de alertas apiladas */
+.alerts-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.alerts-container .alert {
+    pointer-events: all;
+    margin-bottom: 0.75rem;
+    animation: alertSlideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes alertSlideInRight {
+    0% {
+        opacity: 0;
+        transform: translateX(100%) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Efectos hover para alertas interactivas */
+.alert.alert-interactive {
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+}
+
+.alert.alert-interactive:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Alertas con progreso */
+.alert-with-progress {
+    position: relative;
+    overflow: hidden;
+}
+
+.alert-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    animation: progressBar linear;
+}
+
+.alert-success .alert-progress {
+    background: #28a745;
+}
+
+.alert-danger .alert-progress {
+    background: #dc3545;
+}
+
+.alert-warning .alert-progress {
+    background: #ffc107;
+}
+
+.alert-info .alert-progress {
+    background: #17a2b8;
+}
+
+@keyframes progressBar {
+    0% { width: 100%; }
+    100% { width: 0%; }
+}
+
+/* Alertas compactas */
+.alert.alert-compact {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.9em !important;
+}
+
+/* Alertas con iconos grandes */
+.alert-with-large-icon {
+    display: flex;
+    align-items: flex-start;
+    padding: 1.25rem !important;
+}
+
+.alert-large-icon {
+    font-size: 2em;
+    margin-right: 1rem;
+    margin-top: 0.1rem;
+    opacity: 0.8;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .alert.position-fixed {
+        left: 10px !important;
+        right: 10px !important;
+        min-width: auto !important;
+        max-width: none !important;
+    }
+    
+    .alerts-container {
+        left: 10px;
+        right: 10px;
+    }
+    
+    .alert {
+        font-size: 0.9em !important;
+        padding: 0.875rem 1rem !important;
+    }
+}
+
+/* Modo oscuro */
+@media (prefers-color-scheme: dark) {
+    .alert-success {
+        background: linear-gradient(135deg, #1e3a2e, #2d5a3d) !important;
+        color: #d4edda !important;
+    }
+    
+    .alert-danger {
+        background: linear-gradient(135deg, #3a1e24, #5a2d35) !important;
+        color: #f8d7da !important;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(135deg, #3a3020, #5a4d35) !important;
+        color: #fff3cd !important;
+    }
+    
+    .alert-info {
+        background: linear-gradient(135deg, #1e2a3a, #2d4155) !important;
+        color: #d1ecf1 !important;
+    }
+}
+
+/* Efectos adicionales */
+.alert.pulse {
+    animation: alertPulse 2s infinite;
+}
+
+@keyframes alertPulse {
+    0% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+    50% { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); }
+    100% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+}
+
+/* Bordes redondeados adicionales */
+.alert.rounded-pill {
+    border-radius: 50px !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}

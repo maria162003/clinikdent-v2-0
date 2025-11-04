@@ -1,0 +1,110 @@
+// Script simple para insertar datos de prueba de MercadoPago
+require('dotenv').config();
+const { Client } = require('pg');
+
+async function insertarDatosPrueba() {
+    const client = new Client({
+        host: process.env.PGHOST,
+        user: process.env.PGUSER,
+        password: process.env.PGPASSWORD,
+        database: process.env.PGDATABASE,
+        port: process.env.PGPORT,
+    });
+
+    try {
+        await client.connect();
+        console.log('🧪 Insertando datos de prueba para MercadoPago...');
+
+        const transacciones = [
+            {
+                preference_id: 'PREF_001_PRUEBA',
+                external_reference: 'CITA_001',
+                tipo: 'paciente',
+                usuario_id: 3,
+                monto: 150000,
+                estado: 'pending',
+                datos_pago: JSON.stringify({
+                    description: 'Consulta de odontología general',
+                    payer_email: 'juan@gmail.com',
+                    created: new Date().toISOString()
+                })
+            },
+            {
+                preference_id: 'PREF_002_PRUEBA',
+                external_reference: 'CITA_002',
+                tipo: 'paciente',
+                usuario_id: 3,
+                monto: 200000,
+                estado: 'approved',
+                datos_pago: JSON.stringify({
+                    description: 'Limpieza dental',
+                    payer_email: 'juan@gmail.com',
+                    payment_method: 'credit_card',
+                    payment_id: 'MP001234',
+                    created: new Date('2024-09-01').toISOString()
+                })
+            },
+            {
+                preference_id: 'PREF_003_PRUEBA',
+                external_reference: 'CITA_003',
+                tipo: 'paciente',
+                usuario_id: 3,
+                monto: 500000,
+                estado: 'approved',
+                datos_pago: JSON.stringify({
+                    description: 'Tratamiento de conducto',
+                    payer_email: 'juan@gmail.com',
+                    payment_method: 'debit_card',
+                    payment_id: 'MP001235',
+                    created: new Date('2024-08-15').toISOString()
+                })
+            }
+        ];
+
+        for (const transaccion of transacciones) {
+            // Verificar si ya existe
+            const existing = await client.query(
+                'SELECT id FROM transacciones_mercadopago WHERE preference_id = $1',
+                [transaccion.preference_id]
+            );
+            
+            if (existing.rows.length === 0) {
+                await client.query(`
+                    INSERT INTO transacciones_mercadopago 
+                    (preference_id, external_reference, tipo, usuario_id, monto, estado, datos_pago)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `, [
+                    transaccion.preference_id,
+                    transaccion.external_reference,
+                    transaccion.tipo,
+                    transaccion.usuario_id,
+                    transaccion.monto,
+                    transaccion.estado,
+                    transaccion.datos_pago
+                ]);
+                console.log(`✅ Insertado: ${transaccion.preference_id}`);
+            } else {
+                console.log(`⏭️ Ya existe: ${transaccion.preference_id}`);
+            }
+        }
+
+        console.log('✅ Datos de prueba insertados exitosamente');
+        
+        const result = await client.query(
+            'SELECT * FROM transacciones_mercadopago WHERE usuario_id = $1 ORDER BY fecha_creacion DESC',
+            [3]
+        );
+        
+        console.log(`📊 Total transacciones para usuario 3: ${result.rows.length}`);
+        result.rows.forEach(row => {
+            console.log(`   - ${row.preference_id}: $${row.monto} (${row.estado})`);
+        });
+
+    } catch (error) {
+        console.error('❌ Error:', error);
+    } finally {
+        await client.end();
+    }
+}
+
+insertarDatosPrueba();

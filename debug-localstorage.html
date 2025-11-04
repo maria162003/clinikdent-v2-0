@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug LocalStorage Actual</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .key { font-weight: bold; color: #0066cc; }
+        .value { background: #f5f5f5; padding: 5px; margin: 5px 0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug LocalStorage Actual</h1>
+    
+    <div class="section">
+        <h3>📋 Contenido Completo de LocalStorage:</h3>
+        <div id="fullStorage"></div>
+    </div>
+    
+    <div class="section">
+        <h3>🎯 Valores Específicos de Autenticación:</h3>
+        <div id="authValues"></div>
+    </div>
+    
+    <div class="section">
+        <h3>🛠️ Acciones:</h3>
+        <button onclick="debugGetUserId()" style="padding: 10px; margin: 5px;">Simular getUserId()</button>
+        <button onclick="clearSpecificAuth()" style="padding: 10px; margin: 5px; background: #ff6666; color: white;">Limpiar Auth Específico</button>
+        <button onclick="setCorrectJuanData()" style="padding: 10px; margin: 5px; background: #66cc66; color: white;">Establecer Datos Correctos de Juan</button>
+    </div>
+    
+    <div class="section">
+        <h3>📊 Resultado de Debug:</h3>
+        <div id="debugResult"></div>
+    </div>
+
+    <script>
+        function displayFullStorage() {
+            const fullDiv = document.getElementById('fullStorage');
+            let html = '';
+            
+            if (localStorage.length === 0) {
+                html = '<div class="error">LocalStorage está vacío</div>';
+            } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    html += `<div><span class="key">${key}:</span><div class="value">${value}</div></div>`;
+                }
+            }
+            
+            fullDiv.innerHTML = html;
+        }
+        
+        function displayAuthValues() {
+            const authDiv = document.getElementById('authValues');
+            
+            const userId = localStorage.getItem('userId');
+            const userRole = localStorage.getItem('userRole'); 
+            const userStr = localStorage.getItem('user');
+            
+            let userObj = null;
+            try {
+                userObj = userStr ? JSON.parse(userStr) : null;
+            } catch (e) {
+                userObj = `Error parseando: ${e.message}`;
+            }
+            
+            authDiv.innerHTML = `
+                <div><span class="key">userId:</span> <span class="value">${userId || 'null'}</span></div>
+                <div><span class="key">userRole:</span> <span class="value">${userRole || 'null'}</span></div>
+                <div><span class="key">user object:</span> <div class="value">${JSON.stringify(userObj, null, 2)}</div></div>
+            `;
+        }
+        
+        function debugGetUserId() {
+            // Simular exactamente lo que hace el método getUserId()
+            const userId = localStorage.getItem('userId');
+            let userObjId = null;
+            
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const userObj = JSON.parse(userStr);
+                    userObjId = userObj?.id;
+                } catch (e) {
+                    userObjId = `Error: ${e.message}`;
+                }
+            }
+            
+            const finalResult = userId || userObjId;
+            
+            document.getElementById('debugResult').innerHTML = `
+                <h4>🔍 Simulación de getUserId():</h4>
+                <div><span class="key">localStorage.getItem('userId'):</span> <span class="value">${userId || 'null'}</span></div>
+                <div><span class="key">localStorage.getItem('user')?.id:</span> <span class="value">${userObjId || 'null'}</span></div>
+                <div><span class="key">Resultado final (userId || user?.id):</span> <span class="value ${finalResult == 3 ? 'error' : 'success'}">${finalResult}</span></div>
+                ${finalResult == 3 ? '<div class="error">⚠️ PROBLEMA: Está devolviendo ID 3 (María González)</div>' : ''}
+                ${finalResult == 4 ? '<div class="success">✅ CORRECTO: Está devolviendo ID 4 (Juan Pérez)</div>' : ''}
+            `;
+        }
+        
+        function clearSpecificAuth() {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('user');
+            alert('✅ Datos de autenticación eliminados');
+            displayFullStorage();
+            displayAuthValues();
+        }
+        
+        function setCorrectJuanData() {
+            localStorage.setItem('userId', '4');
+            localStorage.setItem('userRole', 'paciente');
+            localStorage.setItem('user', JSON.stringify({
+                id: 4,
+                nombre: 'Juan',
+                apellido: 'Pérez',
+                rol: 'paciente'
+            }));
+            alert('✅ Datos correctos de Juan Pérez establecidos');
+            displayFullStorage();
+            displayAuthValues();
+        }
+        
+        // Mostrar datos al cargar
+        displayFullStorage();
+        displayAuthValues();
+        
+        // Auto-refresh cada 2 segundos
+        setInterval(() => {
+            displayFullStorage();
+            displayAuthValues();
+        }, 2000);
+    </script>
+</body>
+</html>

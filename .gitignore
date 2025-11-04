@@ -1,0 +1,50 @@
+# Archivos de configuración con claves sensibles
+.env
+.env.local
+.env.production
+
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales
+*.tmp
+*.temp
+~*
+
+# Build y dist
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de backup
+*.bak
+*.backup
+
+# Archivos de testing
+coverage/
+.nyc_output/
+
+# Variables de entorno sensibles
+config/keys.js
+config/credentials.json
+
+# Certificados y claves
+*.pem
+*.key
+*.cert

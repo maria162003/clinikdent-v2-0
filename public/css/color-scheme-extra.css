@@ -1,0 +1,231 @@
+/* ============================================================================
+   ESTILOS ADICIONALES PARA ESQUEMA DE COLORES CLINIK DENT
+   ============================================================================ */
+
+/* Estados de citas y elementos - colores estándar */
+.badge.bg-confirmada,
+.badge.bg-completada {
+    background-color: #198754 !important; /* Verde Bootstrap success */
+    color: white !important;
+}
+
+.badge.bg-cancelada,
+.badge.bg-inactiva {
+    background-color: #dc3545 !important; /* Rojo Bootstrap danger */
+    color: white !important;
+}
+
+.badge.bg-programada,
+.badge.bg-pendiente {
+    background-color: #0dcaf0 !important; /* Azul Bootstrap info */
+    color: white !important;
+}
+
+/* Botones de acción estandarizados - Forzar colores sólidos */
+.btn-success,
+.btn.btn-success,
+.btn-editar,
+.btn.btn-editar,
+button.btn-success {
+    background: #198754 !important; /* Verde sólido para editar */
+    background-color: #198754 !important;
+    background-image: none !important;
+    border-color: #198754 !important;
+    color: white !important;
+    box-shadow: none !important;
+}
+
+.btn-success:hover,
+.btn.btn-success:hover,
+.btn-editar:hover,
+button.btn-success:hover {
+    background: #157347 !important;
+    background-color: #157347 !important;
+    background-image: none !important;
+    border-color: #146c43 !important;
+    color: white !important;
+}
+
+.btn-danger,
+.btn.btn-danger,
+.btn-eliminar,
+.btn.btn-eliminar,
+button.btn-danger {
+    background: #dc3545 !important; /* Rojo sólido para eliminar */
+    background-color: #dc3545 !important;
+    background-image: none !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+    box-shadow: none !important;
+}
+
+.btn-danger:hover,
+.btn.btn-danger:hover,
+.btn-eliminar:hover,
+button.btn-danger:hover {
+    background: #bb2d3b !important;
+    background-color: #bb2d3b !important;
+    background-image: none !important;
+    border-color: #b02a37 !important;
+    color: white !important;
+}
+
+/* Roles de usuario */
+.badge.bg-administrador {
+    background-color: #0d6efd !important; /* Azul Bootstrap primary */
+    color: white !important;
+}
+
+.badge.bg-odontologo {
+    background-color: #0dcaf0 !important; /* Azul Bootstrap info */
+    color: white !important;
+}
+
+.badge.bg-paciente {
+    background-color: #6c757d !important; /* Gris Bootstrap secondary */
+    color: white !important;
+}
+
+/* Estados específicos del sistema */
+.status-active,
+.estado-activo {
+    color: #198754 !important;
+    font-weight: 600;
+}
+
+.status-inactive,
+.estado-inactivo {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+/* Mejoras visuales para tablas */
+.color-scheme-table .btn-group .btn {
+    margin-right: 2px;
+}
+
+.color-scheme-table .btn-group .btn:last-child {
+    margin-right: 0;
+}
+
+/* Iconos en botones de acción */
+.btn-sm i {
+    font-size: 0.875rem;
+}
+
+/* Estados en calendario */
+.calendario-programada {
+    background-color: #0dcaf0 !important;
+    color: white !important;
+}
+
+.calendario-confirmada,
+.calendario-completada {
+    background-color: #198754 !important;
+    color: white !important;
+}
+
+.calendario-cancelada {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* Toast personalizados para estados */
+.toast-success .toast-header {
+    background-color: #198754;
+    color: white;
+}
+
+.toast-error .toast-header {
+    background-color: #dc3545;
+    color: white;
+}
+
+.toast-warning .toast-header {
+    background-color: #ffc107;
+    color: #000;
+}
+
+/* Animaciones suaves para cambios de estado */
+.badge, .btn {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Accesibilidad - mejor contraste */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Responsive - botones más pequeños en móvil */
+@media (max-width: 768px) {
+    .btn-group .btn-sm {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.75rem;
+    }
+    
+    .btn-group .btn-sm i {
+        font-size: 0.75rem;
+    }
+}
+
+/* Colores adicionales para estados específicos */
+.estado-revision {
+    background-color: #fd7e14 !important; /* Naranja */
+    color: white !important;
+}
+
+.estado-urgente {
+    background-color: #dc3545 !important;
+    color: white !important;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* FORZAR COLORES EN TABLAS - Eliminar cualquier gradiente */
+table .btn-success,
+table button.btn-success,
+.table .btn-success,
+.color-scheme-table .btn-success {
+    background: #198754 !important;
+    background-color: #198754 !important;
+    background-image: none !important;
+    border: 1px solid #198754 !important;
+    color: #fff !important;
+}
+
+table .btn-danger,
+table button.btn-danger,
+.table .btn-danger,
+.color-scheme-table .btn-danger {
+    background: #dc3545 !important;
+    background-color: #dc3545 !important;
+    background-image: none !important;
+    border: 1px solid #dc3545 !important;
+    color: #fff !important;
+}
+
+/* Eliminar cualquier box-shadow o border-radius que cause gradientes */
+.btn-sm.btn-success,
+.btn-sm.btn-danger {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+/* Estados específicos para badges */
+.badge.bg-true {
+    background-color: #198754 !important;
+    color: white !important;
+}
+
+.badge.bg-false {
+    background-color: #dc3545 !important;
+    color: white !important;
+}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Paginación - Usuarios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid p-4">
+        <h1 class="mb-4">🧪 Test - Controles de Paginación</h1>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Gestión de Usuarios - Con Controles de Navegación</h5>
+                <button class="btn btn-success" onclick="initializePaginationAdmin('usuarios')">
+                    🔄 Cargar Usuarios
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="usuariosTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usuariosTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando usuarios...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination info for usuarios -->
+                <div id="usuariosPaginationInfo" class="pagination-info-container d-flex justify-content-between align-items-center mb-3" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3">
+                            Mostrando <span id="usuariosShowing">0</span> de <span id="usuariosTotal">0</span> usuarios
+                        </span>
+                        <div class="d-flex align-items-center">
+                            <label class="form-label me-2 mb-0 text-muted" for="usuariosItemsPerPage">
+                                Mostrar:
+                            </label>
+                            <select class="form-select form-select-sm pagination-select" id="usuariosItemsPerPage" style="width: auto; z-index: 1050;" onchange="changeItemsPerPageAdmin('usuarios', this.value)">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span class="text-muted ms-2">por página</span>
+                        </div>
+                    </div>
+                    <div class="text-muted">
+                        Página <span id="usuariosCurrentPage">1</span> de <span id="usuariosTotalPages">1</span>
+                    </div>
+                </div>
+                
+                <!-- Pagination controls for usuarios -->
+                <div id="usuariosPagination" class="d-flex justify-content-center" style="display: none;">
+                    <!-- Pagination buttons generated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Control -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Panel de Control</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="goToPageAdmin('usuarios', 1)">
+                            Primera Página
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-secondary w-100" onclick="goToPageAdmin('usuarios', 2)">
+                            Segunda Página
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-info w-100" onclick="changeItemsPerPageAdmin('usuarios', 5)">
+                            5 por página
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-warning w-100" onclick="changeItemsPerPageAdmin('usuarios', 25)">
+                            25 por página
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Estado del Sistema:</h6>
+                    <div id="systemStatus" class="alert alert-info">
+                        Esperando inicialización...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/pagination-system.js"></script>
+    <script>
+        function updateSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            if (typeof window.paginationModules === 'object' && window.paginationModules.usuarios) {
+                const module = window.paginationModules.usuarios;
+                statusDiv.innerHTML = `
+                    <strong>Sistema Cargado ✅</strong><br>
+                    Total items: ${module.totalItems}<br>
+                    Página actual: ${module.currentPage}<br>
+                    Total páginas: ${module.totalPages}<br>
+                    Items por página: ${module.itemsPerPage}
+                `;
+                statusDiv.className = 'alert alert-success';
+            } else {
+                statusDiv.innerHTML = 'Sistema no cargado ❌';
+                statusDiv.className = 'alert alert-danger';
+            }
+        }
+
+        // Auto-cargar al abrir la página
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                updateSystemStatus();
+                
+                // Auto-inicializar después de 1 segundo
+                setTimeout(() => {
+                    if (typeof initializePaginationAdmin === 'function') {
+                        initializePaginationAdmin('usuarios');
+                        
+                        // Actualizar status después de cargar
+                        setTimeout(updateSystemStatus, 500);
+                    }
+                }, 1000);
+            }, 500);
+        });
+
+        // Actualizar status cada 2 segundos
+        setInterval(updateSystemStatus, 2000);
+    </script>
+</body>
+</html>

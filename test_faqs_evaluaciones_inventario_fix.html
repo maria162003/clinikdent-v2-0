@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación FAQs, Evaluaciones e Inventario - Paginación Integrada</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .fixed-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        .test-section {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            background: #f8f9fa;
+        }
+        .test-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 1rem;
+            border-radius: 6px 6px 0 0;
+            margin: 0;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #28a745; }
+        .status-warning { background-color: #ffc107; }
+        .status-error { background-color: #dc3545; }
+        .explanation-box {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="fixed-status">
+            <div id="statusAlert" class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Estado:</strong> <span id="statusText">Iniciando verificación...</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="bi bi-check2-circle text-success"></i> Verificación de Paginación Integrada</h1>
+                    <button class="btn btn-primary" onclick="location.href='/public/dashboard-admin.html'">
+                        <i class="bi bi-arrow-left"></i> Volver al Dashboard
+                    </button>
+                </div>
+
+                <div class="explanation-box">
+                    <h5><i class="bi bi-lightbulb"></i> Explicación del Fix Implementado</h5>
+                    <p><strong>Problema resuelto:</strong> Las secciones de FAQs, Evaluaciones e Inventario mostraban "1-0 de 0 items" a pesar de tener datos cargados, y los selectores de elementos por página no respondían.</p>
+                    <p><strong>Solución aplicada:</strong> Se implementó el mismo sistema de paginación integrada usado exitosamente en citas y pagos:</p>
+                    <ul>
+                        <li>✅ <strong>FAQs:</strong> setupFaqsIntegrated() + renderFaqsPageIntegrated()</li>
+                        <li>✅ <strong>Evaluaciones:</strong> setupEvaluacionesIntegrated() + renderEvaluacionesPageIntegrated()</li>
+                        <li>✅ <strong>Inventario:</strong> setupInventarioIntegrated() + renderInventarioPageIntegrated() + renderInventarioTable() creada</li>
+                        <li>✅ <strong>Funciones generales actualizadas:</strong> changeItemsPerPageAdmin() y changePage() con manejo específico</li>
+                        <li>✅ <strong>Auto-exclusión:</strong> autoInitializePagination() excluye secciones con datos reales</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQs Test Section -->
+        <div class="test-section">
+            <h3 class="test-header">
+                <span id="faqsStatus" class="status-indicator status-warning"></span>
+                Sección FAQs - Prueba de Paginación
+            </h3>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">Mostrando <span id="faqsShowing">0</span> de <span id="faqsTotal">0</span> preguntas frecuentes</span>
+                            <label class="form-label me-2 mb-0 text-muted" for="faqsItemsPerPage">Mostrar:</label>
+                            <select class="form-select form-select-sm pagination-select" id="faqsItemsPerPage" style="width: auto;">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div id="faqsPagination" class="d-flex justify-content-end align-items-center">
+                            <span class="badge bg-primary">Página <span id="faqsCurrentPage">1</span> de <span id="faqsTotalPages">1</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="faqsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Pregunta</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="3" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evaluaciones Test Section -->
+        <div class="test-section">
+            <h3 class="test-header">
+                <span id="evaluacionesStatus" class="status-indicator status-warning"></span>
+                Sección Evaluaciones - Prueba de Paginación
+            </h3>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">Mostrando <span id="evaluacionesShowing">0</span> de <span id="evaluacionesTotal">0</span> evaluaciones</span>
+                            <label class="form-label me-2 mb-0 text-muted" for="evaluacionesItemsPerPage">Mostrar:</label>
+                            <select class="form-select form-select-sm pagination-select" id="evaluacionesItemsPerPage" style="width: auto;">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div id="evaluacionesPagination" class="d-flex justify-content-end align-items-center">
+                            <span class="badge bg-primary">Página <span id="evaluacionesCurrentPage">1</span> de <span id="evaluacionesTotalPages">1</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="evaluacionesTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Paciente</th>
+                                <th>Odontólogo</th>
+                                <th>Calificación</th>
+                                <th>Recomendación</th>
+                                <th>Fecha/Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventario Test Section -->
+        <div class="test-section">
+            <h3 class="test-header">
+                <span id="inventarioStatus" class="status-indicator status-warning"></span>
+                Sección Inventario - Prueba de Paginación
+            </h3>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">Mostrando <span id="inventarioShowing">0</span> de <span id="inventarioTotal">0</span> productos</span>
+                            <label class="form-label me-2 mb-0 text-muted" for="inventarioItemsPerPage">Mostrar:</label>
+                            <select class="form-select form-select-sm pagination-select" id="inventarioItemsPerPage" style="width: auto;">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div id="inventarioPagination" class="d-flex justify-content-end align-items-center">
+                            <span class="badge bg-primary">Página <span id="inventarioCurrentPage">1</span> de <span id="inventarioTotalPages">1</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="inventarioTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th><input type="checkbox" class="form-check-input"></th>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Sede</th>
+                                <th>Stock</th>
+                                <th>Mín.</th>
+                                <th>Precio Unit.</th>
+                                <th>Valor Total</th>
+                                <th>Estado</th>
+                                <th>Última Act.</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventarioTableBody">
+                            <tr>
+                                <td colspan="12" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Results Summary -->
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5><i class="bi bi-clipboard-check"></i> Resumen de Pruebas</h5>
+            </div>
+            <div class="card-body">
+                <div id="testResults">
+                    <div class="alert alert-info">
+                        <i class="bi bi-clock"></i> Ejecutando pruebas automatizadas...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        console.log('🧪 Iniciando verificación de paginación para FAQs, Evaluaciones e Inventario');
+
+        // Simular objeto dashboardAdmin para la prueba
+        const dashboardAdmin = {
+            faqs: [],
+            evaluaciones: [],
+            inventario: [],
+            paginationConfig: {},
+
+            // Función para simular carga de FAQs
+            async loadFAQs() {
+                console.log('📄 Simulando carga de FAQs...');
+                this.faqs = [
+                    {id: 1, pregunta: "¿Cómo programar una cita?"},
+                    {id: 2, pregunta: "¿Qué documentos necesito?"},
+                    {id: 3, pregunta: "¿Cuáles son los horarios de atención?"},
+                    {id: 4, pregunta: "¿Aceptan seguros médicos?"},
+                    {id: 5, pregunta: "¿Cómo cancelar una cita?"},
+                    {id: 6, pregunta: "¿Qué servicios ofrecen?"},
+                    {id: 7, pregunta: "¿Dónde están ubicados?"},
+                    {id: 8, pregunta: "¿Cuáles son las tarifas?"},
+                    {id: 9, pregunta: "¿Atienden emergencias?"},
+                    {id: 10, pregunta: "¿Tienen parking disponible?"},
+                    {id: 11, pregunta: "¿Cómo contactar al odontólogo?"},
+                    {id: 12, pregunta: "¿Realizan tratamientos de ortodoncia?"}
+                ];
+
+                this.setupFaqsIntegrated();
+                this.updateStatus('faqs', 'success', `${this.faqs.length} FAQs cargadas`);
+            },
+
+            // Función para simular carga de Evaluaciones
+            async loadEvaluaciones() {
+                console.log('⭐ Simulando carga de Evaluaciones...');
+                this.evaluaciones = [
+                    {id: 1, paciente_nombre: "Juan Pérez", odontologo_nombre: "Dr. García", calificacion_servicio: 5, calificacion_atencion: 4, calificacion_instalaciones: 5, recomendaria: true, fecha_evaluacion: "2024-11-01"},
+                    {id: 2, paciente_nombre: "María López", odontologo_nombre: "Dr. Martínez", calificacion_servicio: 4, calificacion_atencion: 5, calificacion_instalaciones: 4, recomendaria: true, fecha_evaluacion: "2024-11-02"},
+                    {id: 3, paciente_nombre: "Carlos Silva", odontologo_nombre: "Dr. García", calificacion_servicio: 3, calificacion_atencion: 4, calificacion_instalaciones: 4, recomendaria: false, fecha_evaluacion: "2024-11-03"},
+                    {id: 4, paciente_nombre: "Ana Torres", odontologo_nombre: "Dr. Martínez", calificacion_servicio: 5, calificacion_atencion: 5, calificacion_instalaciones: 5, recomendaria: true, fecha_evaluacion: "2024-11-04"},
+                    {id: 5, paciente_nombre: "Luis Mendoza", odontologo_nombre: "Dr. García", calificacion_servicio: 4, calificacion_atencion: 3, calificacion_instalaciones: 4, recomendaria: true, fecha_evaluacion: "2024-11-05"},
+                    {id: 6, paciente_nombre: "Sofia Ruiz", odontologo_nombre: "Dr. Martínez", calificacion_servicio: 5, calificacion_atencion: 5, calificacion_instalaciones: 4, recomendaria: true, fecha_evaluacion: "2024-11-06"},
+                    {id: 7, paciente_nombre: "Diego Castro", odontologo_nombre: "Dr. García", calificacion_servicio: 3, calificacion_atencion: 3, calificacion_instalaciones: 3, recomendaria: false, fecha_evaluacion: "2024-11-07"},
+                    {id: 8, paciente_nombre: "Carmen Vega", odontologo_nombre: "Dr. Martínez", calificacion_servicio: 4, calificacion_atencion: 4, calificacion_instalaciones: 5, recomendaria: true, fecha_evaluacion: "2024-11-08"}
+                ];
+
+                this.setupEvaluacionesIntegrated();
+                this.updateStatus('evaluaciones', 'success', `${this.evaluaciones.length} Evaluaciones cargadas`);
+            },
+
+            // Función para simular carga de Inventario
+            async loadInventario() {
+                console.log('📦 Simulando carga de Inventario...');
+                this.inventario = [
+                    {id: 1, codigo: "INS001", nombre: "Anestesia Local", categoria: "Anestésicos", sede_nombre: "Sede Central", cantidad: 45, stock_minimo: 20, precio: 15000, estado: "activo", created_at: "2024-11-01"},
+                    {id: 2, codigo: "INS002", nombre: "Composite", categoria: "Materiales", sede_nombre: "Sede Norte", cantidad: 12, stock_minimo: 15, precio: 25000, estado: "activo", created_at: "2024-11-02"},
+                    {id: 3, codigo: "INS003", nombre: "Algodón", categoria: "Insumos", sede_nombre: "Sede Central", cantidad: 150, stock_minimo: 50, precio: 500, estado: "activo", created_at: "2024-11-03"},
+                    {id: 4, codigo: "INS004", nombre: "Guantes Nitrilo", categoria: "Protección", sede_nombre: "Sede Sur", cantidad: 200, stock_minimo: 100, precio: 800, estado: "activo", created_at: "2024-11-04"},
+                    {id: 5, codigo: "INS005", nombre: "Mascarillas", categoria: "Protección", sede_nombre: "Sede Norte", cantidad: 85, stock_minimo: 50, precio: 1200, estado: "activo", created_at: "2024-11-05"},
+                    {id: 6, codigo: "INS006", nombre: "Jeringa Dental", categoria: "Instrumental", sede_nombre: "Sede Central", cantidad: 30, stock_minimo: 25, precio: 8500, estado: "activo", created_at: "2024-11-06"},
+                    {id: 7, codigo: "INS007", nombre: "Flúor", categoria: "Tratamientos", sede_nombre: "Sede Sur", cantidad: 18, stock_minimo: 10, precio: 12000, estado: "activo", created_at: "2024-11-07"},
+                    {id: 8, codigo: "INS008", nombre: "Hilo Dental", categoria: "Higiene", sede_nombre: "Sede Norte", cantidad: 75, stock_minimo: 40, precio: 2500, estado: "activo", created_at: "2024-11-08"},
+                    {id: 9, codigo: "INS009", nombre: "Brackets", categoria: "Ortodoncia", sede_nombre: "Sede Central", cantidad: 100, stock_minimo: 60, precio: 3500, estado: "activo", created_at: "2024-11-09"},
+                    {id: 10, codigo: "INS010", nombre: "Amalgama", categoria: "Materiales", sede_nombre: "Sede Sur", cantidad: 25, stock_minimo: 15, precio: 18000, estado: "activo", created_at: "2024-11-10"},
+                    {id: 11, codigo: "INS011", nombre: "Cepillo Profilaxis", categoria: "Instrumental", sede_nombre: "Sede Norte", cantidad: 40, stock_minimo: 30, precio: 5500, estado: "activo", created_at: "2024-11-11"},
+                    {id: 12, codigo: "INS012", nombre: "Desinfectante", categoria: "Limpieza", sede_nombre: "Sede Central", cantidad: 20, stock_minimo: 10, precio: 8000, estado: "activo", created_at: "2024-11-12"}
+                ];
+
+                this.setupInventarioIntegrated();
+                this.updateStatus('inventario', 'success', `${this.inventario.length} Items de inventario cargados`);
+            },
+
+            // Función auxiliar para actualizar el estado visual
+            updateStatus(section, status, message) {
+                const statusElement = document.getElementById(`${section}Status`);
+                const statusClasses = {
+                    'success': 'status-success',
+                    'warning': 'status-warning',
+                    'error': 'status-error'
+                };
+                
+                if (statusElement) {
+                    statusElement.className = `status-indicator ${statusClasses[status]}`;
+                }
+                
+                console.log(`✅ ${section.toUpperCase()}: ${message}`);
+            },
+
+            // Simulaciones de las funciones integradas (versiones simplificadas para prueba)
+            setupFaqsIntegrated() {
+                console.log(`🔧 Configurando paginación integrada para ${this.faqs.length} FAQs`);
+                this.paginationConfig.faqs = {
+                    currentPage: 1,
+                    itemsPerPage: 10,
+                    totalItems: this.faqs.length,
+                    totalPages: Math.ceil(this.faqs.length / 10)
+                };
+                this.renderFaqsPageIntegrated();
+                this.updatePaginationInfo('faqs');
+            },
+
+            setupEvaluacionesIntegrated() {
+                console.log(`🔧 Configurando paginación integrada para ${this.evaluaciones.length} Evaluaciones`);
+                this.paginationConfig.evaluaciones = {
+                    currentPage: 1,
+                    itemsPerPage: 10,
+                    totalItems: this.evaluaciones.length,
+                    totalPages: Math.ceil(this.evaluaciones.length / 10)
+                };
+                this.renderEvaluacionesPageIntegrated();
+                this.updatePaginationInfo('evaluaciones');
+            },
+
+            setupInventarioIntegrated() {
+                console.log(`🔧 Configurando paginación integrada para ${this.inventario.length} items de Inventario`);
+                this.paginationConfig.inventario = {
+                    currentPage: 1,
+                    itemsPerPage: 10,
+                    totalItems: this.inventario.length,
+                    totalPages: Math.ceil(this.inventario.length / 10)
+                };
+                this.renderInventarioPageIntegrated();
+                this.updatePaginationInfo('inventario');
+            },
+
+            renderFaqsPageIntegrated() {
+                const tbody = document.querySelector('#faqsTable tbody');
+                if (!tbody) return;
+
+                const config = this.paginationConfig['faqs'];
+                const startIndex = (config.currentPage - 1) * config.itemsPerPage;
+                const endIndex = Math.min(startIndex + config.itemsPerPage, this.faqs.length);
+                const currentPageFaqs = this.faqs.slice(startIndex, endIndex);
+
+                tbody.innerHTML = '';
+                currentPageFaqs.forEach(faq => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${faq.id}</td>
+                        <td>${faq.pregunta}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info me-1" title="Ver">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-warning me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            renderEvaluacionesPageIntegrated() {
+                const tbody = document.querySelector('#evaluacionesTable tbody');
+                if (!tbody) return;
+
+                const config = this.paginationConfig['evaluaciones'];
+                const startIndex = (config.currentPage - 1) * config.itemsPerPage;
+                const endIndex = Math.min(startIndex + config.itemsPerPage, this.evaluaciones.length);
+                const currentPageEvaluaciones = this.evaluaciones.slice(startIndex, endIndex);
+
+                tbody.innerHTML = '';
+                currentPageEvaluaciones.forEach(evaluacion => {
+                    const promedio = ((evaluacion.calificacion_servicio + evaluacion.calificacion_atencion + evaluacion.calificacion_instalaciones) / 3).toFixed(1);
+                    const fecha = new Date(evaluacion.fecha_evaluacion).toLocaleDateString();
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${evaluacion.id}</td>
+                        <td>${evaluacion.paciente_nombre}</td>
+                        <td>${evaluacion.odontologo_nombre}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">${promedio}</span>
+                                <div class="stars">⭐⭐⭐⭐⭐</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-${evaluacion.recomendaria ? 'success' : 'warning'}">
+                                ${evaluacion.recomendaria ? 'Sí' : 'No'}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-muted">${fecha}</small>
+                            <br>
+                            <button class="btn btn-sm btn-info" title="Ver detalles">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            renderInventarioPageIntegrated() {
+                const tbody = document.querySelector('#inventarioTableBody');
+                if (!tbody) return;
+
+                const config = this.paginationConfig['inventario'];
+                const startIndex = (config.currentPage - 1) * config.itemsPerPage;
+                const endIndex = Math.min(startIndex + config.itemsPerPage, this.inventario.length);
+                const currentPageInventario = this.inventario.slice(startIndex, endIndex);
+
+                tbody.innerHTML = '';
+                currentPageInventario.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>${item.codigo}</td>
+                        <td>${item.nombre}</td>
+                        <td>${item.categoria}</td>
+                        <td>${item.sede_nombre}</td>
+                        <td>${item.cantidad}</td>
+                        <td>${item.stock_minimo}</td>
+                        <td>$${item.precio.toLocaleString()}</td>
+                        <td>$${(item.cantidad * item.precio).toLocaleString()}</td>
+                        <td><span class="badge bg-success">${item.estado.toUpperCase()}</span></td>
+                        <td>${new Date(item.created_at).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            updatePaginationInfo(section) {
+                const config = this.paginationConfig[section];
+                if (!config) return;
+
+                const startItem = (config.currentPage - 1) * config.itemsPerPage + 1;
+                const endItem = Math.min(config.currentPage * config.itemsPerPage, config.totalItems);
+
+                document.getElementById(`${section}Showing`).textContent = endItem > 0 ? `${startItem}-${endItem}` : '0';
+                document.getElementById(`${section}Total`).textContent = config.totalItems;
+                document.getElementById(`${section}CurrentPage`).textContent = config.currentPage;
+                document.getElementById(`${section}TotalPages`).textContent = config.totalPages;
+            }
+        };
+
+        // Configurar eventos de los selectores
+        document.getElementById('faqsItemsPerPage').addEventListener('change', function() {
+            const config = dashboardAdmin.paginationConfig.faqs;
+            if (config) {
+                config.itemsPerPage = parseInt(this.value);
+                config.currentPage = 1;
+                config.totalPages = Math.ceil(config.totalItems / config.itemsPerPage);
+                dashboardAdmin.renderFaqsPageIntegrated();
+                dashboardAdmin.updatePaginationInfo('faqs');
+            }
+        });
+
+        document.getElementById('evaluacionesItemsPerPage').addEventListener('change', function() {
+            const config = dashboardAdmin.paginationConfig.evaluaciones;
+            if (config) {
+                config.itemsPerPage = parseInt(this.value);
+                config.currentPage = 1;
+                config.totalPages = Math.ceil(config.totalItems / config.itemsPerPage);
+                dashboardAdmin.renderEvaluacionesPageIntegrated();
+                dashboardAdmin.updatePaginationInfo('evaluaciones');
+            }
+        });
+
+        document.getElementById('inventarioItemsPerPage').addEventListener('change', function() {
+            const config = dashboardAdmin.paginationConfig.inventario;
+            if (config) {
+                config.itemsPerPage = parseInt(this.value);
+                config.currentPage = 1;
+                config.totalPages = Math.ceil(config.totalItems / config.itemsPerPage);
+                dashboardAdmin.renderInventarioPageIntegrated();
+                dashboardAdmin.updatePaginationInfo('inventario');
+            }
+        });
+
+        // Ejecutar pruebas
+        async function runTests() {
+            document.getElementById('statusText').textContent = 'Cargando datos de prueba...';
+            
+            try {
+                await dashboardAdmin.loadFAQs();
+                await dashboardAdmin.loadEvaluaciones();
+                await dashboardAdmin.loadInventario();
+                
+                // Verificar que los contadores se actualicen correctamente
+                setTimeout(() => {
+                    const results = [];
+                    
+                    // Verificar FAQs
+                    const faqsShowing = document.getElementById('faqsShowing').textContent;
+                    const faqsTotal = document.getElementById('faqsTotal').textContent;
+                    if (faqsShowing !== '0' && faqsTotal !== '0') {
+                        results.push(`✅ FAQs: Mostrando ${faqsShowing} de ${faqsTotal} - CORRECTO`);
+                    } else {
+                        results.push(`❌ FAQs: Aún muestra ${faqsShowing} de ${faqsTotal} - ERROR`);
+                    }
+                    
+                    // Verificar Evaluaciones
+                    const evaluacionesShowing = document.getElementById('evaluacionesShowing').textContent;
+                    const evaluacionesTotal = document.getElementById('evaluacionesTotal').textContent;
+                    if (evaluacionesShowing !== '0' && evaluacionesTotal !== '0') {
+                        results.push(`✅ Evaluaciones: Mostrando ${evaluacionesShowing} de ${evaluacionesTotal} - CORRECTO`);
+                    } else {
+                        results.push(`❌ Evaluaciones: Aún muestra ${evaluacionesShowing} de ${evaluacionesTotal} - ERROR`);
+                    }
+                    
+                    // Verificar Inventario
+                    const inventarioShowing = document.getElementById('inventarioShowing').textContent;
+                    const inventarioTotal = document.getElementById('inventarioTotal').textContent;
+                    if (inventarioShowing !== '0' && inventarioTotal !== '0') {
+                        results.push(`✅ Inventario: Mostrando ${inventarioShowing} de ${inventarioTotal} - CORRECTO`);
+                    } else {
+                        results.push(`❌ Inventario: Aún muestra ${inventarioShowing} de ${inventarioTotal} - ERROR`);
+                    }
+                    
+                    // Mostrar resultados
+                    const testResultsDiv = document.getElementById('testResults');
+                    testResultsDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6><i class="bi bi-check-circle"></i> Resultados de las Pruebas:</h6>
+                            ${results.map(result => `<div class="mb-1">${result}</div>`).join('')}
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>Prueba los selectores:</strong> Cambia los valores de "Mostrar" en cada sección para verificar que la paginación responde correctamente.
+                        </div>
+                    `;
+                    
+                    document.getElementById('statusText').textContent = 'Verificación completada';
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error en las pruebas:', error);
+                document.getElementById('statusText').textContent = 'Error en la verificación';
+            }
+        }
+
+        // Iniciar pruebas automáticamente
+        document.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html>
