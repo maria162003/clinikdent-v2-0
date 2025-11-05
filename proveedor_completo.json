@@ -1,0 +1,12 @@
+{
+  "nombre": "Proveedor Completo SA",
+  "contacto": "Ana Rodriguez",
+  "telefono": "300-123-4567",
+  "email": "ana@proveedorcompleto.com",
+  "direccion": "Carrera 50 #30-20",
+  "ciudad": "Bogotá",
+  "pais": "Colombia",
+  "codigo": "PC001",
+  "especialidades": "Instrumentos dentales, Material de laboratorio",
+  "tiempo_entrega_dias": 5
+}

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Pacientes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; border: 1px solid #ff0000; }
+        .success { background: #e6ffe6; border: 1px solid #00ff00; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test API Pacientes</h1>
+        
+        <button onclick="testPacientesAPI()">Probar API /api/usuarios/1/pacientes</button>
+        <button onclick="testPacientesAPI2()">Probar API /api/usuarios/2/pacientes</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function testPacientesAPI() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<div class="result">🔄 Probando API...</div>';
+                
+                const response = await fetch('/api/usuarios/1/pacientes', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="result success">
+                        <h3>✅ Respuesta de API (ID: 1):</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Success:</strong> ${data.success}</p>
+                        <p><strong>Mensaje:</strong> ${data.mensaje}</p>
+                        <p><strong>Count:</strong> ${data.count}</p>
+                        <p><strong>Odontólogo ID:</strong> ${data.odontologoId}</p>
+                        <h4>Pacientes:</h4>
+                        <pre>${JSON.stringify(data.pacientes, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Error:</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testPacientesAPI2() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<div class="result">🔄 Probando API...</div>';
+                
+                const response = await fetch('/api/usuarios/2/pacientes', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="result success">
+                        <h3>✅ Respuesta de API (ID: 2):</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Success:</strong> ${data.success}</p>
+                        <p><strong>Mensaje:</strong> ${data.mensaje}</p>
+                        <p><strong>Count:</strong> ${data.count}</p>
+                        <p><strong>Odontólogo ID:</strong> ${data.odontologoId}</p>
+                        <h4>Pacientes:</h4>
+                        <pre>${JSON.stringify(data.pacientes, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Error:</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

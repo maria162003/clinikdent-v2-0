@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Sistema de Seguridad y Alertas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(5px);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-blocked { background: #f8d7da; color: #721c24; }
+        .status-warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="text-center mb-5">
+                    <h1 class="text-white mb-3">
+                        <i class="bi bi-shield-check text-warning"></i>
+                        Test: Sistema de Seguridad + Alertas
+                    </h1>
+                    <p class="text-white-50">Pruebas del sistema de seguridad con reCAPTCHA y bloqueo de cuentas</p>
+                </div>
+
+                <!-- Estado del Sistema -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-activity me-2"></i>
+                            Estado del Sistema de Seguridad
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-shield-check text-success" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2">Alertas Mejoradas</h6>
+                                    <span class="status-badge status-active">Activo</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-robot text-info" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2">reCAPTCHA</h6>
+                                    <span class="status-badge status-active">Simulado</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-lock text-warning" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2">Bloqueo de Cuentas</h6>
+                                    <span class="status-badge" id="block-status">Activo</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6>Información de Intentos:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">Intentos fallidos: <strong id="attempt-count">0</strong></small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">Estado: <strong id="account-status">Normal</strong></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de Login de Prueba -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-lock me-2"></i>
+                            Formulario de Login de Prueba
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="form-login-universal" class="row g-3">
+                            <div class="col-md-6">
+                                <label for="login-email" class="form-label">Correo electrónico</label>
+                                <input type="email" class="form-control" id="login-email" 
+                                       placeholder="test@clinikdent.com" value="test@clinikdent.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="login-password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="login-password" 
+                                       placeholder="Ingrese contraseña incorrecta para probar">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                                    Probar Login
+                                </button>
+                                <button type="button" class="btn btn-warning ms-2" onclick="resetSecurity()">
+                                    <i class="bi bi-arrow-clockwise me-2"></i>
+                                    Resetear Sistema
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Pruebas de Alertas -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bell me-2"></i>
+                            Pruebas de Alertas Mejoradas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <button class="btn btn-success w-100" onclick="testAlert()">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    Alert Mejorado
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-warning w-100" onclick="testConfirm()">
+                                    <i class="bi bi-question-circle me-2"></i>
+                                    Confirm Mejorado
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-danger w-100" onclick="testOldAlert()">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Alert Antiguo
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-secondary w-100" onclick="testOldConfirm()">
+                                    <i class="bi bi-patch-question me-2"></i>
+                                    Confirm Antiguo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instrucciones de Prueba -->
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-check me-2"></i>
+                            Instrucciones de Prueba
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary">🔒 Prueba de Seguridad:</h6>
+                                <ol>
+                                    <li><strong>Primer intento:</strong> Ingrese contraseña incorrecta</li>
+                                    <li><strong>Segundo intento:</strong> Verá alerta profesional</li>
+                                    <li><strong>Tercer intento:</strong> Bloqueo temporal (1 minuto)</li>
+                                    <li><strong>Cuarto intento:</strong> Bloqueo final</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-success">✨ Características:</h6>
+                                <ul>
+                                    <li>✅ reCAPTCHA después del primer fallo</li>
+                                    <li>✅ Alertas profesionales y amigables</li>
+                                    <li>✅ Bloqueo progresivo por seguridad</li>
+                                    <li>✅ Redirección a recuperar contraseña</li>
+                                    <li>✅ Contacto con soporte técnico</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-lightbulb me-2"></i>
+                            <strong>Nota:</strong> Para probar el bloqueo, use cualquier email y contraseñas incorrectas consecutivamente.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/alerts-override.js"></script>
+    <script src="/js/alerts-init.js"></script>
+    <script src="/js/security-system.js"></script>
+
+    <script>
+        // Función para actualizar el estado visual
+        function updateStatus() {
+            if (window.securityManager) {
+                const attempts = window.securityManager.attempts;
+                document.getElementById('attempt-count').textContent = attempts.count;
+                
+                const blockStatus = document.getElementById('block-status');
+                const accountStatus = document.getElementById('account-status');
+                
+                if (attempts.finallyBlocked) {
+                    blockStatus.className = 'status-badge status-blocked';
+                    blockStatus.textContent = 'Bloqueado';
+                    accountStatus.textContent = 'Bloqueada Permanentemente';
+                } else if (attempts.blockedUntil && Date.now() < attempts.blockedUntil) {
+                    blockStatus.className = 'status-badge status-warning';
+                    blockStatus.textContent = 'Suspendido';
+                    accountStatus.textContent = 'Suspendida Temporalmente';
+                } else if (attempts.count > 0) {
+                    blockStatus.className = 'status-badge status-warning';
+                    blockStatus.textContent = 'Advertencia';
+                    accountStatus.textContent = `${3 - attempts.count} intentos restantes`;
+                } else {
+                    blockStatus.className = 'status-badge status-active';
+                    blockStatus.textContent = 'Normal';
+                    accountStatus.textContent = 'Normal';
+                }
+            }
+        }
+
+        // Función para resetear el sistema de seguridad
+        function resetSecurity() {
+            if (window.securityManager) {
+                window.securityManager.resetAttempts();
+                updateStatus();
+                showNotificationMejorada('Sistema de seguridad reseteado', 'success');
+            }
+        }
+
+        // Pruebas de alertas
+        function testAlert() {
+            alert('Este es un alert mejorado con diseño moderno');
+        }
+
+        function testConfirm() {
+            confirm('¿Este confirm se ve mejor que el original?').then(result => {
+                showNotificationMejorada(
+                    result ? 'Respondiste: SÍ' : 'Respondiste: NO', 
+                    result ? 'success' : 'info'
+                );
+            });
+        }
+
+        function testOldAlert() {
+            if (window.originalAlert) {
+                window.originalAlert('Este es el alert original del navegador');
+            } else {
+                showNotificationMejorada('Alert original no disponible', 'warning');
+            }
+        }
+
+        function testOldConfirm() {
+            if (window.originalConfirm) {
+                const result = window.originalConfirm('¿Este es el confirm original?');
+                showNotificationMejorada(
+                    result ? 'Respondiste: OK' : 'Respondiste: Cancelar', 
+                    'info'
+                );
+            } else {
+                showNotificationMejorada('Confirm original no disponible', 'warning');
+            }
+        }
+
+        // Actualizar estado cada segundo
+        setInterval(updateStatus, 1000);
+
+        // Actualizar estado inicial
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(updateStatus, 500);
+            
+            // Mostrar bienvenida
+            setTimeout(() => {
+                showNotificationMejorada(
+                    '¡Sistema de seguridad y alertas cargado! Pruebe los diferentes botones.', 
+                    'info', 
+                    4000, 
+                    { title: '¡Bienvenido!' }
+                );
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
