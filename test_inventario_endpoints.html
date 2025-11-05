@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Endpoint Inventario</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 10px; }
+        button:hover { background: #0056b3; }
+        #resultado { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .json-view { background: #f8f9fa; padding: 15px; border-radius: 4px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Endpoints de Inventario</h1>
+        
+        <div>
+            <button onclick="testInventario()">🔍 GET /api/inventario</button>
+            <button onclick="testInventarioEquipos()">🔧 GET /api/inventario/equipos</button>
+            <button onclick="testDirectDatabase()">🗄️ Consulta Directa BD</button>
+        </div>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        async function testInventario() {
+            showLoading('Consultando /api/inventario...');
+            
+            try {
+                const response = await fetch('/api/inventario', {
+                    headers: {
+                        'user-id': '5'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                showResults('GET /api/inventario', {
+                    status: response.status,
+                    ok: response.ok,
+                    count: data.length,
+                    data: data
+                });
+                
+            } catch (error) {
+                showError('Error en /api/inventario', error);
+            }
+        }
+        
+        async function testInventarioEquipos() {
+            showLoading('Consultando /api/inventario/equipos...');
+            
+            try {
+                const response = await fetch('/api/inventario/equipos');
+                const data = await response.json();
+                
+                showResults('GET /api/inventario/equipos', {
+                    status: response.status,
+                    ok: response.ok,
+                    count: data.length,
+                    data: data
+                });
+                
+            } catch (error) {
+                showError('Error en /api/inventario/equipos', error);
+            }
+        }
+        
+        async function testDirectDatabase() {
+            showLoading('Ejecutando consultas directas...');
+            
+            const queries = [
+                { name: 'Tabla equipos', query: 'SELECT COUNT(*) as count FROM equipos' },
+                { name: 'Tabla inventario_equipos', query: 'SELECT COUNT(*) as count FROM inventario_equipos' },
+                { name: 'Tabla inventario', query: 'SELECT COUNT(*) as count FROM inventario' }
+            ];
+            
+            const results = {};
+            
+            for (const q of queries) {
+                try {
+                    const response = await fetch('/api/debug/query', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ query: q.query })
+                    });
+                    
+                    if (response.ok) {
+                        results[q.name] = await response.json();
+                    } else {
+                        results[q.name] = { error: `HTTP ${response.status}` };
+                    }
+                } catch (error) {
+                    results[q.name] = { error: error.message };
+                }
+            }
+            
+            showResults('Consultas Directas BD', results);
+        }
+        
+        function showLoading(message) {
+            document.getElementById('resultado').innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <div style="font-size: 18px;">⏳ ${message}</div>
+                </div>
+            `;
+        }
+        
+        function showResults(title, data) {
+            const html = `
+                <div>
+                    <h2>📊 ${title}</h2>
+                    <div class="json-view">${JSON.stringify(data, null, 2)}</div>
+                    ${data.data && Array.isArray(data.data) ? generateTable(data.data) : ''}
+                </div>
+            `;
+            document.getElementById('resultado').innerHTML = html;
+        }
+        
+        function showError(title, error) {
+            document.getElementById('resultado').innerHTML = `
+                <div>
+                    <h2>❌ ${title}</h2>
+                    <div style="color: red; padding: 15px; background: #f8d7da; border-radius: 4px;">
+                        ${error.message || error}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function generateTable(data) {
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                return '<p>No hay datos para mostrar en tabla.</p>';
+            }
+            
+            const headers = Object.keys(data[0]);
+            
+            return `
+                <h3>📋 Vista de Tabla (${data.length} registros)</h3>
+                <table>
+                    <thead>
+                        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${data.slice(0, 10).map(row => 
+                            `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`
+                        ).join('')}
+                        ${data.length > 10 ? `<tr><td colspan="${headers.length}" style="text-align: center; font-style: italic;">... y ${data.length - 10} registros más</td></tr>` : ''}
+                    </tbody>
+                </table>
+            `;
+        }
+    </script>
+</body>
+</html>

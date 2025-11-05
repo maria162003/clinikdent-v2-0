@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de APIs - Clinik Dent</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { margin: 5px; padding: 10px; }
+        pre { font-size: 12px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test de APIs - Clinik Dent Dashboard</h1>
+    
+    <button onclick="testAllAPIs()">🚀 Probar Todas las APIs</button>
+    <button onclick="clearResults()">🗑️ Limpiar</button>
+    <button onclick="testUserConfig()">👤 Probar Config Usuario</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Configurar usuario admin por defecto
+        const adminUser = {
+            id: 4,
+            nombre: 'Admin Sistema',
+            rol: 'administrador'
+        };
+        
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        localStorage.setItem('userId', '4');
+        
+        function logResult(message, type = 'info', data = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            
+            let content = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            if (data) {
+                content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            div.innerHTML = content;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        async function testAPI(url, name) {
+            try {
+                logResult(`🔄 Probando ${name}...`, 'warning');
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'user-id': '4'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const count = Array.isArray(data) ? data.length : (data.success ? 'OK' : 'Objeto');
+                
+                logResult(`✅ ${name}: ${count} elementos`, 'success', Array.isArray(data) ? data.slice(0, 2) : data);
+                return data;
+                
+            } catch (error) {
+                logResult(`❌ Error en ${name}: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function testAllAPIs() {
+            clearResults();
+            logResult('🚀 Iniciando pruebas de todas las APIs...', 'info');
+            
+            const apis = [
+                ['http://localhost:3000/api/usuarios', 'Usuarios'],
+                ['http://localhost:3000/api/citas', 'Citas'],
+                ['http://localhost:3000/api/faqs', 'FAQs'],
+                ['http://localhost:3000/api/evaluaciones/admin/todas', 'Evaluaciones'],
+                ['http://localhost:3000/api/inventario', 'Inventario'],
+                ['http://localhost:3000/api/sedes', 'Sedes'],
+                ['http://localhost:3000/api/pagos', 'Pagos'],
+                ['http://localhost:3000/api/estadisticas/metricas-principales', 'Métricas']
+            ];
+            
+            for (const [url, name] of apis) {
+                await testAPI(url, name);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            logResult('🎯 Todas las pruebas completadas', 'success');
+        }
+        
+        function testUserConfig() {
+            clearResults();
+            logResult('👤 Verificando configuración de usuario...', 'info');
+            
+            const user = localStorage.getItem('user');
+            const userId = localStorage.getItem('userId');
+            
+            logResult('📱 LocalStorage user:', 'info', user ? JSON.parse(user) : null);
+            logResult('🆔 LocalStorage userId:', 'info', userId);
+            
+            if (user && userId) {
+                logResult('✅ Usuario configurado correctamente', 'success');
+            } else {
+                logResult('❌ Usuario no configurado', 'error');
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-ejecutar al cargar
+        window.onload = function() {
+            logResult('🔧 Sistema de pruebas cargado', 'success');
+            testUserConfig();
+        };
+    </script>
+</body>
+</html>

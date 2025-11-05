@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables (SENSIBLES - NO SUBIR)
+.env
+.env.local
+.env.development
+.env.production
+.env.secure
+Backend/.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporal
+*.tmp
+*.temp
+.cache/
+
+# Build outputs
+dist/
+build/
+
+# Archivos de seguridad (si existen)
+*.pem
+*.key
+*.cert

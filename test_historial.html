@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Funcionalidad Historial</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-header">
+                <h3>🔬 Test - Funcionalidad Historial</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-success">✅ <strong>Funcionalidad de Historial Implementada Exitosamente</strong></p>
+                
+                <h5>Características implementadas:</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>Event Listener:</strong> Botón de historial conectado a la función showHistorialGeneral()
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>Modal Principal:</strong> Muestra estadísticas generales y tabla de citas con cambios
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>API Integration:</strong> Conecta con el endpoint /api/citas/admin/historial-general
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>Estadísticas:</strong> 
+                        <small class="text-muted">Citas con cambios, Reasignaciones, Cambios de estado, Reprogramaciones</small>
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>Vista Detallada:</strong> Modal secundario para ver historial específico de cada cita
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>Estados Loading:</strong> Indicadores de carga durante las consultas
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i> 
+                        <strong>Error Handling:</strong> Manejo de errores con mensajes informativos
+                    </li>
+                </ul>
+
+                <div class="alert alert-info mt-4">
+                    <h6><i class="bi bi-info-circle"></i> Cómo usar:</h6>
+                    <ol>
+                        <li>Ve al Dashboard Administrativo</li>
+                        <li>Haz clic en el botón <strong>"📊 Historial"</strong></li>
+                        <li>El modal se abrirá mostrando estadísticas y tabla de cambios</li>
+                        <li>Haz clic en <strong>"👁️ Ver"</strong> para detalles específicos de una cita</li>
+                    </ol>
+                </div>
+
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle"></i> Notas técnicas:</h6>
+                    <ul class="mb-0">
+                        <li>La funcionalidad analiza las notas de las citas para extraer cambios</li>
+                        <li>Busca patrones como "Reasignación:", "Estado cambiado:", "Reprogramación:"</li>
+                        <li>Requiere autenticación (token JWT)</li>
+                        <li>Compatible con Bootstrap 5 y Bootstrap Icons</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

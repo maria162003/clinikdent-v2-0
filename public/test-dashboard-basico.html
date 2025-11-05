@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard Básico - Clinik Dent</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .section { background: white; margin: 15px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status { padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .ok { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { padding: 12px 20px; margin: 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .dashboard-frame { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Dashboard Básico</h1>
+        
+        <div class="section">
+            <h2>🎯 Controles del Dashboard</h2>
+            <div class="controls">
+                <button onclick="abrirDashboard()" class="btn-success">📊 Abrir Dashboard</button>
+                <button onclick="testNavegacion()">🧭 Test Navegación</button>
+                <button onclick="verificarSecciones()">🔍 Verificar Secciones</button>
+                <button onclick="resetearTodo()" class="btn-warning">🔄 Resetear Todo</button>
+                <button onclick="limpiarConsola()" class="btn-danger">🗑️ Limpiar</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Estado del Sistema</h2>
+            <div id="status-container">
+                <p>🔄 Esperando comandos...</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Dashboard Embebido</h2>
+            <iframe id="dashboard-frame" class="dashboard-frame" style="display:none;"></iframe>
+        </div>
+    </div>
+
+    <script>
+        let dashboardWindow = null;
+
+        function configurarUsuario() {
+            // Configurar usuario admin por defecto
+            const adminUser = {
+                id: 4,
+                nombre: 'Admin Sistema',
+                apellido: 'Test',
+                email: 'admin@clinikdent.com',
+                tipo_usuario: 'administrador',
+                rol: 'administrador'
+            };
+            
+            localStorage.setItem('user', JSON.stringify(adminUser));
+            localStorage.setItem('userId', '4');
+            localStorage.setItem('userToken', 'admin-token-test');
+            
+            addStatus('👤 Usuario admin configurado correctamente', 'ok');
+        }
+
+        function abrirDashboard() {
+            configurarUsuario();
+            
+            // Opción 1: Abrir en nueva ventana
+            dashboardWindow = window.open('/dashboard-admin.html', 'dashboard', 'width=1400,height=900');
+            
+            if (dashboardWindow) {
+                addStatus('✅ Dashboard abierto en nueva ventana', 'ok');
+                
+                // Verificar que se cargó correctamente
+                setTimeout(() => {
+                    if (dashboardWindow && !dashboardWindow.closed) {
+                        addStatus('✅ Dashboard sigue activo', 'ok');
+                        
+                        // Intentar comunicación
+                        try {
+                            dashboardWindow.postMessage({ type: 'TEST_CONNECTION' }, '*');
+                            addStatus('📡 Mensaje enviado al dashboard', 'ok');
+                        } catch (e) {
+                            addStatus('⚠️ No se pudo comunicar con dashboard', 'warning');
+                        }
+                    }
+                }, 3000);
+                
+            } else {
+                addStatus('❌ Error abriendo dashboard (¿popup bloqueado?)', 'error');
+                
+                // Opción 2: Cargar en iframe
+                const iframe = document.getElementById('dashboard-frame');
+                iframe.src = '/dashboard-admin.html';
+                iframe.style.display = 'block';
+                addStatus('📺 Dashboard cargado en iframe como alternativa', 'warning');
+            }
+        }
+
+        function testNavegacion() {
+            if (dashboardWindow && !dashboardWindow.closed) {
+                try {
+                    // Test de navegación por secciones
+                    const secciones = ['usuarios', 'citas', 'pagos', 'faqs', 'evaluaciones', 'inventario'];
+                    
+                    addStatus('🧭 Iniciando test de navegación...', 'ok');
+                    
+                    secciones.forEach((seccion, index) => {
+                        setTimeout(() => {
+                            dashboardWindow.postMessage({ 
+                                type: 'NAVIGATE_TO', 
+                                section: seccion 
+                            }, '*');
+                            addStatus(`📋 Navegando a: ${seccion}`, 'ok');
+                        }, index * 1000);
+                    });
+                    
+                } catch (e) {
+                    addStatus('❌ Error en test de navegación: ' + e.message, 'error');
+                }
+            } else {
+                addStatus('⚠️ Dashboard no está abierto. Abre primero el dashboard.', 'warning');
+            }
+        }
+
+        async function verificarSecciones() {
+            addStatus('🔍 Verificando secciones del dashboard...', 'ok');
+            
+            const secciones = [
+                'dashboard-section',
+                'usuarios-section',
+                'citas-section', 
+                'pagos-section',
+                'faqs-section',
+                'evaluaciones-section',
+                'inventario-section',
+                'reportes-section'
+            ];
+            
+            if (dashboardWindow && !dashboardWindow.closed) {
+                secciones.forEach(seccion => {
+                    dashboardWindow.postMessage({
+                        type: 'CHECK_SECTION',
+                        sectionId: seccion
+                    }, '*');
+                });
+                
+                addStatus('📤 Comandos de verificación enviados', 'ok');
+            } else {
+                addStatus('⚠️ Dashboard no disponible para verificar', 'warning');
+            }
+        }
+
+        function resetearTodo() {
+            // Limpiar localStorage
+            localStorage.clear();
+            
+            // Cerrar ventana si está abierta
+            if (dashboardWindow && !dashboardWindow.closed) {
+                dashboardWindow.close();
+                dashboardWindow = null;
+            }
+            
+            // Ocultar iframe
+            const iframe = document.getElementById('dashboard-frame');
+            iframe.style.display = 'none';
+            iframe.src = '';
+            
+            addStatus('🔄 Sistema reseteado completamente', 'ok');
+        }
+
+        function limpiarConsola() {
+            document.getElementById('status-container').innerHTML = '<p>🗑️ Consola limpiada</p>';
+        }
+
+        function addStatus(message, type) {
+            const container = document.getElementById('status-container');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Escuchar respuestas del dashboard
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'DASHBOARD_RESPONSE') {
+                addStatus(`📨 Dashboard: ${event.data.message}`, 'ok');
+            } else if (event.data.type === 'SECTION_STATUS') {
+                const status = event.data.exists ? '✅ Existe' : '❌ No encontrada';
+                addStatus(`📋 ${event.data.sectionId}: ${status}`, event.data.exists ? 'ok' : 'error');
+            }
+        });
+
+        // Auto-configurar al cargar
+        window.onload = function() {
+            addStatus('🔧 Sistema de test cargado', 'ok');
+            configurarUsuario();
+        };
+    </script>
+</body>
+</html>
