@@ -31,9 +31,14 @@
 ## ✅ **Funcionalidades Mantenidas**
 
 ### ✅ **Completar Citas**
-- **Razón**: Es apropiado que el odontólogo marque una cita como completada tras la consulta
-- **Función mantenida**: `completarCita(citaId)`
-- **Permite**: Cambiar estado de cita a "completada" una vez terminada la consulta
+- Razón: Es apropiado que el odontólogo marque una cita como completada tras la consulta
+- Función mantenida: `completarCita(citaId)`
+- Permite: Cambiar estado de cita a "completada" solo dentro de la ventana horaria de la cita.
+
+### ✅ **Marcar Ausencia (no_show)**
+- Razón: Permite registrar ausencia del paciente dentro de un margen controlado.
+- Función agregada: `marcarAusencia(citaId)`
+- Permite: Cambiar estado de cita a "no_show" únicamente entre los 15 y 20 minutos posteriores al inicio, y siempre dentro de la hora programada.
 
 ### ✅ **Ver Citas**
 - **Razón**: Los odontólogos necesitan ver su agenda y detalles de las citas
@@ -52,12 +57,20 @@
 
 ## 🔐 **Nuevos Permisos y Restricciones**
 
-### **Dashboard Odontólogo - Solo Lectura para Citas**
+### **Dashboard Odontólogo - Reglas de cambio de estado**
 - ✅ **Puede VER**: Todas sus citas asignadas
-- ✅ **Puede COMPLETAR**: Marcar citas como terminadas
+- ✅ **Puede COMPLETAR**: Solo si la hora actual está entre [inicio, fin] de la cita (por defecto 60 minutos)
+- ✅ **Puede MARCAR AUSENCIA**: Solo entre [inicio+15m, min(inicio+20m, fin)]
 - ❌ **NO puede EDITAR**: Fecha, hora, motivo o datos de la cita
 - ❌ **NO puede CANCELAR**: Cambiar estado a cancelada
 - ❌ **NO puede ELIMINAR**: Borrar citas permanentemente
+
+#### Ventanas temporales (valores por defecto)
+- CITA_DURACION_MINUTOS = 60
+- CITA_NO_SHOW_INICIO_MIN = 15
+- CITA_NO_SHOW_FIN_MIN = 20
+
+Las comparaciones se realizan de forma consistente manejando zona horaria en UTC del lado del servidor para evitar problemas por DST.
 
 ### **Dashboard Paciente - Control Total**
 - ✅ **Puede CREAR**: Agendar nuevas citas
@@ -96,3 +109,28 @@
 
 **Fecha de implementación**: ${new Date().toLocaleDateString('es-ES')}  
 **Estado**: ✅ Implementado y funcional
+
+---
+
+## 📏 Criterios de aceptación (ejemplos)
+
+Suponiendo cita 5 de noviembre 15:00–16:00:
+
+- 14:59 → Completar: 400
+- 15:05 → Completar: 200
+- 16:01 → Completar: 400
+- 15:14 → No-show: 400 (antes de 15 minutos)
+- 15:16 → No-show: 200
+- 15:20 → No-show: 200
+- 15:21 → No-show: 400 (superó los 20 minutos)
+- 16:00+ → No-show: 400 (fuera de la hora programada)
+
+Permisos:
+- Otro odontólogo (no asignado) intentando cambiar estado → 403.
+- Cita de mañana → no se puede completar hoy ni marcar no_show hoy.
+- Cita de ayer → no se puede completar hoy ni marcar no_show hoy.
+
+Mensajes de error expuestos por el backend:
+- Completar fuera de ventana: "No puedes completar la cita fuera de su ventana horaria."
+- No-show fuera de ventana: "Solo puedes marcar ausencia entre 15 y 20 minutos desde el inicio de la cita y dentro de la hora programada."
+- Propiedad: "No tienes permisos sobre esta cita (no eres el odontólogo asignado)."

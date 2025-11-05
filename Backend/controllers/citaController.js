@@ -518,51 +518,125 @@ exports.reagendarCita = async (req, res) => {
  * Actualizar estado de cita
  */
 exports.actualizarEstadoCita = async (req, res) => {
-  console.log('🔄 [citaController] Actualizando estado de cita');
+  console.log('🔄 [citaController] Actualizando estado de cita (seguridad-odontologo)');
   const { id_cita } = req.params;
-  const { estado, notas_cancelacion } = req.body;
-  
+  const { estado } = req.body || {};
+
+  // 1) Validación de entrada
   if (!estado) {
     return res.status(400).json({ msg: 'Se requiere el nuevo estado de la cita.' });
   }
 
-  // Validar estados permitidos
-  const estadosPermitidos = ['programada', 'confirmada', 'completada', 'cancelada'];
-  if (!estadosPermitidos.includes(estado)) {
-    return res.status(400).json({ msg: 'Estado no válido. Estados permitidos: ' + estadosPermitidos.join(', ') });
+  // Solo permitimos estos estados vía este endpoint
+  const ESTADOS_PERMITIDOS_ENDPOINT = ['completada', 'no_show'];
+  if (!ESTADOS_PERMITIDOS_ENDPOINT.includes(estado)) {
+    return res.status(400).json({ msg: 'Este endpoint solo permite cambiar el estado a "completada" o "no_show".' });
   }
 
   try {
-    // Verificar que la cita existe
+    // 2) Cargar cita y validar estados finales incompatibles
     const citaResult = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
-    
     if (citaResult.rows.length === 0) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
     }
 
-    console.log('📋 Cita encontrada:', citaResult.rows[0]);
+    const cita = citaResult.rows[0];
+    console.log('📋 Cita encontrada:', cita);
 
-    // Actualizar el estado
-    let updateQuery = 'UPDATE citas SET estado = $1';
-    let updateParams = [estado];
-
-    // Si hay notas de cancelación, agregarlas
-    if (notas_cancelacion) {
-      updateQuery = 'UPDATE citas SET estado = $1, notas = $2';
-      updateParams = [estado, notas_cancelacion];
+    if (cita.estado === 'cancelada') {
+      return res.status(400).json({ msg: 'No se puede modificar una cita cancelada.' });
+    }
+    if (['completada', 'no_show'].includes(cita.estado)) {
+      return res.status(400).json({ msg: `La cita ya está en estado final (${cita.estado}).` });
     }
 
-    updateQuery += ' WHERE id = $' + (updateParams.length + 1);
-    updateParams.push(id_cita);
+    // 3) Determinar usuario autenticado (id y rol) y validar permisos/propiedad
+    const actorUserId = (req.user && req.user.id) 
+      ? parseInt(req.user.id)
+      : parseInt(req.headers['user-id'] || req.query.userId || req.body?.userId);
 
-    await db.query(updateQuery, updateParams);
+    if (!actorUserId || Number.isNaN(actorUserId)) {
+      return res.status(401).json({ msg: 'Usuario no autenticado.' });
+    }
 
-    console.log('✅ Estado actualizado exitosamente');
-    
-    return res.json({ 
-      success: true, 
+    // Obtener rol del usuario desde BD para asegurar consistencia
+    const rolResult = await db.query(`
+      SELECT COALESCE(r.nombre, 'desconocido') AS rol
+      FROM usuarios u
+      LEFT JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = $1
+    `, [actorUserId]);
+
+    const rolUsuario = rolResult.rows[0]?.rol || req.user?.rol || 'desconocido';
+    if (rolUsuario !== 'odontologo') {
+      return res.status(403).json({ msg: 'Solo los odontólogos pueden cambiar estos estados.' });
+    }
+
+    if (parseInt(cita.odontologo_id) !== actorUserId) {
+      return res.status(403).json({ msg: 'No tienes permisos sobre esta cita (no eres el odontólogo asignado).' });
+    }
+
+    // 4) Construir fechas y ventanas en UTC consistentes
+    const parseHora = (h) => {
+      if (!h) return { hh: 0, mm: 0 };
+      const parts = h.toString().split(':');
+      return { hh: parseInt(parts[0] || '0'), mm: parseInt(parts[1] || '0') };
+    };
+
+    const toUTCDate = (fechaVal, horaStr) => {
+      // fechaVal puede venir como Date o string
+      const f = new Date(fechaVal);
+      const yyyy = f.getUTCFullYear();
+      const mm = f.getUTCMonth();
+      const dd = f.getUTCDate();
+      const { hh, mm: minutes } = parseHora(horaStr);
+      // Crear instante en UTC exacto de inicio de la cita
+      return new Date(Date.UTC(yyyy, mm, dd, hh, minutes, 0, 0));
+    };
+
+    const DURACION_MIN = parseInt(process.env.CITA_DURACION_MINUTOS || '60');
+    const NO_SHOW_INICIO_MIN = parseInt(process.env.CITA_NO_SHOW_INICIO_MIN || '15');
+    const NO_SHOW_FIN_MIN = parseInt(process.env.CITA_NO_SHOW_FIN_MIN || '20');
+
+    const fechaHoraInicioUTC = toUTCDate(cita.fecha, (cita.hora || '').toString().slice(0,5));
+    const fechaHoraFinUTC = new Date(fechaHoraInicioUTC.getTime() + DURACION_MIN * 60000);
+    const nowUTC = new Date(); // Epoch comparable, independiente de TZ local
+
+    // 5) Reglas de negocio por estado
+    if (estado === 'completada') {
+      const dentroVentana = nowUTC >= fechaHoraInicioUTC && nowUTC <= fechaHoraFinUTC;
+      if (!dentroVentana) {
+        return res.status(400).json({ msg: 'No puedes completar la cita fuera de su ventana horaria.' });
+      }
+    }
+
+    if (estado === 'no_show') {
+      const ventanaNoShowInicioUTC = new Date(fechaHoraInicioUTC.getTime() + NO_SHOW_INICIO_MIN * 60000);
+      const ventanaNoShowFinPropuestaUTC = new Date(fechaHoraInicioUTC.getTime() + NO_SHOW_FIN_MIN * 60000);
+      const ventanaNoShowFinUTC = new Date(Math.min(ventanaNoShowFinPropuestaUTC.getTime(), fechaHoraFinUTC.getTime()));
+
+      const dentroVentanaNoShow = nowUTC >= ventanaNoShowInicioUTC && nowUTC <= ventanaNoShowFinUTC;
+      if (!dentroVentanaNoShow) {
+        return res.status(400).json({ msg: 'Solo puedes marcar ausencia entre 15 y 20 minutos desde el inicio de la cita y dentro de la hora programada.' });
+      }
+    }
+
+    // 6) Persistir cambio y registrar historial en notas
+    const estadoAnterior = cita.estado || 'sin_estado';
+    const marcaTiempo = new Date().toISOString();
+    const lineaHistorial = `[${marcaTiempo}] Estado cambiado: ${estadoAnterior} -> ${estado} por usuario ${actorUserId}`;
+    const nuevasNotas = (cita.notas ? `${cita.notas}\n` : '') + lineaHistorial;
+
+    await db.query(
+      'UPDATE citas SET estado = $1, notas = $2 WHERE id = $3',
+      [estado, nuevasNotas, id_cita]
+    );
+
+    console.log('✅ Estado actualizado y registrado en historial');
+    return res.json({
+      success: true,
       message: `Cita ${estado} exitosamente`,
-      id_cita: id_cita,
+      id_cita,
       nuevo_estado: estado
     });
 

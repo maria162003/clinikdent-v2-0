@@ -1679,8 +1679,10 @@
         console.log(`⚠️ Componentes pendientes: ${failed.join(', ')}`);
       }
       
-      // Mostrar notificación de sistema listo
-      if (loaded.length >= 2) {
+      // Mostrar notificación de sistema listo (solo si está habilitado explícitamente para depuración)
+      const isDebugAlert = localStorage.getItem('showSystemReadyAlert') === '1' ||
+                           new URLSearchParams(location.search).get('debugAlert') === '1';
+      if (isDebugAlert && loaded.length >= 2) {
         setTimeout(() => {
           if (window.showNotificationMejorada) {
             showNotificationMejorada(

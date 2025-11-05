@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const basicAuth = require('../middleware/authMiddleware');
 const citaController = require('../controllers/citaController');
 
 // Ruta básica para testing
@@ -41,8 +42,8 @@ router.post('/', citaController.agendarCita);
 router.get('/:id_usuario', citaController.obtenerCitasPorUsuario);
 // Reagendar cita
 router.put('/:id_cita', citaController.reagendarCita);
-// Actualizar estado de cita
-router.patch('/:id_cita', citaController.actualizarEstadoCita);
+// Actualizar estado de cita (protegido: requiere usuario para validar permisos)
+router.patch('/:id_cita', basicAuth, citaController.actualizarEstadoCita);
 // Reasignar odontólogo a una cita
 router.patch('/:id_cita/reasignar', citaController.reasignarOdontologo);
 // Cancelar cita (cambiar estado)
