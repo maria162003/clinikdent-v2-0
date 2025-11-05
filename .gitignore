@@ -1,36 +1,42 @@
-# Archivos de configuración con claves sensibles
-.env
-.env.local
-.env.production
-
-# Node modules
+# Dependencies
 node_modules/
+package-lock.json
 npm-debug.log
 yarn-error.log
 
-# Archivos de sistema
+# Environment variables (SENSIBLES - NO SUBIR)
+.env
+.env.local
+.env.development
+.env.production
+.env.secure
+Backend/.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema operativo
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Logs
-*.log
-logs/
-
-# Archivos temporales
-*.tmp
-*.temp
-~*
-
-# Build y dist
-dist/
-build/
-
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Temporal
+*.tmp
+*.temp
+~*
+.cache/
+
+# Build outputs
+dist/
+build/
 
 # Archivos de backup
 *.bak
