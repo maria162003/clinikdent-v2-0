@@ -665,3 +665,20 @@ exports.desactivarUsuario = async (req, res) => {
     return res.status(500).json({ msg: 'Error al desactivar usuario.' });
   }
 };
+
+// PUT /api/usuarios/:id/activar
+exports.activarUsuario = async (req, res) => {
+  const { id } = req.params;
+  console.log(`✅ Activando usuario ID: ${id}`);
+  try {
+    const { rowCount } = await db.query('UPDATE usuarios SET activo = true WHERE id = $1', [id]);
+    if (rowCount === 0) {
+      return res.status(404).json({ msg: 'Usuario no encontrado.' });
+    }
+    console.log(`✅ Usuario ${id} activado`);
+    return res.json({ msg: 'Usuario activado exitosamente.' });
+  } catch (err) {
+    console.error('❌ Error al activar usuario:', err);
+    return res.status(500).json({ msg: 'Error al activar usuario.' });
+  }
+};

@@ -14,8 +14,10 @@ const {
   obtenerEstadisticas,
   obtenerProximasCitas,
   obtenerOdontologos,
-  desactivarUsuario
+  desactivarUsuario,
+  activarUsuario
 } = require('../controllers/usuarioController');
+const { requireAdmin } = require('../middleware/adminAuth');
 
 // Middleware de debug para todas las rutas
 router.use((req, res, next) => {
@@ -38,9 +40,10 @@ router.get('/:id/pacientes', (req, res, next) => {
 router.get('/:id/perfil', obtenerPerfil); // Nueva ruta para obtener perfil
 router.get('/', obtenerUsuarios);
 router.post('/', crearUsuario);
-router.put('/:id', actualizarUsuario);
-router.put('/:id/perfil', actualizarPerfil); // Nueva ruta para actualizar perfil
-router.put('/:id/desactivar', desactivarUsuario); // Desactivar usuario
+router.put('/:id', requireAdmin, actualizarUsuario);
+router.put('/:id/perfil', requireAdmin, actualizarPerfil); // Nueva ruta para actualizar perfil
+router.put('/:id/desactivar', requireAdmin, desactivarUsuario); // Desactivar usuario
+router.put('/:id/activar', requireAdmin, activarUsuario); // Activar usuario
 router.delete('/:id', eliminarUsuario);
 
 console.log('📋 Rutas de usuario registradas exitosamente');
