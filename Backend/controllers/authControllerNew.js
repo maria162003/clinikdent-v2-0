@@ -220,6 +220,12 @@ exports.loginUser = async (req, res) => {
 
     const u = rows[0];
     console.log('👤 Usuario encontrado - Email:', u.correo, '| Rol DB:', u.rol, '| Rol solicitado:', rol || 'AUTO-DETECTAR');
+    // Verificar que la cuenta esté activa
+    // En la BD la columna puede ser boolean (true/false) o valores textuales; manejamos ambos casos
+    if (u.activo === false || u.activo === 'false' || u.activo === 'f' || u.activo === 0) {
+      console.log('⛔ Intento de login en cuenta inactiva:', correo);
+      return res.status(403).json({ msg: 'La cuenta está inactiva. Contacta al administrador.' });
+    }
     
     // Si se especifica un rol, verificar que coincida
     if (rol && u.rol !== rol) {
