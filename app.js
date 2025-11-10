@@ -388,6 +388,36 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 También accesible en: http://0.0.0.0:${PORT}`);
 });
 
+// ============================================================================
+// SISTEMA DE RECORDATORIOS AUTOMÁTICOS
+// ============================================================================
+const cron = require('node-cron');
+const { procesarRecordatorios } = require('./services/email-service');
+
+// Ejecutar recordatorios cada hora (al minuto 0)
+// Formato cron: segundo minuto hora día mes día-semana
+cron.schedule('0 * * * *', async () => {
+    console.log('🔄 [CRON] Ejecutando proceso de recordatorios programado...');
+    try {
+        await procesarRecordatorios();
+        console.log('✅ [CRON] Proceso de recordatorios completado exitosamente');
+    } catch (error) {
+        console.error('❌ [CRON] Error en proceso de recordatorios:', error);
+    }
+});
+
+console.log('✅ Sistema de recordatorios automáticos activado (cada hora)');
+
+// Ejecutar una vez al iniciar el servidor para procesar recordatorios pendientes
+setTimeout(async () => {
+    console.log('🔄 Ejecutando proceso inicial de recordatorios...');
+    try {
+        await procesarRecordatorios();
+    } catch (error) {
+        console.error('❌ Error en proceso inicial de recordatorios:', error);
+    }
+}, 5000); // Esperar 5 segundos después del inicio del servidor
+
 // Manejo de errores del servidor
 server.on('error', (error) => {
   console.error('❌ Error del servidor:', error);

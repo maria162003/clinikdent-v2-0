@@ -1,1 +1,0 @@
-require('./Backend/config/db').query('UPDATE usuarios SET rol_id=3 WHERE correo=?',['camila@example.com']).then(()=>console.log('Camila→Admin')).then(()=>require('./Backend/config/db').query('UPDATE usuarios SET rol_id=1 WHERE correo=?',['juan@example.com'])).then(()=>console.log('Juan→Paciente')).then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1)});

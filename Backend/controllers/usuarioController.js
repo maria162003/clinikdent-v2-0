@@ -301,27 +301,20 @@ exports.eliminarUsuario = async (req, res) => {
         const totalCitasPaciente = citasComoPaciente[0].total;
         const totalCitasOdontologo = citasComoOdontologo[0].total;
         
-        if (totalCitasPaciente > 0 || totalCitasOdontologo > 0) {
-            let mensaje = `No se puede eliminar el usuario ${user.nombre} ${user.apellido}. `;
-            
-            if (totalCitasPaciente > 0) {
-                mensaje += `Tiene ${totalCitasPaciente} cita(s) como paciente. `;
-            }
-            
-            if (totalCitasOdontologo > 0) {
-                mensaje += `Tiene ${totalCitasOdontologo} cita(s) como odontólogo. `;
-            }
-            
-            mensaje += 'Debe cancelar o reasignar las citas antes de eliminar el usuario.';
-            
-            return res.status(400).json({ 
-                msg: mensaje,
-                details: {
-                    citasComoPaciente: totalCitasPaciente,
-                    citasComoOdontologo: totalCitasOdontologo
-                }
-            });
+    if (totalCitasPaciente > 0 || totalCitasOdontologo > 0) {
+      // Mensaje conciso solicitado: solo informar cantidades
+      let mensaje = `No se puede eliminar el usuario ${user.nombre} ${user.apellido}. `;
+      if (totalCitasPaciente > 0) mensaje += `Tiene ${totalCitasPaciente} cita(s) como paciente.`;
+      if (totalCitasOdontologo > 0) mensaje += `${totalCitasPaciente > 0 ? ' ' : ''}Tiene ${totalCitasOdontologo} cita(s) como odontólogo.`;
+
+      return res.status(400).json({ 
+        msg: mensaje.trim(),
+        details: {
+          citasComoPaciente: totalCitasPaciente,
+          citasComoOdontologo: totalCitasOdontologo
         }
+      });
+    }
         
         // Si no hay citas asociadas, proceder con la eliminación
         const { rowCount } = await db.query('DELETE FROM usuarios WHERE id = $1', [id]);

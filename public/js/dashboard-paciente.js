@@ -227,6 +227,34 @@ class DashboardPaciente {
             this.togglePerfilEdit(false);
             this.loadPerfil(); // Reload original data
         });
+
+        // Validación de domingos en el campo de fecha para agendar cita
+        const citaFechaInput = document.getElementById('citaFecha');
+        if (citaFechaInput) {
+            citaFechaInput.addEventListener('change', (e) => {
+                const fechaSeleccionada = new Date(e.target.value + 'T00:00:00');
+                const diaSemana = fechaSeleccionada.getDay();
+                
+                if (diaSemana === 0) {
+                    this.showAlert('⚠️ La clínica no atiende los domingos. Horario: Lunes a Sábado.', 'warning');
+                    e.target.value = ''; // Limpiar el campo
+                }
+            });
+        }
+
+        // Validación de domingos en el campo de fecha para reprogramar cita
+        const nuevaFechaInput = document.getElementById('nuevaFecha');
+        if (nuevaFechaInput) {
+            nuevaFechaInput.addEventListener('change', (e) => {
+                const fechaSeleccionada = new Date(e.target.value + 'T00:00:00');
+                const diaSemana = fechaSeleccionada.getDay();
+                
+                if (diaSemana === 0) {
+                    this.showAlert('⚠️ La clínica no atiende los domingos. Horario: Lunes a Sábado.', 'warning');
+                    e.target.value = ''; // Limpiar el campo
+                }
+            });
+        }
     }
 
     setMinDate() {
@@ -834,6 +862,24 @@ class DashboardPaciente {
                 ? `Dr. ${cita.odontologo_nombre} ${cita.odontologo_apellido}`
                 : 'Dr. Por asignar';
             
+            // Verificar si se puede reprogramar (no completada, no cancelada, no del pasado, más de 24h)
+            const fechaActual = new Date();
+            // Construcción robusta de la fecha y hora de la cita evitando parseos ambiguos
+            const base = new Date(cita.fecha);
+            const [hh, mm = '0', ss = '0'] = (cita.hora || '00:00:00').split(':');
+            const fechaCita = new Date(
+                base.getFullYear(),
+                base.getMonth(),
+                base.getDate(),
+                parseInt(hh, 10) || 0,
+                parseInt(mm, 10) || 0,
+                parseInt(ss, 10) || 0,
+                0
+            );
+            const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
+            // Permitir reprogramar solo si faltan más de 24 horas
+            const puedeReprogramar = estado !== 'completada' && estado !== 'cancelada' && diffHoras > 24;
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${fecha}</td>
@@ -845,7 +891,10 @@ class DashboardPaciente {
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="dashboardPaciente.verDetalleCita(${cita.id})" title="Ver detalles">
                         <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-warning me-1" onclick="dashboardPaciente.reprogramarCita(${cita.id})" title="Reprogramar">
+                    <button class="btn btn-sm btn-outline-warning me-1" 
+                            onclick="dashboardPaciente.reprogramarCita(${cita.id})" 
+                            title="${puedeReprogramar ? 'Reprogramar' : 'No se puede reprogramar'}"
+                            ${!puedeReprogramar ? 'disabled' : ''}>
                         <i class="bi bi-calendar-event"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="dashboardPaciente.cancelarCita(${cita.id})" title="Cancelar">
@@ -1265,6 +1314,15 @@ class DashboardPaciente {
             return;
         }
         
+        // Validar que no sea domingo (día 0 en JavaScript)
+        const fechaSeleccionada = new Date(document.getElementById('citaFecha').value + 'T00:00:00');
+        const diaSemana = fechaSeleccionada.getDay();
+        
+        if (diaSemana === 0) {
+            this.showAlert('⚠️ La clínica no atiende los domingos. Por favor, seleccione un día de lunes a sábado.', 'warning');
+            return;
+        }
+        
         // Deshabilitar boton durante el proceso
         const originalText = submitBtn.innerHTML;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Agendando...';
@@ -1475,13 +1533,37 @@ class DashboardPaciente {
             return;
         }
 
-        // Verificar restriccion de 24 horas
+        // Verificar que la cita no este completada
+        if (cita.estado === 'completada') {
+            this.showAlert('No se puede reprogramar una cita que ya fue completada.', 'warning');
+            return;
+        }
+
+        // Verificar restriccion de 24 horas y que no sea del pasado
         const fechaActual = new Date();
-        const fechaCita = new Date(`${cita.fecha} ${cita.hora}`);
+        // Construcción robusta de la fecha-hora de la cita para evitar errores de parseo (DD/MM vs MM/DD)
+        const base = new Date(cita.fecha);
+        const [hh, mm = '0', ss = '0'] = (cita.hora || '00:00:00').split(':');
+        const fechaCita = new Date(
+            base.getFullYear(),
+            base.getMonth(),
+            base.getDate(),
+            parseInt(hh, 10) || 0,
+            parseInt(mm, 10) || 0,
+            parseInt(ss, 10) || 0,
+            0
+        );
         const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
         
+        // Si la cita es del pasado
+        if (diffHoras < 0) {
+            this.showAlert('No se puede reprogramar una cita que ya pasó.', 'warning');
+            return;
+        }
+        
+        // Si la cita es en menos de 24 horas
         if (diffHoras < 24) {
-            this.showAlert('No se puede reprogramar la cita con menos de 24 horas de anticipacion.', 'warning');
+            this.showAlert('No se puede reprogramar la cita con menos de 24 horas de anticipación.', 'warning');
             return;
         }
 

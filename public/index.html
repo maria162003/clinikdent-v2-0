@@ -1678,23 +1678,6 @@
       if (failed.length > 0) {
         console.log(`⚠️ Componentes pendientes: ${failed.join(', ')}`);
       }
-      
-      // Mostrar notificación de sistema listo
-      if (loaded.length >= 2) {
-        setTimeout(() => {
-          if (window.showNotificationMejorada) {
-            showNotificationMejorada(
-              'Sistema de seguridad y alertas activado',
-              'success',
-              3000,
-              { 
-                title: '🔒 Sistema Listo',
-                description: 'Protección y alertas modernas habilitadas'
-              }
-            );
-          }
-        }, 2000);
-      }
     });
     
     // Función para dashboard de seguridad

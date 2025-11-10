@@ -3086,6 +3086,15 @@ class DashboardAdmin {
 
         // Renderizar citas de la página actual
         currentPageCitas.forEach(cita => {
+            // Calcular si se puede editar la cita
+            const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
+            const ahora = new Date();
+            const diffMs = fechaCita - ahora;
+            const diffHoras = diffMs / (1000 * 60 * 60);
+            const puedeEditar = cita.estado !== 'completada' && 
+                               cita.estado !== 'cancelada' && 
+                               diffHoras >= 24;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><span class="badge bg-secondary">${cita.id}</span></td>
@@ -3108,7 +3117,11 @@ class DashboardAdmin {
                         <button class="btn btn-sm btn-outline-primary" onclick="dashboardAdmin.verDetallesCita(${cita.id})" title="Ver detalles">
                             <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-sm btn-success" onclick="dashboardAdmin.editarCita(${cita.id})" title="Editar cita" style="background: #198754 !important; background-image: none !important; border-color: #198754 !important;">
+                        <button class="btn btn-sm btn-success" 
+                                onclick="dashboardAdmin.editarCita(${cita.id})" 
+                                ${!puedeEditar ? 'disabled' : ''}
+                                title="${puedeEditar ? 'Editar cita' : 'No se puede editar (completada, cancelada, pasada o menos de 24h)'}" 
+                                style="background: #198754 !important; background-image: none !important; border-color: #198754 !important;">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.eliminarCita(${cita.id})" title="Eliminar cita" style="background: #dc3545 !important; background-image: none !important; border-color: #dc3545 !important;">
@@ -3172,6 +3185,36 @@ class DashboardAdmin {
         const cita = this.citas.find(c => c.id === id);
         if (!cita) {
             alert('Cita no encontrada');
+            return;
+        }
+
+        // Validar que no sea una cita completada
+        if (cita.estado === 'completada') {
+            this.showAlert('No se puede editar una cita que ya fue completada.', 'warning');
+            return;
+        }
+
+        // Validar que no sea una cita cancelada
+        if (cita.estado === 'cancelada') {
+            this.showAlert('No se puede editar una cita que fue cancelada.', 'warning');
+            return;
+        }
+
+        // Calcular diferencia de horas con la fecha/hora de la cita
+        const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
+        const ahora = new Date();
+        const diffMs = fechaCita - ahora;
+        const diffHoras = diffMs / (1000 * 60 * 60);
+
+        // Validar que no sea una cita del pasado
+        if (diffHoras < 0) {
+            this.showAlert('No se puede editar una cita que ya pasó.', 'warning');
+            return;
+        }
+
+        // Validar que tenga más de 24 horas de anticipación
+        if (diffHoras < 24) {
+            this.showAlert('No se puede editar una cita con menos de 24 horas de anticipación.', 'warning');
             return;
         }
 

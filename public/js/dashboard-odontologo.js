@@ -2284,6 +2284,30 @@ class DashboardOdontologo {
             return;
         }
 
+        // Validar que no esté ya completada
+        if (cita.estado === 'completada') {
+            this.showAlert('Esta cita ya está completada.', 'warning');
+            return;
+        }
+
+        // Validar que no esté cancelada
+        if (cita.estado === 'cancelada') {
+            this.showAlert('No se puede completar una cita cancelada.', 'warning');
+            return;
+        }
+
+        // Calcular diferencia de horas con la fecha/hora de la cita
+        const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
+        const ahora = new Date();
+        const diffMs = fechaCita - ahora;
+        const diffHoras = diffMs / (1000 * 60 * 60);
+
+        // Solo se puede completar el día de la cita (24h antes o después)
+        if (diffHoras > 24) {
+            this.showAlert('Solo se puede completar una cita el mismo día o después de su fecha programada (máximo 24h antes).', 'warning');
+            return;
+        }
+
         const fecha = this.formatearFecha(cita.fecha, { day: '2-digit', month: '2-digit', year: 'numeric' });
         
         const hora = this.formatearHora(cita.hora);
@@ -2643,16 +2667,34 @@ class DashboardOdontologo {
                                         <button class="btn btn-primary btn-sm" onclick="dashboardOdontologo.verDetallesCita(${cita.id})" title="Ver detalles">
                                             Ver
                                         </button>
-                                        ${cita.estado !== 'completada' && cita.estado !== 'cancelada' ? `
-                                            <button class="btn btn-success btn-sm" onclick="dashboardOdontologo.completarCita(${cita.id})" title="Marcar como completada">
-                                                Completar
-                                            </button>
-                                        ` : ''}
-                                        ${cita.estado === 'completada' ? `
-                                            <button class="btn btn-info btn-sm" onclick="dashboardOdontologo.verHistorialPaciente(${cita.paciente_id})" title="Ver historial del paciente">
-                                                Historial
-                                            </button>
-                                        ` : ''}
+                                        ${(() => {
+                                            // Calcular si se puede completar la cita (solo el día de la cita o después)
+                                            const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
+                                            const ahora = new Date();
+                                            const diffMs = fechaCita - ahora;
+                                            const diffHoras = diffMs / (1000 * 60 * 60);
+                                            const puedeCompletar = cita.estado !== 'completada' && 
+                                                                  cita.estado !== 'cancelada' && 
+                                                                  diffHoras <= 24; // Solo se puede completar el día de la cita o después
+                                            
+                                            if (cita.estado === 'completada') {
+                                                return `
+                                                    <button class="btn btn-info btn-sm" onclick="dashboardOdontologo.verHistorialPaciente(${cita.paciente_id})" title="Ver historial del paciente">
+                                                        Historial
+                                                    </button>
+                                                `;
+                                            } else if (cita.estado !== 'cancelada') {
+                                                return `
+                                                    <button class="btn btn-success btn-sm" 
+                                                            onclick="dashboardOdontologo.completarCita(${cita.id})" 
+                                                            ${!puedeCompletar ? 'disabled' : ''}
+                                                            title="${puedeCompletar ? 'Marcar como completada' : 'Solo se puede completar el día de la cita (24h antes o después)'}">
+                                                        Completar
+                                                    </button>
+                                                `;
+                                            }
+                                            return '';
+                                        })()}
                                     </div>
                                 </td>
                             </tr>
@@ -2873,6 +2915,36 @@ class DashboardOdontologo {
     // === MÉTODOS DE ACCIONES ===
 
     async completarCita(citaId) {
+        const cita = this.citas.find(c => c.id === citaId);
+        if (!cita) {
+            alert('Cita no encontrada');
+            return;
+        }
+
+        // Validar que no esté ya completada
+        if (cita.estado === 'completada') {
+            alert('Esta cita ya está completada.');
+            return;
+        }
+
+        // Validar que no esté cancelada
+        if (cita.estado === 'cancelada') {
+            alert('No se puede completar una cita cancelada.');
+            return;
+        }
+
+        // Calcular diferencia de horas con la fecha/hora de la cita
+        const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
+        const ahora = new Date();
+        const diffMs = fechaCita - ahora;
+        const diffHoras = diffMs / (1000 * 60 * 60);
+
+        // Solo se puede completar el día de la cita (24h antes o después)
+        if (diffHoras > 24) {
+            alert('Solo se puede completar una cita el mismo día o después de su fecha programada (máximo 24h antes).');
+            return;
+        }
+
         if (!confirm('¿Está seguro de marcar esta cita como completada?')) {
             return;
         }
