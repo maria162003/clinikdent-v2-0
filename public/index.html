@@ -956,12 +956,12 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <!-- Paso 1: Verificación de Identidad -->
+          <!-- Paso 1: Solicitar Magic Link -->
           <div id="recovery-step-1" class="recovery-step active">
             <div class="text-center mb-4">
-              <i class="fas fa-shield-alt text-primary mb-2" style="font-size: 2.5rem;"></i>
-              <h5 class="mb-2">Recuperación Segura</h5>
-              <p class="text-muted small">Ingrese sus datos para recibir un código de seguridad</p>
+              <i class="fas fa-envelope text-primary mb-2" style="font-size: 2.5rem;"></i>
+              <h5 class="mb-2">Recuperación por Email</h5>
+              <p class="text-muted small">Recibirás un enlace seguro para restablecer tu contraseña</p>
             </div>
             
             <form id="security-form-step1">
@@ -973,58 +973,28 @@
                 <label for="security-document" class="form-label">Número de Documento</label>
                 <input type="text" class="form-control" id="security-document" required>
               </div>
-              <button type="submit" class="btn btn-primary w-100" id="btn-send-code">
-                <i class="fas fa-paper-plane me-2"></i>Enviar Código de Seguridad
+              <button type="submit" class="btn btn-primary w-100" id="btn-send-link">
+                <i class="fas fa-paper-plane me-2"></i>Enviar Enlace de Recuperación
               </button>
             </form>
             
             <div id="step1-alerts"></div>
           </div>
           
-          <!-- Paso 2: Validación de Código -->
+          <!-- Paso 2: Confirmación -->
           <div id="recovery-step-2" class="recovery-step d-none">
-            <div class="text-center mb-4">
-              <i class="fas fa-check-circle text-success mb-2" style="font-size: 2.5rem;"></i>
-              <h5 class="mb-2">Código Enviado</h5>
-              <p class="text-muted small">Revise su correo e ingrese el código de 4 dígitos</p>
-              <div id="countdown-timer" class="badge bg-warning text-dark"></div>
-            </div>
-            
-            <form id="security-form-step2">
-              <div class="mb-3">
-                <label for="security-code" class="form-label text-center d-block">Código de Seguridad</label>
-                <input type="text" class="form-control text-center fs-4 fw-bold" 
-                       id="security-code" maxlength="4" 
-                       style="letter-spacing: 1rem; font-family: monospace;" required>
-              </div>
-              <button type="submit" class="btn btn-success w-100" id="btn-validate-code">
-                <i class="fas fa-key me-2"></i>Validar Código
-              </button>
-            </form>
-            
-            <div class="text-center mt-3">
-              <button type="button" class="btn btn-link btn-sm" id="btn-resend-code">
-                <i class="fas fa-redo me-1"></i>Solicitar nuevo código
-              </button>
-            </div>
-            
-            <div id="step2-alerts"></div>
-          </div>
-          
-          <!-- Paso 3: Confirmación -->
-          <div id="recovery-step-3" class="recovery-step d-none">
             <div class="text-center">
-              <i class="fas fa-check-double text-success mb-3" style="font-size: 3rem;"></i>
-              <h5 class="text-success mb-3">¡Recuperación Exitosa!</h5>
-              <p class="mb-3">Se ha enviado su nueva contraseña temporal a su correo electrónico.</p>
+              <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+              <h5 class="text-success mb-3">¡Enlace Enviado!</h5>
+              <p class="mb-3">Revisa tu correo electrónico y haz clic en el enlace para restablecer tu contraseña.</p>
               
               <div class="alert alert-info">
                 <i class="fas fa-info-circle me-2"></i>
-                <strong>Importante:</strong> Cambie esta contraseña temporal después de iniciar sesión.
+                <strong>Importante:</strong> El enlace expira en 1 hora.
               </div>
               
-              <button type="button" class="btn btn-primary w-100" onclick="location.reload()">
-                <i class="fas fa-sign-in-alt me-2"></i>Ir a Iniciar Sesión
+              <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">
+                <i class="fas fa-times me-2"></i>Cerrar
               </button>
             </div>
           </div>
@@ -1429,7 +1399,7 @@
       
       const email = document.getElementById('security-email').value;
       const document_number = document.getElementById('security-document').value;
-      const submitBtn = document.getElementById('btn-send-code');
+      const submitBtn = document.getElementById('btn-send-link');
       const alertsDiv = document.getElementById('step1-alerts');
       
       // Limpiar alertas previas
@@ -1441,7 +1411,7 @@
       submitBtn.disabled = true;
       
       try {
-        const response = await fetch('/api/seguridad/solicitar-codigo', {
+        const response = await fetch('/api/seguridad/recuperar-password-supabase', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ correo: email, numero_documento: document_number })
@@ -1450,16 +1420,10 @@
         const data = await response.json();
         
         if (response.ok) {
-          // Ir al paso 2
+          // Ir al paso 2 (confirmación)
           showRecoveryStep(2);
-          startCountdown(data.vigencia_minutos || 5);
-          showAlert('step2-alerts', 'success', data.msg);
         } else {
-          if (data.bloqueado) {
-            showAlert('step1-alerts', 'danger', data.msg);
-          } else {
-            showAlert('step1-alerts', 'warning', data.msg);
-          }
+          showAlert('step1-alerts', data.bloqueado ? 'danger' : 'warning', data.msg);
         }
         
       } catch (error) {
@@ -1470,68 +1434,11 @@
       }
     });
     
-    // Paso 2: Validar código
-    document.getElementById('security-form-step2').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const email = document.getElementById('security-email').value;
-      const document_number = document.getElementById('security-document').value;
-      const code = document.getElementById('security-code').value;
-      const submitBtn = document.getElementById('btn-validate-code');
-      const alertsDiv = document.getElementById('step2-alerts');
-      
-      // Limpiar alertas previas
-      alertsDiv.innerHTML = '';
-      
-      // Estado de carga
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Validando...';
-      submitBtn.disabled = true;
-      
-      try {
-        const response = await fetch('/api/seguridad/validar-codigo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ correo: email, numero_documento: document_number, codigo: code })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-          // Ir al paso 3
-          showRecoveryStep(3);
-          if (recoveryTimer) clearInterval(recoveryTimer);
-        } else {
-          showAlert('step2-alerts', 'warning', data.msg);
-        }
-        
-      } catch (error) {
-        showAlert('step2-alerts', 'danger', 'Error de conexión. Intente nuevamente.');
-      } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-      }
-    });
-    
-    // Solicitar nuevo código
-    document.getElementById('btn-resend-code').addEventListener('click', function() {
-      showRecoveryStep(1);
-      if (recoveryTimer) clearInterval(recoveryTimer);
-    });
-    
-    // Solo números en el código
-    document.getElementById('security-code').addEventListener('input', function(e) {
-      e.target.value = e.target.value.replace(/[^0-9]/g, '');
-    });
-    
     // Limpiar modal al cerrarlo
     document.getElementById('forgotModal').addEventListener('hidden.bs.modal', function() {
       showRecoveryStep(1);
       document.getElementById('security-form-step1').reset();
-      document.getElementById('security-form-step2').reset();
       document.getElementById('step1-alerts').innerHTML = '';
-      document.getElementById('step2-alerts').innerHTML = '';
-      if (recoveryTimer) clearInterval(recoveryTimer);
     });
     
     // Funciones auxiliares
@@ -1541,29 +1448,6 @@
       
       // Mostrar el paso actual
       document.getElementById('recovery-step-' + step).classList.remove('d-none');
-    }
-    
-    function startCountdown(minutes) {
-      const endTime = new Date(Date.now() + minutes * 60000);
-      
-      function updateCountdown() {
-        const now = new Date();
-        const timeLeft = endTime - now;
-        
-        if (timeLeft <= 0) {
-          document.getElementById('countdown-timer').innerHTML = '⏰ Código expirado';
-          document.getElementById('countdown-timer').className = 'badge bg-danger';
-          clearInterval(recoveryTimer);
-          return;
-        }
-        
-        const mins = Math.floor(timeLeft / 60000);
-        const secs = Math.floor((timeLeft % 60000) / 1000);
-        document.getElementById('countdown-timer').innerHTML = `⏱️ ${mins}:${secs.toString().padStart(2, '0')}`;
-      }
-      
-      updateCountdown();
-      recoveryTimer = setInterval(updateCountdown, 1000);
     }
     
     function showAlert(containerId, type, message) {
