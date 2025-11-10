@@ -310,6 +310,12 @@ const configuracionRoutes = require('./Backend/routes/configuracionRoutes');
 app.use('/api/configuracion', configuracionRoutes);
 console.log('✅ Rutas de configuración registradas exitosamente');
 
+// Agregar rutas de preferencias de notificaciones
+console.log('🔗 Registrando rutas de preferencias de notificaciones...');
+const preferenciasRoutes = require('./Backend/routes/preferenciasRoutes');
+app.use('/api/preferencias', preferenciasRoutes);
+console.log('✅ Rutas de preferencias de notificaciones registradas exitosamente');
+
 // Servir archivos estáticos del frontend (DESPUÉS de las rutas API)
 app.use(express.static('public'));
 

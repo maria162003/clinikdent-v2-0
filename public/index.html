@@ -1003,6 +1003,86 @@
     </div>
   </div>
 
+  <!-- Modal de Preferencias de Notificaciones (después del registro) -->
+  <div class="modal fade" id="preferencesModal" tabindex="-1" aria-labelledby="preferencesModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="preferencesModalLabel">
+            <i class="fas fa-bell me-2"></i>Preferencias de Comunicación
+          </h5>
+        </div>
+        <div class="modal-body">
+          <div class="text-center mb-4">
+            <i class="fas fa-envelope-open-text text-primary mb-3" style="font-size: 3rem;"></i>
+            <h5 class="mb-2">¡Bienvenido a Clinikdent!</h5>
+            <p class="text-muted">Personaliza cómo deseas recibir información de nuestra parte</p>
+          </div>
+
+          <form id="preferences-form">
+            <!-- Notificaciones Generales -->
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="pref-notificaciones" checked>
+                  <label class="form-check-label" for="pref-notificaciones">
+                    <strong><i class="fas fa-bell me-2"></i>Notificaciones del Sistema</strong>
+                    <p class="small text-muted mb-0">Recordatorios de citas, resultados de exámenes y avisos importantes</p>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ofertas y Promociones -->
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="pref-ofertas">
+                  <label class="form-check-label" for="pref-ofertas">
+                    <strong><i class="fas fa-gift me-2"></i>Ofertas y Promociones</strong>
+                    <p class="small text-muted mb-0">Descuentos especiales, nuevos servicios y contenido exclusivo</p>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Canales de Comunicación -->
+            <div class="card">
+              <div class="card-body">
+                <label class="form-label"><strong><i class="fas fa-paper-plane me-2"></i>Recibir por:</strong></label>
+                <div class="form-check">
+                  <input class="form-check-input canal-preferido" type="checkbox" id="canal-email" value="email" checked>
+                  <label class="form-check-label" for="canal-email">
+                    <i class="fas fa-envelope me-2"></i>Correo Electrónico
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input canal-preferido" type="checkbox" id="canal-dashboard" value="dashboard" checked>
+                  <label class="form-check-label" for="canal-dashboard">
+                    <i class="fas fa-desktop me-2"></i>Panel de Control
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info mt-3 small">
+              <i class="fas fa-info-circle me-2"></i>
+              Puedes cambiar estas preferencias en cualquier momento desde tu perfil.
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="btn-skip-preferences">
+            <i class="fas fa-times me-2"></i>Omitir por ahora
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-save-preferences">
+            <i class="fas fa-check me-2"></i>Guardar Preferencias
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Chat de Soporte -->
   <!-- Botón flotante del chat -->
   <div id="chatFloatButton" class="chat-float-button" title="Chat de Soporte">
@@ -1302,14 +1382,23 @@
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.msg || 'Error en el registro');
-        notify.success('¡Registro exitoso! Ahora puedes iniciar sesión.');
+        
+        // Guardar usuario_id temporalmente para preferencias
+        window.tempUserId = data.usuario_id || data.id;
+        
+        notify.success('¡Registro exitoso!');
+        
+        // Cerrar modal de registro y abrir modal de preferencias
+        $('#registerModal').modal('hide');
+        document.getElementById('registerForm').reset();
+        errorDiv.classList.add('d-none');
+        successDiv.classList.add('d-none');
+        
+        // Mostrar modal de preferencias después de medio segundo
         setTimeout(() => {
-          $('#registerModal').modal('hide');
-          document.getElementById('registerForm').reset();
-          errorDiv.classList.add('d-none');
-          successDiv.classList.add('d-none');
-          $('#loginModal').modal('show');
-        }, 2000);
+          $('#preferencesModal').modal('show');
+        }, 500);
+        
       } catch (error) {
         // Mostrar error en toast Y en el formulario
         notify.error(error.message || 'Error en el registro');
@@ -1682,6 +1771,99 @@
         });
       }
     });
+
+    // ===================================================================
+    // MANEJO DEL MODAL DE PREFERENCIAS DE NOTIFICACIONES
+    // ===================================================================
+    
+    // Guardar preferencias
+    document.getElementById('btn-save-preferences').addEventListener('click', async function() {
+      const btnSave = this;
+      const originalText = btnSave.innerHTML;
+      
+      try {
+        btnSave.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+        btnSave.disabled = true;
+        
+        // Obtener valores del formulario
+        const acepta_notificaciones = document.getElementById('pref-notificaciones').checked;
+        const acepta_ofertas = document.getElementById('pref-ofertas').checked;
+        
+        // Obtener canales preferidos
+        const canales = [];
+        document.querySelectorAll('.canal-preferido:checked').forEach(canal => {
+          canales.push(canal.value);
+        });
+        
+        const preferencias = {
+          usuario_id: window.tempUserId,
+          acepta_notificaciones,
+          acepta_ofertas,
+          canales_preferidos: canales
+        };
+        
+        const response = await fetch('/api/preferencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preferencias)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          notify.success('✅ Preferencias guardadas correctamente');
+          $('#preferencesModal').modal('hide');
+          
+          // Mostrar modal de login después de 500ms
+          setTimeout(() => {
+            $('#loginModal').modal('show');
+          }, 500);
+        } else {
+          throw new Error(data.msg || 'Error al guardar preferencias');
+        }
+        
+      } catch (error) {
+        console.error('Error guardando preferencias:', error);
+        notify.error('Error al guardar preferencias');
+      } finally {
+        btnSave.innerHTML = originalText;
+        btnSave.disabled = false;
+      }
+    });
+    
+    // Omitir preferencias
+    document.getElementById('btn-skip-preferences').addEventListener('click', async function() {
+      try {
+        // Guardar preferencias por defecto (todo desactivado)
+        const preferencias = {
+          usuario_id: window.tempUserId,
+          acepta_notificaciones: false,
+          acepta_ofertas: false,
+          canales_preferidos: []
+        };
+        
+        await fetch('/api/preferencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preferencias)
+        });
+        
+        $('#preferencesModal').modal('hide');
+        
+        // Mostrar modal de login
+        setTimeout(() => {
+          $('#loginModal').modal('show');
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        $('#preferencesModal').modal('hide');
+        setTimeout(() => {
+          $('#loginModal').modal('show');
+        }, 500);
+      }
+    });
+
   </script>
 </body>
 </html>
