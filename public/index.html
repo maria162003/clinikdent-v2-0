@@ -1865,5 +1865,43 @@
     });
 
   </script>
+
+  <!-- Inicialización del Chat de Soporte -->
+  <script>
+    console.log('� Script de inicialización del chat cargado');
+    
+    // Función para inicializar el chat
+    function iniciarChat() {
+      console.log('🚀 Intentando inicializar chat...');
+      
+      if (typeof ChatSoporte !== 'undefined') {
+        try {
+          if (!window.chatSoporte) {
+            window.chatSoporte = new ChatSoporte();
+            console.log('✅ Chat de soporte inicializado correctamente');
+          } else {
+            console.log('ℹ️ Chat ya existe, no recreando');
+          }
+        } catch (error) {
+          console.error('❌ Error al inicializar chat:', error);
+        }
+      } else {
+        console.error('❌ ChatSoporte no está definido');
+      }
+    }
+
+    // Intentar inicializar cuando DOM esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', iniciarChat);
+    } else {
+      iniciarChat();
+    }
+
+    // Backup: reintentar después de 1 segundo
+    setTimeout(iniciarChat, 1000);
+    
+    // Backup: reintentar después de 3 segundos
+    setTimeout(iniciarChat, 3000);
+  </script>
 </body>
 </html>

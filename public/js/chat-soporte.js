@@ -5,85 +5,102 @@ class ChatSoporte {
         this.messages = [];
         this.responses = this.getResponses();
         
-        // Verificar si los elementos ya existen
-        this.initializeChatElements();
-        this.setupEventListeners();
-        
-        // Mensaje de bienvenida
-        setTimeout(() => {
-            this.addBotMessage("¡Hola! 👋 Bienvenido a Clinik Dent. Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?");
-        }, 1000);
+        // Inicializar cuando DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     initializeChatElements() {
-        // Los elementos ya existen en el HTML, solo necesitamos verificar
-        const floatButton = document.getElementById('chatFloatButton');
-        const chatWindow = document.getElementById('chatWindow');
+        // Verificar si los elementos ya existen, si no, crearlos
+        let floatButton = document.getElementById('chatFloatButton');
+        let chatWindow = document.getElementById('chatWindow');
         
         if (!floatButton || !chatWindow) {
-            console.error('❌ Elementos del chat no encontrados en el DOM');
-            return;
+            console.log('💬 Creando elementos del chat...');
+            this.createChatElements();
+        } else {
+            console.log('✅ Elementos del chat encontrados y listos');
         }
-        
-        console.log('✅ Elementos del chat encontrados y listos');
     }
 
     setupEventListeners() {
-        // Manejar cambios de tamaño de ventana
-        window.addEventListener('resize', () => {
-            if (this.isOpen && window.innerWidth <= 768) {
-                document.body.classList.add('chat-open');
-            } else {
-                document.body.classList.remove('chat-open');
-            }
-        });
-
-        // Evento de click fuera del chat (solo en desktop)
-        document.addEventListener('click', (e) => {
-            const chatWindow = document.getElementById('chatWindow');
-            const chatButton = document.getElementById('chatFloatButton');
-            
-            // En móviles no cerrar automáticamente al hacer click fuera
-            if (this.isOpen && window.innerWidth > 768 && 
-                !chatWindow.contains(e.target) && !chatButton.contains(e.target)) {
-                // Opcionalmente cerrar en desktop
-                // this.closeChat();
-            }
-        });
-
-        // Event listeners para el chat
-        const floatButton = document.getElementById('chatFloatButton');
-        const closeButton = document.getElementById('chatClose');
-        const sendButton = document.getElementById('chatSendBtn');
-        const chatInput = document.getElementById('chatInput');
-
-        if (floatButton) {
-            floatButton.addEventListener('click', () => this.toggleChat());
-        }
-
-        if (closeButton) {
-            closeButton.addEventListener('click', () => this.closeChat());
-        }
-
-        if (sendButton) {
-            sendButton.addEventListener('click', () => this.handleSendMessage());
-        }
-
-        if (chatInput) {
-            chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.handleSendMessage();
+        // Esperar a que los elementos estén creados
+        setTimeout(() => {
+            // Manejar cambios de tamaño de ventana
+            window.addEventListener('resize', () => {
+                if (this.isOpen && window.innerWidth <= 768) {
+                    document.body.classList.add('chat-open');
+                } else {
+                    document.body.classList.remove('chat-open');
                 }
             });
-        }
 
-        // Event listeners para opciones rápidas
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('quick-option')) {
-                const message = e.target.textContent;
-                this.sendMessage(message);
+            // Event listeners para el chat
+            const floatButton = document.getElementById('chatFloatButton');
+            const closeButton = document.getElementById('chatClose');
+            const sendButton = document.getElementById('chatSendBtn');
+            const chatInput = document.getElementById('chatInput');
+
+            if (floatButton) {
+                floatButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggleChat();
+                });
             }
-        });
+
+            if (closeButton) {
+                closeButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeChat();
+                });
+            }
+
+            if (sendButton) {
+                sendButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleSendMessage();
+                });
+            }
+
+            if (chatInput) {
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.handleSendMessage();
+                    }
+                });
+            }
+
+            // Event listeners para opciones rápidas
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('quick-option')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const message = e.target.getAttribute('data-message') || e.target.textContent;
+                    this.sendMessage(message);
+                }
+            });
+
+            // Evento de click fuera del chat (solo en desktop)
+            document.addEventListener('click', (e) => {
+                const chatWindow = document.getElementById('chatWindow');
+                const chatButton = document.getElementById('chatFloatButton');
+                
+                // En móviles no cerrar automáticamente al hacer click fuera
+                if (this.isOpen && window.innerWidth > 768 && 
+                    chatWindow && chatButton &&
+                    !chatWindow.contains(e.target) && !chatButton.contains(e.target)) {
+                    // Opcionalmente cerrar en desktop
+                    // this.closeChat();
+                }
+            });
+        }, 100);
     }
 
     getResponses() {
@@ -229,61 +246,223 @@ class ChatSoporte {
     }
 
     init() {
-        // Verificar si ya existe el chat para evitar duplicados
-        if (document.getElementById('chatFloatButton')) {
-            console.log('💬 Chat ya inicializado, omitiendo...');
-            return;
+        console.log('🚀 Inicializando elementos del chat...');
+        
+        // Crear elementos del chat si no existen
+        if (!document.getElementById('chatFloatButton') || !document.getElementById('chatWindow')) {
+            console.log('� Creando elementos del chat...');
+            this.createChatElements();
+        } else {
+            console.log('✅ Elementos del chat ya existen');
         }
+        
+        // Siempre configurar eventos (puede que no estén configurados)
+        console.log('🎯 Configurando eventos del chat...');
+        this.setupEventListeners();
+        
+        // Mensaje de bienvenida automático si no hay mensajes
+        setTimeout(() => {
+            const messagesContainer = document.getElementById('chatMessages');
+            if (messagesContainer && messagesContainer.children.length === 0) {
+                this.addBotMessage("¡Hola! 👋 Soy el asistente virtual de Clinik Dent. ¿En qué puedo ayudarte hoy?");
+            }
+        }, 1000);
+        
+        console.log('✅ Chat inicializado completamente');
     }
 
     createChatElements() {
+        // Verificar que no existan ya los elementos
+        if (document.getElementById('chatFloatButton') || document.getElementById('chatWindow')) {
+            console.log('💬 Elementos del chat ya existen, omitiendo creación...');
+            return;
+        }
+
         // Crear botón flotante
         const floatButton = document.createElement('div');
         floatButton.className = 'chat-float-button';
         floatButton.id = 'chatFloatButton';
         floatButton.innerHTML = '<i class="fas fa-comments"></i>';
+        floatButton.style.cssText = `
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: 60px !important;
+            height: 60px !important;
+            background: #007bff !important;
+            color: white !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3) !important;
+            z-index: 9999 !important;
+            transition: all 0.3s ease !important;
+            font-size: 24px !important;
+            border: none !important;
+            outline: none !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        `;
         
         // Crear ventana de chat
         const chatWindow = document.createElement('div');
         chatWindow.className = 'chat-window';
         chatWindow.id = 'chatWindow';
+        chatWindow.style.cssText = `
+            position: fixed !important;
+            bottom: 100px !important;
+            right: 20px !important;
+            width: 350px !important;
+            max-width: calc(100vw - 40px) !important;
+            height: 500px !important;
+            max-height: calc(100vh - 140px) !important;
+            background: white !important;
+            border: 2px solid #007bff !important;
+            border-radius: 15px !important;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3) !important;
+            z-index: 99999 !important;
+            transform: translateY(100px) !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transition: all 0.3s ease !important;
+            display: flex !important;
+            flex-direction: column !important;
+        `;
         
         chatWindow.innerHTML = `
-            <div class="chat-header">
-                <div class="chat-info">
-                    <div class="chat-avatar">
+            <!-- Header del Chat -->
+            <div class="chat-header" style="
+                background: linear-gradient(135deg, #007bff, #0056b3);
+                color: white;
+                padding: 12px 15px;
+                border-radius: 15px 15px 0 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-shrink: 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            ">
+                <div class="chat-info" style="display: flex; align-items: center;">
+                    <div class="chat-avatar" style="
+                        width: 32px;
+                        height: 32px;
+                        background: rgba(255,255,255,0.2);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-right: 8px;
+                        font-size: 14px;
+                    ">
                         <i class="fas fa-robot"></i>
                     </div>
                     <div>
-                        <div class="chat-title">Asistente Clinik Dent</div>
-                        <div class="chat-status">En línea</div>
+                        <div class="chat-title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">Asistente Clinik Dent</div>
+                        <div class="chat-status" style="font-size: 11px; opacity: 0.85;">🟢 En línea</div>
                     </div>
                 </div>
-                <button class="chat-close" id="chatClose">
+                <button class="chat-close" id="chatClose" style="
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 16px;
+                    cursor: pointer;
+                    padding: 6px;
+                    border-radius: 4px;
+                    transition: background 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             
-            <div class="chat-messages" id="chatMessages">
-                <!-- Mensajes aparecerán aquí -->
+            <!-- Área de Mensajes con Scroll -->
+            <div class="chat-messages-container" style="
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                background: #f8f9fa;
+            ">
+                <div class="chat-messages" id="chatMessages" style="
+                    flex: 1;
+                    padding: 15px;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    scroll-behavior: smooth;
+                    background: #f8f9fa;
+                ">
+                    <!-- Mensajes aparecerán aquí -->
+                </div>
+                
+                <!-- Indicador de escritura -->
+                <div class="typing-indicator" id="typingIndicator" style="
+                    padding: 8px 15px;
+                    font-style: italic;
+                    color: #666;
+                    font-size: 12px;
+                    display: none;
+                    background: #f8f9fa;
+                    border-top: 1px solid #e9ecef;
+                ">
+                    <i class="fas fa-circle" style="color: #28a745; font-size: 6px; animation: pulse 1.5s infinite;"></i>
+                    El asistente está escribiendo...
+                </div>
             </div>
             
-            <div class="typing-indicator" id="typingIndicator">
-                El asistente está escribiendo<span class="typing-dots">...</span>
+            <!-- Opciones Rápidas -->
+            <div class="quick-options" id="quickOptions" style="
+                padding: 12px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                border-top: 1px solid #e9ecef;
+                background: white;
+                max-height: 80px;
+                overflow-y: auto;
+            ">
+                <div class="quick-option" data-message="Servicios" style="background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all 0.2s; white-space: nowrap;">🦷 Servicios</div>
+                <div class="quick-option" data-message="Agendar cita" style="background: #e8f5e8; border: 1px solid #4caf50; color: #388e3c; padding: 4px 8px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all 0.2s; white-space: nowrap;">📅 Citas</div>
+                <div class="quick-option" data-message="Horarios" style="background: #fff3e0; border: 1px solid #ff9800; color: #f57c00; padding: 4px 8px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all 0.2s; white-space: nowrap;">🕐 Horarios</div>
+                <div class="quick-option" data-message="Ubicación" style="background: #fce4ec; border: 1px solid #e91e63; color: #c2185b; padding: 4px 8px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all 0.2s; white-space: nowrap;">📍 Ubicación</div>
+                <div class="quick-option" data-message="Precios" style="background: #f3e5f5; border: 1px solid #9c27b0; color: #7b1fa2; padding: 4px 8px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all 0.2s; white-space: nowrap;">💰 Precios</div>
+                <div class="quick-option" data-message="Emergencia" style="background: #ffebee; border: 1px solid #f44336; color: #d32f2f; padding: 4px 8px; border-radius: 12px; cursor: pointer; font-size: 11px; transition: all 0.2s; white-space: nowrap; font-weight: 500;">🚨 Urgencia</div>
             </div>
             
-            <div class="quick-options" id="quickOptions">
-                <div class="quick-option" data-message="Servicios">🦷 Servicios</div>
-                <div class="quick-option" data-message="Agendar cita">📅 Citas</div>
-                <div class="quick-option" data-message="Horarios">🕐 Horarios</div>
-                <div class="quick-option" data-message="Ubicación">📍 Ubicación</div>
-                <div class="quick-option" data-message="Precios">💰 Precios</div>
-                <div class="quick-option" data-message="Emergencia" style="background: #dc3545; color: white; border-color: #dc3545;">🚨 Urgencia</div>
-            </div>
-            
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." autocomplete="off">
-                <button class="chat-send-btn" id="chatSendBtn">
+            <!-- Input de Mensaje -->
+            <div class="chat-input" style="
+                padding: 12px;
+                border-top: 1px solid #e9ecef;
+                display: flex;
+                gap: 8px;
+                background: white;
+                border-radius: 0 0 15px 15px;
+                flex-shrink: 0;
+            ">
+                <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." autocomplete="off" style="
+                    flex: 1;
+                    border: 1px solid #dee2e6;
+                    border-radius: 20px;
+                    padding: 8px 15px;
+                    outline: none;
+                    font-size: 14px;
+                    transition: border-color 0.2s;
+                " onfocus="this.style.borderColor='#007bff'" onblur="this.style.borderColor='#dee2e6'">
+                <button class="chat-send-btn" id="chatSendBtn" style="
+                    background: linear-gradient(135deg, #007bff, #0056b3);
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 38px;
+                    height: 38px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: transform 0.2s;
+                    font-size: 14px;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
@@ -292,79 +471,151 @@ class ChatSoporte {
         // Agregar elementos al DOM
         document.body.appendChild(floatButton);
         document.body.appendChild(chatWindow);
+        
+        console.log('✅ Elementos del chat creados exitosamente');
+        console.log('🔍 Botón flotante:', document.getElementById('chatFloatButton'));
+        console.log('🔍 Ventana chat:', document.getElementById('chatWindow'));
     }
 
     setupEventListeners() {
-        // Botón flotante
-        document.getElementById('chatFloatButton').addEventListener('click', () => {
-            this.toggleChat();
-        });
+        console.log('🎯 Configurando eventos del chat...');
         
-        // Botón cerrar
-        document.getElementById('chatClose').addEventListener('click', () => {
-            this.closeChat();
-        });
-        
-        // Input de mensaje
-        const chatInput = document.getElementById('chatInput');
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.sendMessage();
-            }
-        });
-        
-        // Botón enviar
-        document.getElementById('chatSendBtn').addEventListener('click', () => {
-            this.sendMessage();
-        });
-        
-        // Opciones rápidas
-        document.querySelectorAll('.quick-option').forEach(option => {
-            option.addEventListener('click', () => {
-                const message = option.dataset.message;
-                this.sendMessage(message);
-            });
-        });
-        
-        // Cerrar al hacer clic fuera
-        document.addEventListener('click', (e) => {
-            const chatWindow = document.getElementById('chatWindow');
-            const chatButton = document.getElementById('chatFloatButton');
+        // Esperar a que los elementos estén disponibles
+        setTimeout(() => {
+            const floatButton = document.getElementById('chatFloatButton');
+            const closeButton = document.getElementById('chatClose');
             
-            if (this.isOpen && !chatWindow.contains(e.target) && !chatButton.contains(e.target)) {
-                // No cerrar automáticamente para mejor UX
+            if (floatButton) {
+                console.log('✅ Configurando evento click en botón flotante');
+                // Remover eventos anteriores si existen
+                floatButton.replaceWith(floatButton.cloneNode(true));
+                const newFloatButton = document.getElementById('chatFloatButton');
+                
+                newFloatButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🖱️ Click en botón flotante detectado');
+                    this.toggleChat();
+                });
+            } else {
+                console.error('❌ Botón flotante no encontrado para eventos');
             }
-        });
+            
+            if (closeButton) {
+                console.log('✅ Configurando evento click en botón cerrar');
+                closeButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.closeChat();
+                });
+            } else {
+                console.error('❌ Botón cerrar no encontrado para eventos');
+            }
+            
+            // Input de mensaje
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.sendMessage();
+                    }
+                });
+            }
+            
+            // Botón enviar
+            const sendBtn = document.getElementById('chatSendBtn');
+            if (sendBtn) {
+                sendBtn.addEventListener('click', () => {
+                    this.sendMessage();
+                });
+            }
+            
+            // Opciones rápidas
+            document.querySelectorAll('.quick-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const message = option.dataset.message;
+                    this.sendMessage(message);
+                });
+            });
+            
+            console.log('✅ Todos los eventos configurados');
+        }, 500); // Cerrar setTimeout correctamente
     }
 
     toggleChat() {
+        console.log('🎯 toggleChat ejecutado, isOpen actual:', this.isOpen);
+        
         if (this.isOpen) {
+            console.log('🔄 Cerrando chat...');
             this.closeChat();
         } else {
+            console.log('🔄 Abriendo chat...');
             this.openChat();
         }
     }
 
     openChat() {
+        console.log('🔄 Intentando abrir chat...');
+        
         const chatWindow = document.getElementById('chatWindow');
         const floatButton = document.getElementById('chatFloatButton');
         
-        chatWindow.classList.add('show');
+        console.log('🔍 chatWindow:', chatWindow);
+        console.log('🔍 floatButton:', floatButton);
+        
+        if (!chatWindow || !floatButton) {
+            console.error('❌ Elementos del chat no encontrados para abrir');
+            console.error('   chatWindow existe:', !!chatWindow);
+            console.error('   floatButton existe:', !!floatButton);
+            return;
+        }
+        
+        console.log('✅ Elementos encontrados, aplicando estilos...');
+        
+        // Aplicar diseño bonito y funcional
+        chatWindow.setAttribute('style', `
+            position: fixed !important;
+            bottom: 100px !important;
+            right: 20px !important;
+            width: 350px !important;
+            height: 500px !important;
+            background: white !important;
+            border-radius: 15px !important;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
+            z-index: 99999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0) !important;
+            transition: all 0.3s ease !important;
+        `);
+        
+        console.log('✅ Chat con diseño bonito aplicado');
+        console.log('🔍 Posición del chat:', chatWindow.getBoundingClientRect());
+        
+        // Cambiar icono del botón
         floatButton.innerHTML = '<i class="fas fa-times"></i>';
         this.isOpen = true;
         
+        console.log('✅ Chat abierto correctamente, isOpen:', this.isOpen);
+        
         // En móviles, prevenir scroll del body
         if (window.innerWidth <= 768) {
-            document.body.classList.add('chat-open');
+            document.body.style.overflow = 'hidden';
+            chatWindow.style.width = 'calc(100vw - 20px)';
+            chatWindow.style.height = 'calc(100vh - 120px)';
+            chatWindow.style.right = '10px';
+            chatWindow.style.bottom = '80px';
         }
         
         // Hacer scroll al último mensaje
-        this.scrollToBottom();
+        setTimeout(() => this.scrollToBottom(), 100);
         
         // Focus en input solo en desktop para evitar problemas de teclado en móviles
         if (window.innerWidth > 768) {
             setTimeout(() => {
-                document.getElementById('chatInput').focus();
+                const chatInput = document.getElementById('chatInput');
+                if (chatInput) chatInput.focus();
             }, 300);
         }
     }
@@ -373,12 +624,26 @@ class ChatSoporte {
         const chatWindow = document.getElementById('chatWindow');
         const floatButton = document.getElementById('chatFloatButton');
         
-        chatWindow.classList.remove('show');
+        console.log('🔄 Cerrando chat...');
+        
+        if (!chatWindow || !floatButton) {
+            console.error('❌ Elementos del chat no encontrados para cerrar');
+            return;
+        }
+        
+        // Ocultar chat window con animación suave
+        chatWindow.style.setProperty('transform', 'translateY(50px)', 'important');
+        chatWindow.style.setProperty('opacity', '0', 'important');
+        chatWindow.style.setProperty('visibility', 'hidden', 'important');
+        
+        // Cambiar icono del botón
         floatButton.innerHTML = '<i class="fas fa-comments"></i>';
         this.isOpen = false;
         
         // Restaurar scroll del body
-        document.body.classList.remove('chat-open');
+        document.body.style.overflow = '';
+        
+        console.log('✅ Chat cerrado correctamente');
     }
 
     handleSendMessage() {
@@ -420,8 +685,22 @@ class ChatSoporte {
 
     addUserMessage(message) {
         const messagesContainer = document.getElementById('chatMessages');
+        
+        if (!messagesContainer) {
+            console.error('❌ Contenedor de mensajes no encontrado');
+            return;
+        }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message message-user';
+        
+        // Estilos inline para asegurar visualización correcta
+        messageDiv.style.cssText = `
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+            animation: slideInMessage 0.3s ease-out;
+        `;
         
         const currentTime = new Date().toLocaleTimeString('es-ES', {
             hour: '2-digit',
@@ -429,9 +708,22 @@ class ChatSoporte {
         });
         
         messageDiv.innerHTML = `
-            <div class="message-content">
+            <div class="message-content" style="
+                background: #007bff;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 15px 15px 5px 15px;
+                max-width: 80%;
+                word-wrap: break-word;
+                position: relative;
+            ">
                 ${message}
-                <div class="message-time">${currentTime}</div>
+                <div class="message-time" style="
+                    font-size: 0.75em;
+                    opacity: 0.8;
+                    margin-top: 4px;
+                    text-align: right;
+                ">${currentTime}</div>
             </div>
         `;
         
@@ -441,8 +733,22 @@ class ChatSoporte {
 
     addBotMessage(message) {
         const messagesContainer = document.getElementById('chatMessages');
+        
+        if (!messagesContainer) {
+            console.error('❌ Contenedor de mensajes no encontrado');
+            return;
+        }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message message-bot';
+        
+        // Estilos inline para asegurar visualización correcta
+        messageDiv.style.cssText = `
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 12px;
+            animation: slideInMessage 0.3s ease-out;
+        `;
         
         const currentTime = new Date().toLocaleTimeString('es-ES', {
             hour: '2-digit',
@@ -450,12 +756,38 @@ class ChatSoporte {
         });
         
         messageDiv.innerHTML = `
-            <div class="message-avatar">
+            <div class="message-avatar" style="
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+                background: #6c757d;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 10px;
+                font-size: 16px;
+                flex-shrink: 0;
+            ">
                 <i class="fas fa-robot"></i>
             </div>
-            <div class="message-content">
+            <div class="message-content" style="
+                background: #f8f9fa;
+                color: #333;
+                padding: 10px 15px;
+                border-radius: 15px 15px 15px 5px;
+                max-width: 80%;
+                word-wrap: break-word;
+                position: relative;
+                line-height: 1.4;
+            ">
                 ${message.replace(/\n/g, '<br>')}
-                <div class="message-time">${currentTime}</div>
+                <div class="message-time" style="
+                    font-size: 0.75em;
+                    opacity: 0.7;
+                    margin-top: 4px;
+                    color: #666;
+                ">${currentTime}</div>
             </div>
         `;
         
@@ -482,17 +814,27 @@ class ChatSoporte {
     }
 
     showTyping() {
-        document.getElementById('typingIndicator').classList.add('show');
-        this.scrollToBottom();
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.classList.add('show');
+            this.scrollToBottom();
+        }
     }
 
     hideTyping() {
-        document.getElementById('typingIndicator').classList.remove('show');
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.classList.remove('show');
+        }
     }
 
     scrollToBottom() {
         const messagesContainer = document.getElementById('chatMessages');
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        if (messagesContainer) {
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 100);
+        }
     }
 }
 
