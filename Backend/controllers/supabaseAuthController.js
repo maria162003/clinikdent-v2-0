@@ -40,7 +40,7 @@ exports.solicitarRecuperacion = async (req, res) => {
         console.log(' Usuario verificado:', usuario.correo);
         
         const { data, error } = await supabase.auth.resetPasswordForEmail(correo, {
-            redirectTo: ${process.env.FRONTEND_URL || 'http://localhost:3001'}/nueva-password-supabase.html
+            redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/nueva-password-supabase.html`
         });
         
         if (error) {

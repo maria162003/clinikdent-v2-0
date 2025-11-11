@@ -1,4 +1,4 @@
-ï»¿const db = require('../config/db');
+const db = require('../config/db');
 const SeguridadService = require('../services/seguridadService');
 
 /**
@@ -41,7 +41,7 @@ exports.guardarPreferencias = async (req, res) => {
         
         // Insertar o actualizar preferencias
         const { rows } = await db.query(
-            INSERT INTO usuarios_preferencias 
+            `INSERT INTO usuarios_preferencias 
                 (usuario_id, acepta_notificaciones, acepta_ofertas, canales_preferidos, ip_consentimiento, user_agent)
             VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (usuario_id) 
@@ -53,10 +53,11 @@ exports.guardarPreferencias = async (req, res) => {
                 user_agent = $6,
                 fecha_consentimiento = CURRENT_TIMESTAMP,
                 ultima_actualizacion = CURRENT_TIMESTAMP
-            RETURNING *
-        , [usuario_id, acepta_notificaciones, acepta_ofertas, JSON.stringify(canales_preferidos), ip, userAgent]);
+            RETURNING *`,
+            [usuario_id, acepta_notificaciones, acepta_ofertas, JSON.stringify(canales_preferidos), ip, userAgent]
+        );
         
-        // Registrar en auditorÃ­a
+        // Registrar en auditoría
         await SeguridadService.registrarAuditoria({
             usuario_id: usuario_id,
             accion: 'guardar_preferencias_notificaciones',
@@ -156,17 +157,17 @@ exports.actualizarPreferencias = async (req, res) => {
         let paramCount = 1;
         
         if (acepta_notificaciones !== undefined) {
-            updates.push(cepta_notificaciones = $);
+            updates.push(`acepta_notificaciones = $${paramCount++}`);
             values.push(acepta_notificaciones);
         }
         
         if (acepta_ofertas !== undefined) {
-            updates.push(cepta_ofertas = $);
+            updates.push(`acepta_ofertas = $${paramCount++}`);
             values.push(acepta_ofertas);
         }
         
         if (canales_preferidos !== undefined) {
-            updates.push(canales_preferidos = $);
+            updates.push(`canales_preferidos = $${paramCount++}`);
             values.push(JSON.stringify(canales_preferidos));
         }
         
@@ -177,20 +178,21 @@ exports.actualizarPreferencias = async (req, res) => {
             });
         }
         
-        updates.push(ip_consentimiento = $);
+        updates.push(`ip_consentimiento = $${paramCount++}`);
         values.push(ip);
-        updates.push(user_agent = $);
+        updates.push(`user_agent = $${paramCount++}`);
         values.push(userAgent);
         updates.push('ultima_actualizacion = CURRENT_TIMESTAMP');
         
         values.push(usuario_id);
         
         const { rows } = await db.query(
-            UPDATE usuarios_preferencias 
-            SET 
-            WHERE usuario_id = $
-            RETURNING *
-        , values);
+            `UPDATE usuarios_preferencias 
+            SET ${updates.join(', ')}
+            WHERE usuario_id = $${paramCount}
+            RETURNING *`,
+            values
+        );
         
         if (!rows.length) {
             return res.status(404).json({ 
@@ -199,7 +201,7 @@ exports.actualizarPreferencias = async (req, res) => {
             });
         }
         
-        // Registrar en auditorÃ­a
+        // Registrar en auditoría
         await SeguridadService.registrarAuditoria({
             usuario_id: parseInt(usuario_id),
             accion: 'actualizar_preferencias_notificaciones',
@@ -227,7 +229,7 @@ exports.actualizarPreferencias = async (req, res) => {
 };
 
 /**
- * Obtener estadÃ­sticas de consentimiento (solo admin)
+ * Obtener estadísticas de consentimiento (solo admin)
  * GET /api/preferencias/estadisticas
  */
 exports.obtenerEstadisticas = async (req, res) => {
@@ -240,10 +242,10 @@ exports.obtenerEstadisticas = async (req, res) => {
         });
         
     } catch (error) {
-        console.error(' Error al obtener estadÃ­sticas:', error);
+        console.error(' Error al obtener estadísticas:', error);
         return res.status(500).json({ 
             success: false, 
-            msg: 'Error al obtener estadÃ­sticas.' 
+            msg: 'Error al obtener estadísticas.' 
         });
     }
 };
