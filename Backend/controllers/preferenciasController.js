@@ -57,7 +57,7 @@ exports.guardarPreferencias = async (req, res) => {
             [usuario_id, acepta_notificaciones, acepta_ofertas, JSON.stringify(canales_preferidos), ip, userAgent]
         );
         
-        // Registrar en auditoría
+        // Registrar en auditorï¿½a
         await SeguridadService.registrarAuditoria({
             usuario_id: usuario_id,
             accion: 'guardar_preferencias_notificaciones',
@@ -201,7 +201,7 @@ exports.actualizarPreferencias = async (req, res) => {
             });
         }
         
-        // Registrar en auditoría
+        // Registrar en auditorï¿½a
         await SeguridadService.registrarAuditoria({
             usuario_id: parseInt(usuario_id),
             accion: 'actualizar_preferencias_notificaciones',
@@ -229,7 +229,7 @@ exports.actualizarPreferencias = async (req, res) => {
 };
 
 /**
- * Obtener estadísticas de consentimiento (solo admin)
+ * Obtener estadï¿½sticas de consentimiento (solo admin)
  * GET /api/preferencias/estadisticas
  */
 exports.obtenerEstadisticas = async (req, res) => {
@@ -242,10 +242,10 @@ exports.obtenerEstadisticas = async (req, res) => {
         });
         
     } catch (error) {
-        console.error(' Error al obtener estadísticas:', error);
+        console.error(' Error al obtener estadï¿½sticas:', error);
         return res.status(500).json({ 
             success: false, 
-            msg: 'Error al obtener estadísticas.' 
+            msg: 'Error al obtener estadï¿½sticas.' 
         });
     }
 };
