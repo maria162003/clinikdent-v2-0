@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const pool = require('../config/database');
+const pool = require('../config/databaseSecure');
 
 // 🔐 Configuración JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_demo_2025';
@@ -12,13 +12,19 @@ const JWT_EXPIRES_IN = '15m'; // Token principal expira en 15 minutos
 const REFRESH_EXPIRES_IN = '7d'; // Refresh token expira en 7 días
 
 // 📧 Configuración de email
-const emailTransporter = nodemailer.createTransporter({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+let emailTransporter;
+try {
+  emailTransporter = nodemailer.createTransporter({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+} catch (error) {
+  console.warn('⚠️ No se pudo configurar email transporter:', error.message);
+  emailTransporter = null;
+}
 
 // 🛡️ Generar tokens seguros
 const generateTokens = (user) => {

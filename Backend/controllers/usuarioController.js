@@ -5,18 +5,40 @@ console.log('🆕 NUEVO CONTROLADOR CARGADO - SIN CACHE');
 
 exports.obtenerUsuarios = async (req, res) => {
   try {
-    // Intentar obtener usuarios con roles usando JOIN
-    const { rows } = await db.query(`
-      SELECT u.id, u.nombre, u.apellido, u.correo, u.telefono, u.direccion, 
-             r.nombre as rol, u.fecha_nacimiento, u.tipo_documento, 
+    const { rol, activo } = req.query;
+
+    const filtros = [];
+    const params = [];
+
+    if (rol) {
+      filtros.push(`LOWER(r.nombre) = $${params.length + 1}`);
+      params.push(rol.toLowerCase());
+    }
+
+    if (typeof activo !== 'undefined') {
+      filtros.push(`u.activo = $${params.length + 1}`);
+      params.push(activo === 'true');
+    }
+
+    let query = `
+      SELECT u.id, u.nombre, u.apellido, u.correo, u.telefono, u.direccion,
+             r.nombre as rol, u.fecha_nacimiento, u.tipo_documento,
              u.numero_documento, u.activo as estado, u.created_at as fecha_registro
-      FROM usuarios u 
-      LEFT JOIN roles r ON u.rol_id = r.id 
-      ORDER BY u.nombre ASC
-    `);
-    
-    // Si no hay usuarios, devolver datos de ejemplo
-    if (rows.length === 0) {
+      FROM usuarios u
+      LEFT JOIN roles r ON u.rol_id = r.id
+    `;
+
+    if (filtros.length) {
+      query += ' WHERE ' + filtros.join(' AND ');
+    }
+
+    query += ' ORDER BY u.nombre ASC';
+
+    const { rows } = await db.query(query, params);
+
+    const sinFiltros = !rol && typeof activo === 'undefined';
+
+    if (rows.length === 0 && sinFiltros) {
       console.log('⚠️ No hay usuarios en BD, devolviendo datos de ejemplo');
       return res.json([
         {
@@ -63,12 +85,10 @@ exports.obtenerUsuarios = async (req, res) => {
         }
       ]);
     }
-    
+
     res.json(rows);
   } catch (err) {
     console.error('Error al obtener usuarios:', err);
-    
-    // En caso de error, devolver error - no datos de ejemplo
     res.status(500).json({ msg: 'Error al obtener usuarios de la base de datos.' });
   }
 };
@@ -590,6 +610,20 @@ exports.obtenerEstadisticas = async (req, res) => {
       AND u.activo = true
     `);
     const odontologosActivos = parseInt(odontologosActivosQuery.rows[0]?.total || 0);
+
+    // Calcular totales de citas (todas y completadas)
+    const totalCitasQuery = await db.query(`
+      SELECT COUNT(*) as total
+      FROM citas
+    `);
+    const totalCitas = parseInt(totalCitasQuery.rows[0]?.total || 0);
+
+    const citasCompletadasQuery = await db.query(`
+      SELECT COUNT(*) as total
+      FROM citas
+      WHERE estado = 'completada'
+    `);
+    const citasCompletadas = parseInt(citasCompletadasQuery.rows[0]?.total || 0);
     
     // Si no hay datos reales, usar datos de ejemplo realistas
     const estadisticas = {
@@ -597,6 +631,8 @@ exports.obtenerEstadisticas = async (req, res) => {
       citasHoy: citasHoy > 0 ? citasHoy : 12,
       ingresosMes: ingresosMes > 0 ? ingresosMes : 1250000, // $1,250,000 COP
       odontologosActivos: odontologosActivos > 0 ? odontologosActivos : 8,
+      totalCitas: totalCitas,
+      citasCompletadas: citasCompletadas,
       // Estadísticas adicionales
       por_rol: {
         pacientes: totalPacientes > 0 ? totalPacientes : 156,
@@ -617,7 +653,9 @@ exports.obtenerEstadisticas = async (req, res) => {
       totalPacientes: estadisticas.totalPacientes,
       citasHoy: estadisticas.citasHoy,
       ingresosMes: estadisticas.ingresosMes,
-      odontologosActivos: estadisticas.odontologosActivos
+      odontologosActivos: estadisticas.odontologosActivos,
+      totalCitas: estadisticas.totalCitas,
+      citasCompletadas: estadisticas.citasCompletadas
     });
     
     return res.json(estadisticas);
@@ -630,6 +668,8 @@ exports.obtenerEstadisticas = async (req, res) => {
       citasHoy: 12,
       ingresosMes: 1250000,
       odontologosActivos: 8,
+      totalCitas: 245,
+      citasCompletadas: 67,
       por_rol: {
         pacientes: 156,
         odontologos: 8,

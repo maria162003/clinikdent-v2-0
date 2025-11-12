@@ -137,6 +137,16 @@ exports.agendarCita = async (req, res) => {
     const horaInt = parseInt(horaCita[0]);
     const minutosInt = parseInt(horaCita[1]);
     
+    // Validar que no sea domingo (día 0)
+    const diaSemana = fechaCita.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+    if (diaSemana === 0) {
+      console.log('❌ Intento de agendar cita en domingo');
+      return res.status(400).json({ 
+        msg: 'No se pueden agendar citas los domingos. Por favor, seleccione otro día.',
+        error: 'DOMINGO_NO_LABORAL'
+      });
+    }
+    
     // Comparar solo las fechas (sin hora)
     const fechaActualSoloFecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), fechaActual.getDate());
     const fechaCitaSoloFecha = new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate());
@@ -149,7 +159,6 @@ exports.agendarCita = async (req, res) => {
     let debeConfirmarse = esCitaFutura;
     
     if (esMismoDia) {
-      const diaSemana = fechaCita.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
       const esHorarioLaboral = (diaSemana >= 1 && diaSemana <= 5) && // Lunes a Viernes
                               (horaInt >= 8 && horaInt < 18) && // 8:00 AM a 6:00 PM
                               (horaInt !== 17 || minutosInt === 0); // Si es las 5, solo 5:00 PM exacto
@@ -471,8 +480,14 @@ exports.reagendarCita = async (req, res) => {
   console.log(`🔄 [citaController] Actualizando cita ID: ${id_cita}`, req.body);
   
   try {
-    // Verificar que la cita existe y obtener datos actuales
-    const citaActual = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener datos actuales + info del paciente
+    const citaActual = await db.query(`
+      SELECT c.*, p.nombre as paciente_nombre, p.apellido as paciente_apellido, p.correo as paciente_correo
+      FROM citas c
+      LEFT JOIN usuarios p ON c.paciente_id = p.id
+      WHERE c.id = $1
+    `, [id_cita]);
+    
     if (citaActual.rows.length === 0) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
     }
@@ -485,6 +500,11 @@ exports.reagendarCita = async (req, res) => {
       return res.status(400).json({ msg: 'No se puede modificar una cita cancelada.' });
     }
 
+    // Guardar fecha/hora anterior para la notificación
+    const fechaAnterior = cita.fecha;
+    const horaAnterior = cita.hora;
+    const huboReprogramacion = (fecha && fecha !== fechaAnterior) || (hora && hora !== horaAnterior);
+
     // Actualizar la cita
     const updateData = {
       fecha: fecha || cita.fecha,
@@ -493,6 +513,19 @@ exports.reagendarCita = async (req, res) => {
       notas: notas || cita.notas
     };
 
+    // Validar que la nueva fecha no sea domingo
+    if (fecha) {
+      const fechaCita = new Date(fecha);
+      const diaSemana = fechaCita.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+      if (diaSemana === 0) {
+        console.log('❌ Intento de reprogramar cita para domingo');
+        return res.status(400).json({ 
+          msg: 'No se pueden agendar citas los domingos. Por favor, seleccione otro día.',
+          error: 'DOMINGO_NO_LABORAL'
+        });
+      }
+    }
+
     console.log('🔍 Query que se va a ejecutar: UPDATE citas SET fecha = $1, hora = $2, motivo = $3, notas = $4 WHERE id = $5');
     console.log('🔍 Parámetros:', [updateData.fecha, updateData.hora, updateData.motivo, updateData.notas, id_cita]);
     
@@ -500,6 +533,27 @@ exports.reagendarCita = async (req, res) => {
       'UPDATE citas SET fecha = $1, hora = $2, motivo = $3, notas = $4 WHERE id = $5 RETURNING *',
       [updateData.fecha, updateData.hora, updateData.motivo, updateData.notas, id_cita]
     );
+
+    // Enviar correo de notificación si hubo reprogramación de fecha u hora
+    if (huboReprogramacion && cita.paciente_correo) {
+      console.log('📧 Enviando notificación de reprogramación al paciente...');
+      const emailService = require('../services/emailService');
+      
+      try {
+        await emailService.sendCitaReprogramadaEmail(cita.paciente_correo, {
+          paciente_nombre: `${cita.paciente_nombre} ${cita.paciente_apellido}`,
+          fecha_anterior: fechaAnterior,
+          hora_anterior: horaAnterior,
+          fecha_nueva: updateData.fecha,
+          hora_nueva: updateData.hora,
+          motivo: updateData.motivo
+        });
+        console.log('✅ Correo de reprogramación enviado exitosamente');
+      } catch (emailError) {
+        console.error('⚠️ Error al enviar correo de reprogramación:', emailError);
+        // No fallar la operación si el correo falla
+      }
+    }
 
     console.log('✅ Cita actualizada exitosamente');
     return res.json({ 
@@ -578,11 +632,32 @@ exports.actualizarEstadoCita = async (req, res) => {
  */
 exports.cancelarCita = async (req, res) => {
   const { id_cita } = req.params;
+  const { motivo_cancelacion } = req.body;
   console.log(`❌ [citaController] Cancelando cita ID: ${id_cita}`);
   
   try {
-    // Verificar que la cita existe
-    const result = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Obtener configuración de cancelación desde la base de datos
+    let horasMinCancelacion = 2; // Valor por defecto
+    try {
+      const configResult = await db.query(
+        "SELECT valor FROM configuracion_sistema WHERE clave = 'cancelacion_horas_min'"
+      );
+      if (configResult.rows.length > 0) {
+        horasMinCancelacion = parseInt(configResult.rows[0].valor) || 2;
+        console.log(`⚙️ Usando configuración: cancelacion_horas_min = ${horasMinCancelacion} horas`);
+      }
+    } catch (configErr) {
+      console.warn('⚠️ Error al obtener configuración, usando valor por defecto:', configErr.message);
+    }
+    
+    // Verificar que la cita existe y obtener datos del paciente
+    const result = await db.query(`
+      SELECT c.*, p.nombre as paciente_nombre, p.apellido as paciente_apellido, p.correo as paciente_correo
+      FROM citas c
+      LEFT JOIN usuarios p ON c.paciente_id = p.id
+      WHERE c.id = $1
+    `, [id_cita]);
+    
     const citaActual = result.rows || [];
     if (!citaActual.length) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
@@ -595,20 +670,40 @@ exports.cancelarCita = async (req, res) => {
       return res.status(400).json({ msg: 'La cita ya está cancelada.' });
     }
 
-    // Verificar restricción de 2 horas
+    // Verificar restricción con configuración dinámica
     const fechaActual = new Date();
     const fechaStr = cita.fecha.toISOString().split('T')[0];
     const fechaCita = new Date(`${fechaStr} ${cita.hora}`);
     const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
     
-    if (diffHoras < 2) {
+    if (diffHoras < horasMinCancelacion) {
       return res.status(400).json({ 
-        msg: `No se puede cancelar la cita con menos de 2 horas de anticipación. Faltan ${diffHoras.toFixed(1)} horas.`
+        msg: `No se puede cancelar la cita con menos de ${horasMinCancelacion} horas de anticipación. Faltan ${diffHoras.toFixed(1)} horas.`
       });
     }
 
     // Cancelar la cita
     await db.query('UPDATE citas SET estado = $1 WHERE id = $2', ['cancelada', id_cita]);
+    
+    // Enviar correo de notificación al paciente
+    if (cita.paciente_correo) {
+      console.log('📧 Enviando notificación de cancelación al paciente...');
+      const emailService = require('../services/emailService');
+      
+      try {
+        await emailService.sendCitaCanceladaEmail(cita.paciente_correo, {
+          paciente_nombre: `${cita.paciente_nombre} ${cita.paciente_apellido}`,
+          fecha: cita.fecha,
+          hora: cita.hora,
+          motivo: cita.motivo,
+          motivo_cancelacion: motivo_cancelacion || 'No especificado'
+        });
+        console.log('✅ Correo de cancelación enviado exitosamente');
+      } catch (emailError) {
+        console.error('⚠️ Error al enviar correo de cancelación:', emailError);
+        // No fallar la operación si el correo falla
+      }
+    }
     
     console.log('✅ Cita cancelada exitosamente');
     return res.json({ 
