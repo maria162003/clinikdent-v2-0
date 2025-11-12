@@ -596,9 +596,9 @@
             </div>
             
             <h3 class="h4 mb-3">Horario de atención</h3>
-            <ul class="list-unstyled">
-              <li class="mb-2"><strong>Lunes a Viernes:</strong> 8:00 am - 8:00 pm</li>
-              <li class="mb-2"><strong>Sábados:</strong> 8:00 am - 4:00 pm</li>
+            <ul class="list-unstyled" id="horarioAtencion">
+              <li class="mb-2"><strong>Lunes a Viernes:</strong> <span id="horarioSemana">8:00 am - 8:00 pm</span></li>
+              <li class="mb-2"><strong>Sábados:</strong> <span id="horarioSabado">8:00 am - 4:00 pm</span></li>
               <li><strong>Urgencias:</strong> 24 horas / 7 días</li>
             </ul>
             
@@ -643,9 +643,9 @@
         
         <div class="col-lg-3 col-md-6">
           <h3 class="h5 mb-4">Horario de atención</h3>
-          <ul class="list-unstyled">
-            <li class="mb-2"><strong>Lunes a Viernes:</strong> 8:00 am - 8:00 pm</li>
-            <li class="mb-2"><strong>Sábados:</strong> 8:00 am - 4:00 pm</li>
+          <ul class="list-unstyled" id="horarioFooter">
+            <li class="mb-2"><strong>Lunes a Viernes:</strong> <span id="horarioSemanaFooter">8:00 am - 8:00 pm</span></li>
+            <li class="mb-2"><strong>Sábados:</strong> <span id="horarioSabadoFooter">8:00 am - 4:00 pm</span></li>
             <li><strong>Urgencias:</strong> 24 horas / 7 días</li>
           </ul>
           
@@ -1156,6 +1156,8 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Tus scripts personalizados deben ir después de jQuery y Bootstrap -->
   <script src="js/scripts.js"></script>
+  <!-- Configuración dinámica -->
+  <script src="js/config-dinamica.js"></script>
   <!-- Chat de Soporte -->
   <script src="js/chat-soporte.js"></script>
   <!-- Breadcrumbs (posición fija bajo la navbar) -->

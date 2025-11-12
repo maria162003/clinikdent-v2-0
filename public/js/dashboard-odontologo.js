@@ -1786,7 +1786,7 @@ class DashboardOdontologo {
             
         } catch (error) {
             console.error('Error al cargar datos del historial:', error);
-            alert('Error al cargar los datos del historial');
+            this.showAlert('Error al cargar los datos del historial', 'danger');
         }
     }
 
@@ -1803,12 +1803,12 @@ class DashboardOdontologo {
                 throw new Error(errorData.msg || 'Error al eliminar historial');
             }
             
-            alert('Historial eliminado exitosamente');
+            this.showAlert('Historial eliminado exitosamente', 'success');
             await this.loadHistoriales();
             
         } catch (err) {
             console.error('Error al eliminar historial:', err);
-            alert('Error al eliminar historial: ' + err.message);
+            this.showAlert('Error al eliminar historial: ' + err.message, 'danger');
         }
     }
 
@@ -1887,7 +1887,7 @@ class DashboardOdontologo {
             
         } catch (error) {
             console.error('Error al ver historial:', error);
-            alert('Error al cargar los detalles del historial');
+            this.showAlert('Error al cargar los detalles del historial', 'danger');
         }
     }
 
@@ -1908,17 +1908,20 @@ class DashboardOdontologo {
         try {
             const userId = localStorage.getItem('userId');
             if (!userId) {
-                alert('Error: Usuario no identificado');
+                this.showAlert('Error: Usuario no identificado', 'danger');
                 return;
             }
             
+            const estadoSeleccionado = document.getElementById('historialEstado').value || null;
+
             const data = {
                 paciente_id: document.getElementById('historialPaciente').value,
                 odontologo_id: userId,
                 fecha: document.getElementById('historialFecha').value,
                 diagnostico: document.getElementById('historialDiagnostico').value,
                 tratamiento_resumido: document.getElementById('historialTratamiento').value,
-                archivo_adjuntos: document.getElementById('historialObservaciones').value
+                archivo_adjuntos: document.getElementById('historialObservaciones').value,
+                estado: estadoSeleccionado
             };
             
             let response;
@@ -1951,15 +1954,21 @@ class DashboardOdontologo {
             console.log('Historial guardado exitosamente:', result);
             
             // Show success message
-            alert(this.currentHistorialId ? 'Historial actualizado exitosamente' : 'Historial creado exitosamente');
-            
+            this.showAlert(this.currentHistorialId ? 'Historial actualizado exitosamente' : 'Historial creado exitosamente', 'success');
+
             // Close modal and refresh list
-            bootstrap.Modal.getInstance(document.getElementById('historialModal')).hide();
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('historialModal'));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
             await this.loadHistoriales();
+            form.reset();
+            form.classList.remove('was-validated');
+            this.currentHistorialId = null;
             
         } catch (error) {
             console.error('Error al guardar historial:', error);
-            alert('Error al guardar historial: ' + error.message);
+            this.showAlert('Error al guardar historial: ' + error.message, 'danger');
         }
     }
 
@@ -2132,13 +2141,45 @@ class DashboardOdontologo {
         }
     }
 
+    findCitaLocal(citaId) {
+        const normalizeId = (value) => {
+            if (value === null || value === undefined) return null;
+            const numeric = Number(value);
+            return Number.isNaN(numeric) ? value : numeric;
+        };
+
+        const targetId = normalizeId(citaId);
+        const sources = [
+            { nombre: 'misCitas', lista: this.citas },
+            { nombre: 'agenda', lista: this.agenda },
+            { nombre: 'historiales', lista: this.historiales }
+        ];
+
+        for (const source of sources) {
+            if (!Array.isArray(source.lista) || source.lista.length === 0) {
+                continue;
+            }
+
+            const citaEncontrada = source.lista.find((cita) => {
+                const currentId = normalizeId(cita?.id);
+                return currentId !== null && currentId === targetId;
+            });
+
+            if (citaEncontrada) {
+                return { cita: citaEncontrada, origen: source.nombre };
+            }
+        }
+
+        return { cita: null, origen: null };
+    }
+
     verDetallesCita(citaId) {
         console.log('🔍 Buscando cita con ID:', citaId);
-        console.log('📋 Citas disponibles:', this.citas);
-        console.log('📊 Total de citas cargadas:', this.citas ? this.citas.length : 0);
+        console.log('📋 Citas disponibles (misCitas):', this.citas);
+        console.log('📂 Agenda disponible:', this.agenda);
         
-        const cita = this.citas.find(c => c.id === citaId);
-        console.log('✅ Cita encontrada:', cita);
+        const { cita, origen } = this.findCitaLocal(citaId);
+        console.log('✅ Cita encontrada:', cita, '📌 Origen:', origen || 'desconocido');
         
         if (!cita) {
             console.error('❌ Cita no encontrada para ID:', citaId);

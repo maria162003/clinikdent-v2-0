@@ -208,12 +208,13 @@ const evaluacionesController = require('./controllers/evaluacionesController');
 const historialController = require('./controllers/historialController');
 
 // 📅 Citas - Solo usuarios autenticados
-app.get('/api/citas', authenticateToken, citaController.obtenerTodasLasCitas);
-app.get('/api/citas/paciente/:pacienteId', authenticateToken, citaController.obtenerCitasPorPaciente);
-app.get('/api/citas/:id', authenticateToken, citaController.obtenerCitaPorId);
-app.post('/api/citas', authenticateToken, citaController.crearCita);
-app.put('/api/citas/:id', authenticateToken, citaController.actualizarCita);
-app.delete('/api/citas/:id', authenticateToken, authorizeRole('admin', 'odontologo'), citaController.eliminarCita);
+// TEMPORAL: Comentado para probar
+// app.get('/api/citas', authenticateToken, citaController.obtenerTodasLasCitas);
+// app.get('/api/citas/paciente/:pacienteId', authenticateToken, citaController.obtenerCitasPorPaciente);
+// app.get('/api/citas/:id', authenticateToken, citaController.obtenerCitaPorId);
+// app.post('/api/citas', authenticateToken, citaController.crearCita);
+// app.put('/api/citas/:id', authenticateToken, citaController.actualizarCita);
+// app.delete('/api/citas/:id', authenticateToken, authorizeRole('admin', 'odontologo'), citaController.eliminarCita);
 
 // 👤 Usuarios (Pacientes/Odontólogos) - Con autorización por rol
 app.get('/api/usuarios', authenticateToken, authorizeRole('admin', 'odontologo'), usuarioController.obtenerUsuarios);
@@ -221,7 +222,7 @@ app.get('/api/usuarios/:id', authenticateToken, usuarioController.obtenerUsuario
 app.put('/api/usuarios/:id', authenticateToken, usuarioController.actualizarUsuario);
 
 // 📊 Evaluaciones - Solo usuarios autenticados
-app.get('/api/evaluaciones', authenticateToken, evaluacionesController.obtenerEvaluaciones);
+app.get('/api/evaluaciones', authenticateToken, evaluacionesController.obtenerTodasEvaluaciones);
 app.post('/api/evaluaciones', authenticateToken, evaluacionesController.crearEvaluacion);
 
 // 📋 Historial médico - Solo usuarios autenticados
