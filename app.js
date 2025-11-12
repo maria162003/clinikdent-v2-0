@@ -25,7 +25,6 @@ const pagoRoutes = require('./Backend/routes/pagoRoutes');
 const chatRoutes = require('./Backend/routes/chatRoutes');
 const contactoRoutes = require('./Backend/routes/contactoRoutes');
 const usuarioRoutes = require('./Backend/routes/usuarioRoutes');
-const testEmailRoutes = require('./Backend/routes/testEmailRoutes'); // Rutas de prueba aisladas
 
 console.log('🔄 Cargando rutas de inventario...');
 const inventarioRoutes = require('./Backend/routes/inventarioRoutes');
@@ -232,7 +231,6 @@ app.use('/api/pagos', pagoRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/contacto', contactoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/test-email', testEmailRoutes); // 🧪 Rutas de prueba aisladas
 console.log('🔗 Registrando rutas de inventario...');
 app.use('/api/inventario', inventarioRoutes);
 console.log('✅ Rutas de inventario registradas exitosamente');
@@ -309,6 +307,12 @@ console.log('🔗 Registrando rutas de configuración...');
 const configuracionRoutes = require('./Backend/routes/configuracionRoutes');
 app.use('/api/configuracion', configuracionRoutes);
 console.log('✅ Rutas de configuración registradas exitosamente');
+
+// Agregar rutas de preferencias de notificaciones
+console.log('🔗 Registrando rutas de preferencias de notificaciones...');
+const preferenciasRoutes = require('./Backend/routes/preferenciasRoutes');
+app.use('/api/preferencias', preferenciasRoutes);
+console.log('✅ Rutas de preferencias de notificaciones registradas exitosamente');
 
 // Servir archivos estáticos del frontend (DESPUÉS de las rutas API)
 app.use(express.static('public'));

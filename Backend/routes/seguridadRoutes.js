@@ -345,27 +345,18 @@ router.get('/demo/auditoria-completa', async (req, res) => {
 // NO INTERFIEREN con el sistema existente
 // ===============================
 
-const recuperacionController = require('../controllers/recuperacionSeguridadController');
+// ===============================
+// RECUPERACIÓN CON SUPABASE AUTH (Magic Links)
+// ===============================
+
+const supabaseAuthController = require('../controllers/supabaseAuthController');
 
 /**
- * POST /api/seguridad/solicitar-codigo
- * Solicita código de seguridad para recuperación de contraseña
+ * POST /api/seguridad/recuperar-password-supabase
+ * Envía magic link de recuperación vía Supabase Auth
  * Body: { correo, numero_documento }
  */
-router.post('/solicitar-codigo', (req, res) => {
-    console.log('🔐 Ruta seguridad: Solicitar código de recuperación');
-    recuperacionController.solicitarCodigoRecuperacion(req, res);
-});
-
-/**
- * POST /api/seguridad/validar-codigo
- * Valida código de seguridad y genera nueva contraseña
- * Body: { correo, numero_documento, codigo }
- */
-router.post('/validar-codigo', (req, res) => {
-    console.log('🔐 Ruta seguridad: Validar código de recuperación');
-    recuperacionController.validarCodigoRecuperacion(req, res);
-});
+router.post('/recuperar-password-supabase', supabaseAuthController.solicitarRecuperacion);
 
 console.log('✅ Rutas de seguridad avanzada configuradas');
 

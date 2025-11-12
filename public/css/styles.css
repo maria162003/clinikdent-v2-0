@@ -14,22 +14,30 @@
 }
 
 .social-float a {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 15px;
   color: white;
-  font-size: 1.5rem;
+  font-size: 2rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  text-decoration: none;
 }
 
 .whatsapp-float {
-  background: #25D366;
+  background: transparent;
+  color: #25D366;
+  box-shadow: none;
+}
+
+.whatsapp-float i {
+  font-size: 3rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .facebook-float {
@@ -41,8 +49,17 @@
 }
 
 .social-float a:hover {
-  transform: translateY(-5px) scale(1.1);
+  transform: translateX(-5px) scale(1.1);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.whatsapp-float:hover {
+  box-shadow: none;
+  transform: translateX(-5px) scale(1.15);
+}
+
+.whatsapp-float:hover i {
+  filter: drop-shadow(0 4px 8px rgba(37, 211, 102, 0.5));
 }
 
 .social-float a:before {
@@ -60,6 +77,10 @@
   left: 100%;
 }
 
+.whatsapp-float:before {
+  display: none;
+}
+
 /* Responsive para botones flotantes */
 @media (max-width: 768px) {
   .social-float-container {
@@ -71,12 +92,17 @@
   
   .social-float {
     flex-direction: row;
+    gap: 10px;
   }
   
   .social-float a {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+  
+  .whatsapp-float i {
+    font-size: 2.5rem;
   }
 }
 

@@ -1,6 +1,252 @@
 // Backend/controllers/inventarioController.js
 const db = require('../config/db');
 
+let inventarioColumnCache = null;
+
+const getInventarioTableColumns = async () => {
+  if (Array.isArray(inventarioColumnCache)) {
+    return inventarioColumnCache;
+  }
+
+  try {
+    const query = `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'inventario'
+    `;
+
+    const result = await db.query(query);
+    inventarioColumnCache = result.rows.map(row => row.column_name);
+  } catch (err) {
+    console.warn('⚠️ No se pudieron obtener las columnas de la tabla inventario:', err.message);
+    inventarioColumnCache = [];
+  }
+
+  return inventarioColumnCache;
+};
+
+const parseIntegerSafe = (value, fallback = null) => {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const parseFloatSafe = (value, fallback = null) => {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const parsed = parseFloat(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const normalizeBooleanInput = (value, defaultValue = false) => {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'si';
+  }
+
+  return Boolean(value);
+};
+
+const createRegistroInventarioDesdeActualizacion = async (payload = {}, options = {}) => {
+  const columns = await getInventarioTableColumns();
+  const hasColumn = columnName => columns.includes(columnName);
+  const accumulateSedeQuantity = Boolean(options.accumulateSedeQuantity);
+
+  const nombre = payload.nombre || payload.producto || null;
+  const cantidadValue = parseIntegerSafe(payload.cantidad ?? payload.cantidad_actual, null);
+
+  if (!nombre || cantidadValue === null) {
+    throw new Error('Nombre y cantidad válidos son requeridos.');
+  }
+
+  const categoriaValue = parseIntegerSafe(payload.categoria_id ?? payload.categoria, null);
+  const sedeIdValue = parseIntegerSafe(payload.sede_id, null);
+  const stockMinValue = parseIntegerSafe(payload.stock_minimo ?? payload.cantidad_minima, 0);
+  const stockMaxValue = parseIntegerSafe(payload.stock_maximo, null);
+  const precioValue = parseFloatSafe(payload.precio_unitario, 0);
+  const unidadValue = payload.unidad_medida || payload.unidad || 'unidad';
+  const proveedorValue = parseIntegerSafe(payload.proveedor_id, null);
+  const codigoValue = payload.codigo ? String(payload.codigo).trim() : null;
+  const alertaStockValue = normalizeBooleanInput(payload.alerta_stock_bajo, true);
+  const alertaVencimientoValue = normalizeBooleanInput(payload.alerta_vencimiento, false);
+  const requiereRecetaValue = normalizeBooleanInput(payload.requiere_receta, false);
+  const descripcionValue = payload.descripcion || null;
+  const fechaVencimientoValue = payload.fecha_vencimiento || null;
+  const ubicacionValue = payload.ubicacion || null;
+
+  const codigoColumn = hasColumn('codigo') ? 'codigo' : null;
+  const nombreColumn = hasColumn('nombre') ? 'nombre' : null;
+  const descripcionColumn = hasColumn('descripcion') ? 'descripcion' : null;
+  const categoriaColumn = hasColumn('categoria_id') ? 'categoria_id' : (hasColumn('categoria') ? 'categoria' : null);
+  const sedeColumn = hasColumn('sede_id') ? 'sede_id' : null;
+  const cantidadColumn = hasColumn('cantidad_actual') ? 'cantidad_actual' : (hasColumn('cantidad') ? 'cantidad' : null);
+  const cantidadMinimaColumn = hasColumn('cantidad_minima') ? 'cantidad_minima' : (hasColumn('stock_minimo') ? 'stock_minimo' : null);
+  const stockMaxColumn = hasColumn('stock_maximo') ? 'stock_maximo' : (hasColumn('stock_max') ? 'stock_max' : null);
+  const precioColumn = hasColumn('precio_unitario') ? 'precio_unitario' : (hasColumn('precio') ? 'precio' : null);
+  const unidadColumn = hasColumn('unidad_medida') ? 'unidad_medida' : (hasColumn('unidad') ? 'unidad' : null);
+  const proveedorColumn = hasColumn('proveedor_id') ? 'proveedor_id' : (hasColumn('proveedor') ? 'proveedor' : null);
+  const fechaVColumn = hasColumn('fecha_vencimiento') ? 'fecha_vencimiento' : null;
+  const ubicacionColumn = hasColumn('ubicacion') ? 'ubicacion' : null;
+  const alertaStockColumn = hasColumn('alerta_stock_bajo') ? 'alerta_stock_bajo' : null;
+  const alertaVColumn = hasColumn('alerta_vencimiento') ? 'alerta_vencimiento' : null;
+  const recetaColumn = hasColumn('requiere_receta') ? 'requiere_receta' : null;
+
+  let productoId = null;
+  let action = 'created';
+
+  if (codigoColumn && codigoValue) {
+    const existingByCode = await db.query(`SELECT id FROM inventario WHERE ${codigoColumn} = $1`, [codigoValue]);
+
+    if (existingByCode.rowCount > 0) {
+      productoId = existingByCode.rows[0].id;
+
+      const updateFragments = [];
+      const updateValues = [];
+
+      const pushUpdate = (column, value) => {
+        if (!column) {
+          return;
+        }
+        updateFragments.push(`${column} = $${updateFragments.length + 1}`);
+        updateValues.push(value);
+      };
+
+      pushUpdate(nombreColumn, nombre);
+      pushUpdate(descripcionColumn, descripcionValue);
+      if (categoriaColumn) {
+        const categoriaPayload = categoriaColumn === 'categoria'
+          ? (categoriaValue !== null ? String(categoriaValue) : null)
+          : categoriaValue;
+        pushUpdate(categoriaColumn, categoriaPayload);
+      }
+      pushUpdate(sedeColumn, sedeIdValue);
+      pushUpdate(cantidadColumn, cantidadValue);
+      pushUpdate(cantidadMinimaColumn, stockMinValue);
+      if (stockMaxColumn) {
+        pushUpdate(stockMaxColumn, stockMaxValue);
+      }
+      pushUpdate(precioColumn, precioValue);
+      pushUpdate(unidadColumn, unidadValue);
+      if (proveedorColumn) {
+        const proveedorPayload = proveedorColumn === 'proveedor'
+          ? (proveedorValue !== null ? String(proveedorValue) : null)
+          : proveedorValue;
+        pushUpdate(proveedorColumn, proveedorPayload);
+      }
+      pushUpdate(fechaVColumn, fechaVencimientoValue);
+      pushUpdate(ubicacionColumn, ubicacionValue);
+      pushUpdate(alertaStockColumn, alertaStockValue);
+      pushUpdate(alertaVColumn, alertaVencimientoValue);
+      pushUpdate(recetaColumn, requiereRecetaValue);
+
+      if (updateFragments.length > 0) {
+        updateValues.push(productoId);
+        const updateQuery = `UPDATE inventario SET ${updateFragments.join(', ')} WHERE id = $${updateValues.length}`;
+        await db.query(updateQuery, updateValues);
+        action = 'updated';
+      } else {
+        action = 'unchanged';
+      }
+    }
+  }
+
+  if (!productoId) {
+    const insertColumns = [];
+    const insertValues = [];
+    const placeholders = [];
+
+    const pushInsert = (column, value) => {
+      if (!column) {
+        return;
+      }
+      insertColumns.push(column);
+      insertValues.push(value);
+      placeholders.push(`$${insertValues.length}`);
+    };
+
+    pushInsert(codigoColumn, codigoValue);
+    pushInsert(nombreColumn, nombre);
+    pushInsert(descripcionColumn, descripcionValue);
+    if (categoriaColumn) {
+      const categoriaPayload = categoriaColumn === 'categoria'
+        ? (categoriaValue !== null ? String(categoriaValue) : null)
+        : categoriaValue;
+      pushInsert(categoriaColumn, categoriaPayload);
+    }
+    pushInsert(sedeColumn, sedeIdValue);
+    pushInsert(cantidadColumn, cantidadValue);
+    pushInsert(cantidadMinimaColumn, stockMinValue);
+    if (stockMaxColumn) {
+      pushInsert(stockMaxColumn, stockMaxValue);
+    }
+    pushInsert(precioColumn, precioValue);
+    pushInsert(unidadColumn, unidadValue);
+    if (proveedorColumn) {
+      const proveedorPayload = proveedorColumn === 'proveedor'
+        ? (proveedorValue !== null ? String(proveedorValue) : null)
+        : proveedorValue;
+      pushInsert(proveedorColumn, proveedorPayload);
+    }
+    pushInsert(fechaVColumn, fechaVencimientoValue);
+    pushInsert(ubicacionColumn, ubicacionValue);
+    pushInsert(alertaStockColumn, alertaStockValue);
+    pushInsert(alertaVColumn, alertaVencimientoValue);
+    pushInsert(recetaColumn, requiereRecetaValue);
+
+    if (insertColumns.length === 0) {
+      throw new Error('No se pudieron determinar las columnas para insertar un producto en inventario.');
+    }
+
+    const insertQuery = `INSERT INTO inventario (${insertColumns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`;
+    const insertResult = await db.query(insertQuery, insertValues);
+    productoId = insertResult.rows[0].id;
+  }
+
+  let inventarioEquipoId = null;
+  const equipoIdValue = parseIntegerSafe(payload.equipo_id, null);
+
+  if (sedeIdValue && equipoIdValue) {
+    const existingSedeEquipo = await db.query(
+      'SELECT id, cantidad FROM inventario_equipos WHERE sede_id = $1 AND equipo_id = $2',
+      [sedeIdValue, equipoIdValue]
+    );
+
+    if (existingSedeEquipo.rowCount > 0) {
+      inventarioEquipoId = existingSedeEquipo.rows[0].id;
+      const baseCantidad = existingSedeEquipo.rows[0].cantidad || 0;
+      const siguienteCantidad = accumulateSedeQuantity ? baseCantidad + cantidadValue : cantidadValue;
+
+      await db.query(
+        'UPDATE inventario_equipos SET cantidad = $1, descripcion = $2 WHERE id = $3',
+        [siguienteCantidad, descripcionValue, inventarioEquipoId]
+      );
+    } else {
+      const insertInventarioEquipos = await db.query(
+        'INSERT INTO inventario_equipos (sede_id, equipo_id, cantidad, descripcion) VALUES ($1, $2, $3, $4) RETURNING id',
+        [sedeIdValue, equipoIdValue, cantidadValue, descripcionValue]
+      );
+
+      inventarioEquipoId = insertInventarioEquipos.rows[0].id;
+    }
+  }
+
+  return {
+    productoId,
+    inventarioEquipoId,
+    action,
+    cantidad: cantidadValue
+  };
+};
+
 /**
  * GET /api/inventario
  * Obtiene todo el inventario con información de sedes
@@ -20,9 +266,10 @@ exports.obtenerInventario = async (req, res) => {
         COALESCE(CAST(i.categoria_id AS VARCHAR), e.categoria) as categoria,
         
         -- Información de cantidades y stock
-        COALESCE(i.cantidad_actual, ie.cantidad, 0) as cantidad,
-        COALESCE(i.cantidad_minima, 1) as stock_minimo,
-        COALESCE(i.precio_unitario, e.precio, 0) as precio_unitario,
+    COALESCE(i.cantidad_actual, ie.cantidad, 0) as cantidad,
+    COALESCE(i.cantidad_minima, 1) as stock_minimo,
+    COALESCE(i.precio_unitario, e.precio, 0) as precio_unitario,
+    COALESCE(ie.equipo_id, e.id) as equipo_id,
         
         -- Información de ubicación
         COALESCE(i.sede_id, ie.sede_id) as sede_id,
@@ -55,10 +302,11 @@ exports.obtenerInventario = async (req, res) => {
         i.nombre,
         i.descripcion,
         i.codigo,
-        CAST(i.categoria_id AS VARCHAR) as categoria,
-        i.cantidad_actual as cantidad,
-        i.cantidad_minima as stock_minimo,
-        i.precio_unitario,
+    CAST(i.categoria_id AS VARCHAR) as categoria,
+    i.cantidad_actual as cantidad,
+    i.cantidad_minima as stock_minimo,
+    i.precio_unitario,
+    NULL as equipo_id,
         i.sede_id,
         COALESCE(s.nombre, 'Sin asignar') as sede_nombre,
         COALESCE(s.ciudad, '') as sede_ciudad,
@@ -156,10 +404,10 @@ exports.agregarItemInventario = async (req, res) => {
     requiere_receta 
   } = req.body;
   
-  // Validación básica
-  if (!nombre || !categoria || !cantidad) {
+  const cantidadValue = parseInt(cantidad, 10);
+  if (!nombre || !categoria || Number.isNaN(cantidadValue)) {
     console.log('❌ Datos incompletos:', { nombre, categoria, cantidad });
-    return res.status(400).json({ msg: 'Datos incompletos. Se requiere nombre, categoría y cantidad.' });
+    return res.status(400).json({ msg: 'Datos incompletos. Se requiere nombre, categoría y cantidad numérica.' });
   }
   
   try {
@@ -186,53 +434,75 @@ exports.agregarItemInventario = async (req, res) => {
         console.log('✅ Nuevo equipo creado con ID:', equipo_id);
       }
     }
-    
-    // Ahora crear/actualizar en inventario_equipos si se especificó sede
-    if (sede_id && equipo_id) {
-      // Verificar si ya existe el equipo en esa sede
-      const existenteResult = await db.query(
-        'SELECT id, cantidad FROM inventario_equipos WHERE sede_id = $1 AND equipo_id = $2',
-        [sede_id, equipo_id]
-      );
-      
-      if (existenteResult.rows.length > 0) {
-        // Si existe, actualizar cantidad
-        const nuevaCantidad = existenteResult.rows[0].cantidad + parseInt(cantidad);
-        await db.query(
-          'UPDATE inventario_equipos SET cantidad = $1, descripcion = $2 WHERE id = $3',
-          [nuevaCantidad, descripcion || null, existenteResult.rows[0].id]
-        );
-        
-        console.log('✅ Cantidad actualizada para item existente:', existenteResult.rows[0].id);
-        return res.json({ 
-          msg: 'Equipo agregado y cantidad actualizada en inventario.',
-          equipoId: equipo_id,
-          itemId: existenteResult.rows[0].id,
-          nuevaCantidad: nuevaCantidad
-        });
-      } else {
-        // Si no existe, crear nuevo
-        const insertQuery = `
-          INSERT INTO inventario_equipos (sede_id, equipo_id, cantidad, descripcion)
-          VALUES ($1, $2, $3, $4) RETURNING id
-        `;
-        
-        const result = await db.query(insertQuery, [sede_id, equipo_id, cantidad, descripcion || null]);
-        console.log('✅ Item agregado al inventario con ID:', result.rows[0].id);
-        
-        return res.json({ 
-          msg: 'Equipo creado y agregado al inventario correctamente.',
-          equipoId: equipo_id,
-          itemId: result.rows[0].id
-        });
+
+    const categoriaId = Number.isNaN(parseInt(categoria, 10)) ? null : parseInt(categoria, 10);
+    const sedeIdValue = sede_id ? parseInt(sede_id, 10) : null;
+    const stockMinValue = Number.isNaN(parseInt(stock_minimo, 10)) ? 0 : parseInt(stock_minimo, 10);
+    const stockMaxValue = stock_maximo === undefined || stock_maximo === null || stock_maximo === ''
+      ? null
+      : parseInt(stock_maximo, 10);
+    const precioValue = precio_unitario === undefined || precio_unitario === null || precio_unitario === ''
+      ? 0
+      : parseFloat(precio_unitario);
+    const proveedorValue = proveedor_id ? parseInt(proveedor_id, 10) : null;
+    const normalizeBoolean = (value, defaultValue = false) => {
+      if (value === undefined || value === null || value === '') {
+        return defaultValue;
       }
-    } else {
-      // Solo se creó el equipo, sin asignar a inventario
-      return res.json({ 
-        msg: 'Equipo creado correctamente.',
-        equipoId: equipo_id
-      });
-    }
+      if (typeof value === 'string') {
+        return value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'si';
+      }
+      return Boolean(value);
+    };
+
+    const alertaStockValue = normalizeBoolean(alerta_stock_bajo, true);
+    const alertaVencimientoValue = normalizeBoolean(alerta_vencimiento, false);
+    const requiereRecetaValue = normalizeBoolean(requiere_receta, false);
+
+    const syncPayload = {
+      codigo: codigo || null,
+      nombre,
+      descripcion: descripcion || null,
+      categoria: categoriaId,
+      categoria_id: categoriaId,
+      sede_id: sedeIdValue,
+      cantidad: cantidadValue,
+      stock_minimo: stockMinValue,
+      stock_maximo: stockMaxValue,
+      precio_unitario: precioValue,
+      unidad_medida: unidad_medida || 'unidad',
+      proveedor_id: proveedorValue,
+      fecha_vencimiento: fecha_vencimiento || null,
+      ubicacion: ubicacion || null,
+      alerta_stock_bajo: alertaStockValue,
+      alerta_vencimiento: alertaVencimientoValue,
+      requiere_receta: requiereRecetaValue,
+      equipo_id
+    };
+
+    const syncResult = await createRegistroInventarioDesdeActualizacion(syncPayload, {
+      accumulateSedeQuantity: true
+    });
+
+    console.log('✅ Sincronización de inventario completada:', syncResult);
+
+    const responseMsg = (() => {
+      if (syncResult.action === 'updated') {
+        return 'Producto actualizado correctamente en inventario.';
+      }
+      if (syncResult.action === 'created') {
+        return 'Producto creado correctamente en inventario.';
+      }
+      return 'Producto sincronizado correctamente en inventario.';
+    })();
+
+    return res.json({
+      msg: responseMsg,
+      productoId: syncResult.productoId,
+      itemId: syncResult.inventarioEquipoId || syncResult.productoId,
+      equipoId: equipo_id,
+      cantidad: syncResult.cantidad
+    });
     
   } catch (err) {
     console.error('❌ Error al agregar item al inventario:', err);
@@ -246,31 +516,242 @@ exports.agregarItemInventario = async (req, res) => {
  */
 exports.actualizarItemInventario = async (req, res) => {
   console.log('🔄 [inventarioController] Actualizando item del inventario');
-  
+
   const { id } = req.params;
-  const { sede_id, equipo_id, cantidad, descripcion } = req.body;
-  
-  if (!sede_id || !equipo_id || !cantidad) {
-    return res.status(400).json({ msg: 'Datos incompletos.' });
-  }
-  
+  const payload = req.body || {};
+
+  // Intentar primero actualizar la tabla principal de inventario (productos generales)
   try {
+    const inventarioResult = await db.query('SELECT id FROM inventario WHERE id = $1', [id]);
+
+    if (inventarioResult.rowCount > 0) {
+      const columns = await getInventarioTableColumns();
+      const hasColumn = columnName => columns.includes(columnName);
+
+      const cantidadColumn = hasColumn('cantidad_actual') ? 'cantidad_actual' : (hasColumn('cantidad') ? 'cantidad' : null);
+      const cantidadMinimaColumn = hasColumn('cantidad_minima') ? 'cantidad_minima' : (hasColumn('stock_minimo') ? 'stock_minimo' : null);
+      const stockMaxColumn = hasColumn('stock_maximo') ? 'stock_maximo' : (hasColumn('stock_max') ? 'stock_max' : null);
+      const precioColumn = hasColumn('precio_unitario') ? 'precio_unitario' : (hasColumn('precio') ? 'precio' : null);
+      const proveedorColumn = hasColumn('proveedor_id') ? 'proveedor_id' : (hasColumn('proveedor') ? 'proveedor' : null);
+      const categoriaColumn = hasColumn('categoria_id') ? 'categoria_id' : (hasColumn('categoria') ? 'categoria' : null);
+      const unidadColumn = hasColumn('unidad_medida') ? 'unidad_medida' : (hasColumn('unidad') ? 'unidad' : null);
+
+      const fieldMap = {
+        codigo: hasColumn('codigo') ? 'codigo' : null,
+        nombre: hasColumn('nombre') ? 'nombre' : null,
+        descripcion: hasColumn('descripcion') ? 'descripcion' : null,
+        categoria: categoriaColumn,
+        categoria_id: categoriaColumn,
+        sede_id: hasColumn('sede_id') ? 'sede_id' : null,
+        cantidad: cantidadColumn,
+        cantidad_actual: cantidadColumn,
+        stock_minimo: cantidadMinimaColumn,
+        cantidad_minima: cantidadMinimaColumn,
+        stock_maximo: stockMaxColumn,
+        precio_unitario: precioColumn,
+        unidad_medida: unidadColumn,
+        proveedor_id: proveedorColumn,
+        fecha_vencimiento: hasColumn('fecha_vencimiento') ? 'fecha_vencimiento' : null,
+        ubicacion: hasColumn('ubicacion') ? 'ubicacion' : null,
+        alerta_stock_bajo: hasColumn('alerta_stock_bajo') ? 'alerta_stock_bajo' : null,
+        alerta_vencimiento: hasColumn('alerta_vencimiento') ? 'alerta_vencimiento' : null,
+        requiere_receta: hasColumn('requiere_receta') ? 'requiere_receta' : null
+      };
+
+      const setClauses = [];
+      const values = [];
+      let index = 1;
+
+      Object.entries(fieldMap).forEach(([payloadKey, columnName]) => {
+        if (!columnName) {
+          return;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, payloadKey)) {
+          const value = payload[payloadKey];
+          if (value === undefined) {
+            return;
+          }
+
+          let normalizedValue = value;
+
+          switch (columnName) {
+            case 'categoria_id':
+            case 'sede_id':
+            case 'proveedor_id':
+              normalizedValue = value === null || value === ''
+                ? null
+                : parseInt(value, 10);
+              if (Number.isNaN(normalizedValue)) {
+                normalizedValue = null;
+              }
+              break;
+            case 'categoria':
+              normalizedValue = value === null || value === '' ? null : String(value);
+              break;
+            case 'cantidad_actual':
+            case 'cantidad_minima':
+            case 'stock_maximo':
+            case 'stock_max':
+              normalizedValue = value === null || value === ''
+                ? null
+                : parseInt(value, 10);
+              if (Number.isNaN(normalizedValue)) {
+                normalizedValue = null;
+              }
+              break;
+            case 'cantidad':
+            case 'stock_minimo':
+              normalizedValue = value === null || value === ''
+                ? null
+                : parseInt(value, 10);
+              if (Number.isNaN(normalizedValue)) {
+                normalizedValue = null;
+              }
+              break;
+            case 'precio_unitario':
+              normalizedValue = value === null || value === ''
+                ? null
+                : parseFloat(value);
+              if (Number.isNaN(normalizedValue)) {
+                normalizedValue = null;
+              }
+              break;
+            case 'precio':
+              normalizedValue = value === null || value === ''
+                ? null
+                : parseFloat(value);
+              if (Number.isNaN(normalizedValue)) {
+                normalizedValue = null;
+              }
+              break;
+            case 'alerta_stock_bajo':
+            case 'alerta_vencimiento':
+            case 'requiere_receta':
+              if (value === null || value === undefined || value === '') {
+                normalizedValue = null;
+              } else if (typeof value === 'string') {
+                normalizedValue = value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'si';
+              } else {
+                normalizedValue = Boolean(value);
+              }
+              break;
+            case 'proveedor':
+              normalizedValue = value === null || value === '' ? null : String(value);
+              break;
+            case 'unidad':
+              normalizedValue = value === '' ? null : value;
+              break;
+            default:
+              normalizedValue = value === '' ? null : value;
+              break;
+          }
+
+          setClauses.push(`${columnName} = $${index}`);
+          values.push(normalizedValue);
+          index += 1;
+        }
+      });
+
+      if (setClauses.length > 0) {
+        const updateQuery = `UPDATE inventario SET ${setClauses.join(', ')} WHERE id = $${index}`;
+        values.push(id);
+
+        const updateResult = await db.query(updateQuery, values);
+
+        if (updateResult.rowCount > 0) {
+          console.log('✅ Item del inventario general actualizado:', id);
+          return res.json({ msg: 'Producto actualizado correctamente.' });
+        }
+      } else {
+        console.log('ℹ️ [inventarioController] No se proporcionaron campos para actualizar inventario general.');
+      }
+    }
+  } catch (err) {
+    console.error('⚠️ Error actualizando inventario general:', err);
+    // Continuar intentando con inventario por sede para mantener compatibilidad
+  }
+
+  // Si no se actualizó en inventario general, intentar con inventario por sede/equipos
+  try {
+    const existingItemResult = await db.query(
+      'SELECT sede_id, equipo_id, cantidad, descripcion FROM inventario_equipos WHERE id = $1',
+      [id]
+    );
+
+    if (existingItemResult.rowCount === 0) {
+      console.warn('⚠️ Item no encontrado en inventario_equipos. Intentando crear registro con los datos recibidos.');
+
+      try {
+        const fallbackResult = await createRegistroInventarioDesdeActualizacion(payload);
+
+        if (fallbackResult && fallbackResult.productoId) {
+          const responseMsg = (() => {
+            if (fallbackResult.action === 'updated') {
+              return 'Producto sincronizado correctamente.';
+            }
+            if (fallbackResult.action === 'created') {
+              return 'Producto creado correctamente en inventario.';
+            }
+            return 'Producto sincronizado sin cambios.';
+          })();
+
+          console.log('✅ Fallback de actualización aplicado. Producto ID:', fallbackResult.productoId);
+          return res.json({
+            msg: responseMsg,
+            productoId: fallbackResult.productoId,
+            itemId: fallbackResult.inventarioEquipoId || fallbackResult.productoId,
+            cantidad: fallbackResult.cantidad
+          });
+        }
+
+        console.warn('⚠️ Fallback de actualización no generó cambios.');
+        return res.status(404).json({ msg: 'Item no encontrado.' });
+      } catch (fallbackError) {
+        console.error('❌ Error en fallback de actualización de inventario:', fallbackError);
+        return res.status(500).json({
+          msg: 'Error al sincronizar el item en inventario.',
+          error: fallbackError.message
+        });
+      }
+    }
+
+    const existingItem = existingItemResult.rows[0];
+
+    const nextSedeId = payload.sede_id ? parseInt(payload.sede_id, 10) : existingItem.sede_id;
+    const nextEquipoId = payload.equipo_id ? parseInt(payload.equipo_id, 10) : existingItem.equipo_id;
+    let nextCantidad = existingItem.cantidad;
+    if (payload.cantidad !== undefined && payload.cantidad !== null && payload.cantidad !== '') {
+      const parsedCantidad = parseInt(payload.cantidad, 10);
+      if (!Number.isNaN(parsedCantidad)) {
+        nextCantidad = parsedCantidad;
+      }
+    }
+    const nextDescripcion = Object.prototype.hasOwnProperty.call(payload, 'descripcion')
+      ? payload.descripcion
+      : existingItem.descripcion;
+
+  if (!nextSedeId || !nextEquipoId || Number.isNaN(nextCantidad)) {
+      console.warn('⚠️ Datos incompletos para actualizar inventario_equipos', {
+        nextSedeId,
+        nextEquipoId,
+        nextCantidad
+      });
+      return res.status(400).json({ msg: 'Datos incompletos para actualizar inventario por sede.' });
+    }
+
     const updateQuery = `
-      UPDATE inventario_equipos 
+      UPDATE inventario_equipos
       SET sede_id = $1, equipo_id = $2, cantidad = $3, descripcion = $4
       WHERE id = $5
     `;
-    
-    const result = await db.query(updateQuery, [sede_id, equipo_id, cantidad, descripcion, id]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ msg: 'Item no encontrado.' });
-    }
-    
-    console.log('✅ Item del inventario actualizado:', id);
+
+    await db.query(updateQuery, [nextSedeId, nextEquipoId, nextCantidad, nextDescripcion || null, id]);
+
+    console.log('✅ Item del inventario por sede actualizado:', id);
     return res.json({ msg: 'Item actualizado correctamente.' });
   } catch (err) {
-    console.error('❌ Error al actualizar item del inventario:', err);
+    console.error('❌ Error al actualizar item del inventario por sede:', err);
     return res.status(500).json({ msg: 'Error al actualizar item del inventario.', error: err.message });
   }
 };
@@ -332,20 +813,21 @@ exports.obtenerEquipos = async (req, res) => {
 
 /**
  * GET /api/inventario/estadisticas
- * Obtener estadísticas del inventario
+ * Obtener estadísticas REALES del inventario (estructura correcta)
  */
 exports.obtenerEstadisticasInventario = async (req, res) => {
-  console.log('📊 [inventarioController] Obteniendo estadísticas del inventario');
+  console.log('📊 [inventarioController] Obteniendo estadísticas REALES del inventario');
   
   try {
-    // Obtener estadísticas directamente de la tabla equipos
+    // Total productos = equipos + items en inventario
     const totalEquiposResult = await db.query(`
       SELECT COUNT(*) as total_productos
       FROM equipos
     `);
     
+    // Valor total = suma de precios de equipos
     const valorTotalResult = await db.query(`
-      SELECT SUM(precio) as valor_total_stock
+      SELECT COALESCE(SUM(precio), 0) as valor_total_stock
       FROM equipos
     `);
     
@@ -355,48 +837,115 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
         COUNT(*) as cantidad,
         SUM(precio) as valor_categoria
       FROM equipos
+      WHERE categoria IS NOT NULL
       GROUP BY categoria
+      ORDER BY categoria
     `);
     
-    // Simular stock bajo (equipos con precio bajo como indicador)
-    const stockBajoResult = await db.query(`
+    // Stock bajo: buscar en inventario_equipos (que sí tiene cantidad)
+    const stockBajoCount = await db.query(`
       SELECT COUNT(*) as productos_stock_bajo
-      FROM equipos
-      WHERE precio < 500000
+      FROM inventario_equipos ie
+      WHERE ie.cantidad > 0 AND ie.cantidad < 5
     `);
     
-    // Simular productos agotados (para demo, usar equipos de cierta categoría)
-    const productosAgotadosResult = await db.query(`
+    // Productos agotados: cantidad = 0 en inventario_equipos
+    const productosAgotadosCount = await db.query(`
       SELECT COUNT(*) as productos_agotados
-      FROM equipos
-      WHERE categoria = 'Limpieza' OR categoria = 'Desinfección'
+      FROM inventario_equipos ie
+      WHERE ie.cantidad = 0
     `);
 
     const estadisticas = {
-      totalProductos: totalEquiposResult.rows[0].total_productos || 0,
-      valorTotalStock: valorTotalResult.rows[0].valor_total_stock || 0,
-      productosStockBajo: stockBajoResult.rows[0].productos_stock_bajo || 0,
-      productosAgotados: productosAgotadosResult.rows[0].productos_agotados || 0,
+      totalProductos: parseInt(totalEquiposResult.rows[0].total_productos) || 0,
+      valorTotalStock: parseFloat(valorTotalResult.rows[0].valor_total_stock) || 0,
+      productosStockBajo: parseInt(stockBajoCount.rows[0].productos_stock_bajo) || 0,
+      productosAgotados: parseInt(productosAgotadosCount.rows[0].productos_agotados) || 0,
       equiposPorCategoria: equiposPorCategoriaResult.rows || [],
       // Datos adicionales para el dashboard
       estadisticasDetalladas: {
         totalPorSede: [
-          { sede: 'Sede Principal', total_items: totalEquiposResult.rows[0].total_productos || 0, total_cantidad: totalEquiposResult.rows[0].total_productos || 0 }
+          { 
+            sede: 'Sede Principal', 
+            total_items: parseInt(totalEquiposResult.rows[0].total_productos) || 0, 
+            total_cantidad: parseInt(totalEquiposResult.rows[0].total_productos) || 0 
+          }
         ],
         totalPorCategoria: equiposPorCategoriaResult.rows.map(cat => ({
           categoria: cat.categoria,
-          total_items: cat.cantidad,
-          total_cantidad: cat.cantidad
+          total_items: parseInt(cat.cantidad) || 0,
+          total_cantidad: parseInt(cat.cantidad) || 0
         })),
-        valorTotal: valorTotalResult.rows[0].valor_total_stock || 0
+        valorTotal: parseFloat(valorTotalResult.rows[0].valor_total_stock) || 0
       }
     };
     
-    console.log('✅ Estadísticas calculadas:', estadisticas);
+    console.log('✅ Estadísticas REALES calculadas:', {
+      totalProductos: estadisticas.totalProductos,
+      valorTotalStock: estadisticas.valorTotalStock,
+      productosStockBajo: estadisticas.productosStockBajo,
+      productosAgotados: estadisticas.productosAgotados
+    });
+    
     return res.json(estadisticas);
   } catch (err) {
     console.error('❌ Error en obtenerEstadisticasInventario:', err);
     return res.status(500).json({ msg: 'Error al obtener estadísticas.', error: err.message });
+  }
+};
+
+/**
+ * GET /api/inventario/alertas
+ * Obtener alertas REALES de stock bajo y productos agotados
+ */
+exports.obtenerAlertas = async (req, res) => {
+  console.log('🚨 [inventarioController] Obteniendo alertas REALES de stock');
+  
+  try {
+    // Obtener alertas desde inventario_equipos (que sí tiene cantidad)
+    const alertasResult = await db.query(`
+      SELECT 
+        e.id,
+        e.nombre as producto,
+        COALESCE(s.nombre, 'Sede Principal') as sede,
+        e.categoria,
+        ie.cantidad as "stockActual",
+        5 as "stockMinimo",
+        e.precio,
+        CASE 
+          WHEN ie.cantidad = 0 THEN 'agotado'
+          WHEN ie.cantidad < 5 THEN 'bajo'
+          ELSE 'normal'
+        END as estado,
+        CASE 
+          WHEN ie.cantidad = 0 THEN 'stock_agotado'
+          WHEN ie.cantidad < 5 THEN 'stock_bajo'
+          ELSE 'normal'
+        END as "tipoAlerta",
+        CASE 
+          WHEN ie.cantidad = 0 THEN 3
+          WHEN ie.cantidad < 2 THEN 2
+          ELSE 1
+        END as prioridad
+      FROM inventario_equipos ie
+      LEFT JOIN equipos e ON ie.equipo_id = e.id
+      LEFT JOIN sedes s ON ie.sede_id = s.id
+      WHERE ie.cantidad <= 5
+      ORDER BY prioridad DESC, ie.cantidad ASC
+      LIMIT 50
+    `);
+    
+    const alertas = alertasResult.rows || [];
+    
+    console.log(`✅ Alertas REALES encontradas: ${alertas.length}`);
+    console.log(`   - Stock agotado: ${alertas.filter(a => a.estado === 'agotado').length}`);
+    console.log(`   - Stock bajo: ${alertas.filter(a => a.estado === 'bajo').length}`);
+    
+    return res.json(alertas);
+  } catch (err) {
+    console.error('❌ Error en obtenerAlertas:', err);
+    // Si falla, devolver array vacío en lugar de error
+    return res.json([]);
   }
 };
 

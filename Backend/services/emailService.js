@@ -613,6 +613,160 @@ class EmailService {
     }
   }
 
+  // Notificación de cita cancelada
+  async sendCitaCanceladaEmail(to, datosCita) {
+    const { paciente_nombre, fecha, hora, motivo, motivo_cancelacion } = datosCita;
+    
+    const subject = '❌ Cita Cancelada - ClinikDent';
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .cita-info { background: white; padding: 20px; border-left: 4px solid #e74c3c; margin: 20px 0; border-radius: 5px; }
+          .info-row { margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .label { font-weight: bold; color: #555; }
+          .value { color: #333; }
+          .footer { text-align: center; margin-top: 30px; color: #777; font-size: 12px; }
+          .icon { font-size: 48px; margin-bottom: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="icon">❌</div>
+            <h1>Cita Cancelada</h1>
+          </div>
+          <div class="content">
+            <p>Estimado/a <strong>${paciente_nombre}</strong>,</p>
+            <p>Le informamos que su cita ha sido <strong>cancelada</strong>.</p>
+            
+            <div class="cita-info">
+              <h3 style="color: #e74c3c; margin-top: 0;">📅 Información de la Cita Cancelada</h3>
+              <div class="info-row">
+                <span class="label">Fecha:</span>
+                <span class="value">${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Hora:</span>
+                <span class="value">${hora}</span>
+              </div>
+              ${motivo ? `<div class="info-row">
+                <span class="label">Motivo original:</span>
+                <span class="value">${motivo}</span>
+              </div>` : ''}
+              ${motivo_cancelacion ? `<div class="info-row">
+                <span class="label">Razón de cancelación:</span>
+                <span class="value">${motivo_cancelacion}</span>
+              </div>` : ''}
+            </div>
+
+            <p>Si desea reagendar su cita, puede hacerlo a través de nuestra plataforma o contactándonos directamente.</p>
+            
+            <p style="margin-top: 30px;">Atentamente,<br><strong>Equipo ClinikDent</strong></p>
+          </div>
+          <div class="footer">
+            <p>Este es un correo automático, por favor no responder.</p>
+            <p>© ${new Date().getFullYear()} ClinikDent - Todos los derechos reservados</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(to, subject, htmlContent);
+  }
+
+  // Notificación de cita reprogramada
+  async sendCitaReprogramadaEmail(to, datosCita) {
+    const { paciente_nombre, fecha_anterior, hora_anterior, fecha_nueva, hora_nueva, motivo } = datosCita;
+    
+    const subject = '🔄 Cita Reprogramada - ClinikDent';
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .cita-box { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; }
+          .cita-anterior { border-left: 4px solid #e74c3c; }
+          .cita-nueva { border-left: 4px solid #27ae60; }
+          .info-row { margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .label { font-weight: bold; color: #555; }
+          .value { color: #333; }
+          .arrow { text-align: center; font-size: 24px; color: #667eea; margin: 10px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #777; font-size: 12px; }
+          .icon { font-size: 48px; margin-bottom: 10px; }
+          .highlight { background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="icon">🔄</div>
+            <h1>Cita Reprogramada</h1>
+          </div>
+          <div class="content">
+            <p>Estimado/a <strong>${paciente_nombre}</strong>,</p>
+            <p>Le informamos que su cita ha sido <strong>reprogramada</strong>.</p>
+            
+            <div class="cita-box cita-anterior">
+              <h3 style="color: #e74c3c; margin-top: 0;">❌ Cita Anterior</h3>
+              <div class="info-row">
+                <span class="label">Fecha:</span>
+                <span class="value">${new Date(fecha_anterior).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Hora:</span>
+                <span class="value">${hora_anterior}</span>
+              </div>
+            </div>
+
+            <div class="arrow">⬇️</div>
+
+            <div class="cita-box cita-nueva">
+              <h3 style="color: #27ae60; margin-top: 0;">✅ Nueva Cita</h3>
+              <div class="info-row">
+                <span class="label">Fecha:</span>
+                <span class="value">${new Date(fecha_nueva).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Hora:</span>
+                <span class="value">${hora_nueva}</span>
+              </div>
+              ${motivo ? `<div class="info-row">
+                <span class="label">Motivo:</span>
+                <span class="value">${motivo}</span>
+              </div>` : ''}
+            </div>
+
+            <div class="highlight">
+              <strong>⚠️ Importante:</strong> Por favor, asegúrese de asistir a su cita en la nueva fecha y hora programada.
+            </div>
+
+            <p>Si tiene alguna duda o necesita hacer cambios, puede contactarnos o gestionar su cita a través de nuestra plataforma.</p>
+            
+            <p style="margin-top: 30px;">Atentamente,<br><strong>Equipo ClinikDent</strong></p>
+          </div>
+          <div class="footer">
+            <p>Este es un correo automático, por favor no responder.</p>
+            <p>© ${new Date().getFullYear()} ClinikDent - Todos los derechos reservados</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(to, subject, htmlContent);
+  }
+
   // Método genérico para enviar emails (para códigos de seguridad)
   async sendEmail(to, subject, htmlContent) {
     if (this.demoMode) {
