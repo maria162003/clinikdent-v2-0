@@ -293,6 +293,14 @@ class DashboardAdmin {
             this.openUserModal();
         });
 
+        // Save inventario button
+        const saveInventarioBtn = document.getElementById('saveInventarioBtn');
+        if (saveInventarioBtn) {
+            saveInventarioBtn.addEventListener('click', () => {
+                this.saveInventario();
+            });
+        }
+
         // Save user button - No agregamos listener aquí ya que se asigna dinámicamente en openUserModal
     }
 
@@ -3999,48 +4007,71 @@ class DashboardAdmin {
         document.getElementById('inventarioForm').reset();
         if (codigo) {
             const item = this.inventario.find(i => i.codigo === codigo);
+            if (!item) {
+                console.error('Item no encontrado:', codigo);
+                return;
+            }
             document.getElementById('inventarioModalTitle').textContent = 'Editar Item';
-            document.getElementById('invCodigo').value = item.codigo;
-            document.getElementById('invProducto').value = item.producto;
-            document.getElementById('invCategoria').value = item.categoria;
-            document.getElementById('invStock').value = item.stock;
-            document.getElementById('invEstado').value = item.estado;
-            document.getElementById('invCodigo').readOnly = true;
-            document.getElementById('saveInventarioBtn').onclick = () => this.saveInventario(codigo);
+            const invCodigoEl = document.getElementById('invCodigo');
+            const invNombreEl = document.getElementById('invNombre');
+            const invCategoriaEl = document.getElementById('invCategoria');
+            const invCantidadEl = document.getElementById('invCantidad');
+            
+            if (invCodigoEl) invCodigoEl.value = item.codigo;
+            if (invNombreEl) invNombreEl.value = item.producto || item.nombre || '';
+            if (invCategoriaEl) invCategoriaEl.value = item.categoria || '';
+            if (invCantidadEl) invCantidadEl.value = item.stock || item.cantidad || '';
+            
+            if (invCodigoEl) invCodigoEl.readOnly = true;
         } else {
             document.getElementById('inventarioModalTitle').textContent = 'Nuevo Item';
-            document.getElementById('invCodigo').readOnly = false;
-            document.getElementById('saveInventarioBtn').onclick = () => this.saveInventario();
+            const invCodigoEl = document.getElementById('invCodigo');
+            if (invCodigoEl) invCodigoEl.readOnly = false;
         }
         modal.show();
     }
 
     async saveInventario(codigo = null) {
+        const invCodigoEl = document.getElementById('invCodigo');
+        const invNombreEl = document.getElementById('invNombre');
+        const invCategoriaEl = document.getElementById('invCategoria');
+        const invCantidadEl = document.getElementById('invCantidad');
+        const invPrecioEl = document.getElementById('invPrecio');
+        
+        if (!invCodigoEl?.value || !invNombreEl?.value) {
+            alert('Campos requeridos: Código y Nombre');
+            return;
+        }
+
         const payload = {
-            codigo: document.getElementById('invCodigo').value,
-            producto: document.getElementById('invProducto').value,
-            categoria: document.getElementById('invCategoria').value,
-            stock: document.getElementById('invStock').value,
-            estado: document.getElementById('invEstado').value
+            codigo: invCodigoEl.value,
+            producto: invNombreEl.value,
+            categoria: invCategoriaEl?.value || '',
+            stock: invCantidadEl?.value || 0,
+            precio: invPrecioEl?.value || 0
         };
+        
         try {
-            if (codigo) {
-                await fetch(`/api/inventario/${codigo}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            const method = codigo ? 'PUT' : 'POST';
+            const url = codigo ? `/api/inventario/${codigo}` : '/api/inventario';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                const modalEl = document.getElementById('inventarioModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                await this.loadInventario();
             } else {
-                await fetch('/api/inventario', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                alert('Error al guardar item');
             }
-            bootstrap.Modal.getInstance(document.getElementById('inventarioModal')).hide();
-            await this.loadInventario();
         } catch (err) {
-            alert('Error al guardar item');
+            console.error('Error en saveInventario:', err);
+            alert('Error al guardar item: ' + err.message);
         }
     }
 

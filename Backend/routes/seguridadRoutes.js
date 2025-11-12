@@ -353,7 +353,7 @@ const supabaseAuthController = require('../controllers/supabaseAuthController');
 
 /**
  * POST /api/seguridad/recuperar-password-supabase
- * Envía magic link de recuperación vía Supabase Auth
+ * Envía link de recuperación vía Supabase Auth
  * Body: { correo, numero_documento }
  */
 router.post('/recuperar-password-supabase', supabaseAuthController.solicitarRecuperacion);

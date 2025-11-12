@@ -2,10 +2,12 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const db = require('../config/db');
 const emailService = require('../services/emailService');
+const supabase = require('../config/supabase');
 
 /**
  * POST /api/auth/register
  * body: { nombre, apellido, correo, telefono, password, rol, numero_documento, tipo_documento }
+ * REGISTRA USUARIO EN POSTGRESQL Y SUPABASE AUTH
  */
 exports.registerUser = async (req, res) => {
   console.log('🔐 registerUser - Datos recibidos:', req.body);
@@ -26,7 +28,7 @@ exports.registerUser = async (req, res) => {
   }
   
   try {
-    // Verificar si el email ya existe
+    // Verificar si el email ya existe en PostgreSQL
     const { rows: existing } = await db.query('SELECT id FROM usuarios WHERE correo = $1', [correo]);
     if (existing.length > 0) {
       console.log('❌ Email ya existe:', correo);
@@ -62,21 +64,74 @@ exports.registerUser = async (req, res) => {
     }
     const rol_id = rolResult[0].id;
     
-    // Generar hash de la contraseña
+    // 🆕 PASO 1: Verificar si el usuario ya existe en Supabase Auth
+    console.log('🔍 Verificando si el usuario existe en Supabase Auth...');
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const existingSupabaseUser = existingUsers?.users?.find(u => u.email === correo);
+    
+    let supabaseUserId;
+    
+    if (existingSupabaseUser) {
+      console.log('⚠️ Usuario ya existe en Supabase Auth con ID:', existingSupabaseUser.id);
+      supabaseUserId = existingSupabaseUser.id;
+      
+      // Actualizar la contraseña del usuario existente
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        existingSupabaseUser.id,
+        { password: password }
+      );
+      
+      if (updateError) {
+        console.error('⚠️ Error actualizando contraseña en Supabase:', updateError);
+      } else {
+        console.log('✅ Contraseña actualizada en Supabase Auth');
+      }
+    } else {
+      // PASO 1b: Registrar en Supabase Auth
+      console.log('📧 Registrando nuevo usuario en Supabase Auth...');
+      const { data: supabaseUser, error: supabaseError } = await supabase.auth.admin.createUser({
+        email: correo,
+        password: password,
+        email_confirm: true, // Auto-confirmar email
+        user_metadata: {
+          nombre: nombre,
+          apellido: apellido,
+          rol: rolNormalizado,
+          numero_documento: numero_documento
+        }
+      });
+      
+      if (supabaseError) {
+        console.error('❌ Error al registrar en Supabase Auth:', supabaseError);
+        return res.status(500).json({ 
+          msg: 'Error al crear usuario en Supabase Auth: ' + supabaseError.message 
+        });
+      }
+      
+      supabaseUserId = supabaseUser.user.id;
+      console.log('✅ Usuario registrado en Supabase Auth con ID:', supabaseUserId);
+    }
+    
+    // PASO 2: Generar hash de la contraseña para PostgreSQL
     const passwordHash = await bcrypt.hash(password, 10);
     
-    console.log('💾 Insertando usuario en la base de datos...');
-    // Insertar usuario usando los campos correctos de la tabla
+    console.log('💾 Insertando usuario en PostgreSQL...');
+    // PASO 3: Insertar usuario en PostgreSQL con supabase_user_id
     const { rows: result } = await db.query(
-      'INSERT INTO usuarios (nombre, apellido, correo, telefono, direccion, rol_id, fecha_nacimiento, contraseña_hash, tipo_documento, numero_documento, activo) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true) RETURNING id', 
-      [nombre, apellido, correo, telefono || null, direccion || null, rol_id, fecha_nacimiento || null, passwordHash, tipo_documento || 'CC', numero_documento || null]
+      `INSERT INTO usuarios 
+       (nombre, apellido, correo, telefono, direccion, rol_id, fecha_nacimiento, 
+        contraseña_hash, tipo_documento, numero_documento, activo, supabase_user_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11) 
+       RETURNING id`, 
+      [nombre, apellido, correo, telefono || null, direccion || null, rol_id, 
+       fecha_nacimiento || null, passwordHash, tipo_documento || 'CC', 
+       numero_documento || null, supabaseUserId]
     );
     
-    console.log('✅ Usuario creado con ID:', result[0].id);
+    console.log('✅ Usuario creado en PostgreSQL con ID:', result[0].id);
     
     // Enviar correo de bienvenida
     try {
-      const emailService = require('../services/emailService');
       console.log('📧 Enviando correo de bienvenida...');
       const emailResult = await emailService.sendWelcomeEmail(correo, nombre, rolNormalizado);
       
@@ -91,14 +146,15 @@ exports.registerUser = async (req, res) => {
     }
     
     res.status(201).json({ 
-      msg: 'Usuario registrado exitosamente.',
+      msg: 'Usuario registrado exitosamente en Supabase Auth y PostgreSQL.',
       id: result[0].id,
+      supabase_id: supabaseUserId,
       success: true
     });
     
   } catch (err) {
     console.error('❌ Error en registerUser:', err);
-    return res.status(500).json({ msg: 'Error en el servidor.' });
+    return res.status(500).json({ msg: 'Error en el servidor: ' + err.message });
   }
 };
 
@@ -359,9 +415,9 @@ exports.cambiarPassword = async (req, res) => {
   }
   
   try {
-    // Verificar que el usuario existe y obtener su contraseña actual
+    // Verificar que el usuario existe y obtener su contraseña actual y supabase_user_id
     const { rows } = await db.query(
-      'SELECT id, contraseña_hash FROM usuarios WHERE id = $1',
+      'SELECT id, contraseña_hash, supabase_user_id FROM usuarios WHERE id = $1',
       [userId]
     );
     
@@ -390,20 +446,39 @@ exports.cambiarPassword = async (req, res) => {
     // Generar hash de la nueva contraseña
     const newHash = await bcrypt.hash(new_password, 10);
     
-    // Actualizar la contraseña
+    // Actualizar la contraseña en PostgreSQL
     await db.query(
       'UPDATE usuarios SET contraseña_hash = $1 WHERE id = $2',
       [newHash, userId]
     );
     
-    console.log(`Contraseña cambiada exitosamente para usuario ${userId}`);
+    // 🆕 Si el usuario tiene supabase_user_id, actualizar también en Supabase Auth
+    if (usuario.supabase_user_id) {
+      try {
+        const { error: supabaseError } = await supabase.auth.admin.updateUserById(
+          usuario.supabase_user_id,
+          { password: new_password }
+        );
+        
+        if (supabaseError) {
+          console.error('⚠️ Error actualizando contraseña en Supabase Auth:', supabaseError);
+          // No fallar si Supabase falla, pero avisar
+        } else {
+          console.log('✅ Contraseña sincronizada con Supabase Auth');
+        }
+      } catch (supabaseError) {
+        console.error('⚠️ Error sincronizando con Supabase Auth:', supabaseError);
+      }
+    }
+    
+    console.log(`✅ Contraseña cambiada exitosamente para usuario ${userId}`);
     return res.json({ 
       msg: 'Contraseña cambiada exitosamente.',
       success: true
     });
     
   } catch (err) {
-    console.error('cambiarPassword:', err);
+    console.error('❌ cambiarPassword:', err);
     return res.status(500).json({ msg: 'Error en el servidor.' });
   }
 };
@@ -486,7 +561,7 @@ exports.resetPasswordWithToken = async (req, res) => {
   try {
     // Buscar el usuario por correo
     const userQuery = await db.query(
-      'SELECT id, nombre, apellido FROM usuarios WHERE correo = $1',
+      'SELECT id, nombre, apellido, supabase_user_id FROM usuarios WHERE correo = $1',
       [correo]
     );
     
@@ -495,7 +570,7 @@ exports.resetPasswordWithToken = async (req, res) => {
     }
     
     const usuario = userQuery.rows[0];
-    console.log('Usuario encontrado:', usuario.nombre, usuario.apellido);
+    console.log('👤 Usuario encontrado:', usuario.nombre, usuario.apellido);
     
     // Verificar el token
     const tokenQuery = await db.query(
@@ -507,16 +582,34 @@ exports.resetPasswordWithToken = async (req, res) => {
       return res.status(400).json({ msg: 'Token inválido o expirado.' });
     }
     
-    console.log('Token válido, procediendo a cambiar contraseña...');
+    console.log('✅ Token válido, procediendo a cambiar contraseña...');
     
     // Generar hash de la nueva contraseña
     const passwordHash = await bcrypt.hash(nueva_password, 10);
     
-    // Actualizar la contraseña
+    // Actualizar la contraseña en PostgreSQL
     await db.query(
       'UPDATE usuarios SET contraseña_hash = $1 WHERE id = $2',
       [passwordHash, usuario.id]
     );
+    
+    // 🆕 Si el usuario tiene supabase_user_id, actualizar también en Supabase Auth
+    if (usuario.supabase_user_id) {
+      try {
+        const { error: supabaseError } = await supabase.auth.admin.updateUserById(
+          usuario.supabase_user_id,
+          { password: nueva_password }
+        );
+        
+        if (supabaseError) {
+          console.error('⚠️ Error actualizando contraseña en Supabase Auth:', supabaseError);
+        } else {
+          console.log('✅ Contraseña sincronizada con Supabase Auth');
+        }
+      } catch (supabaseError) {
+        console.error('⚠️ Error sincronizando con Supabase Auth:', supabaseError);
+      }
+    }
     
     // Eliminar todos los tokens de este usuario
     await db.query(
@@ -524,7 +617,7 @@ exports.resetPasswordWithToken = async (req, res) => {
       [usuario.id]
     );
     
-    console.log(`Contraseña reseteada exitosamente para usuario ${usuario.id}`);
+    console.log(`✅ Contraseña reseteada exitosamente para usuario ${usuario.id}`);
     
     return res.json({ 
       msg: 'Contraseña actualizada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
@@ -532,7 +625,7 @@ exports.resetPasswordWithToken = async (req, res) => {
     });
     
   } catch (err) {
-    console.error('resetPasswordWithToken:', err);
+    console.error('❌ resetPasswordWithToken:', err);
     return res.status(500).json({ msg: 'Error en el servidor.' });
   }
 };
@@ -556,9 +649,9 @@ exports.cambiarPasswordConToken = async (req, res) => {
   }
   
   try {
-    // Verificar que el usuario existe
+    // Verificar que el usuario existe y obtener supabase_user_id
     const { rows } = await db.query(
-      'SELECT id FROM usuarios WHERE id = $1',
+      'SELECT id, supabase_user_id FROM usuarios WHERE id = $1',
       [userId]
     );
     
@@ -566,14 +659,34 @@ exports.cambiarPasswordConToken = async (req, res) => {
       return res.status(404).json({ msg: 'Usuario no encontrado.' });
     }
     
+    const usuario = rows[0];
+    
     // Generar hash de la nueva contraseña
     const newHash = await bcrypt.hash(new_password, 10);
     
-    // Actualizar la contraseña
+    // Actualizar la contraseña en PostgreSQL
     await db.query(
       'UPDATE usuarios SET contraseña_hash = $1 WHERE id = $2',
       [newHash, userId]
     );
+    
+    // 🆕 Si el usuario tiene supabase_user_id, actualizar también en Supabase Auth
+    if (usuario.supabase_user_id) {
+      try {
+        const { error: supabaseError } = await supabase.auth.admin.updateUserById(
+          usuario.supabase_user_id,
+          { password: new_password }
+        );
+        
+        if (supabaseError) {
+          console.error('⚠️ Error actualizando contraseña en Supabase Auth:', supabaseError);
+        } else {
+          console.log('✅ Contraseña sincronizada con Supabase Auth');
+        }
+      } catch (supabaseError) {
+        console.error('⚠️ Error sincronizando con Supabase Auth:', supabaseError);
+      }
+    }
     
     console.log(`✅ Contraseña cambiada exitosamente para usuario ${userId} después de login con token`);
     return res.json({ 
@@ -582,7 +695,7 @@ exports.cambiarPasswordConToken = async (req, res) => {
     });
     
   } catch (err) {
-    console.error('cambiarPasswordConToken:', err);
+    console.error('❌ cambiarPasswordConToken:', err);
     return res.status(500).json({ msg: 'Error en el servidor.' });
   }
 };

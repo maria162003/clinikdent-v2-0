@@ -82,6 +82,15 @@ const app = express();
 
 // Middlewares
 app.use(cors());
+
+// ANTI-CACHE MIDDLEWARE: Prevenir que Chrome cachee archivos localmente
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Log global para debug
 app.use((req, res, next) => {
   console.log(`🌍 GLOBAL REQUEST: ${req.method} ${req.url}`);
@@ -315,6 +324,12 @@ app.use('/api/preferencias', preferenciasRoutes);
 console.log('✅ Rutas de preferencias de notificaciones registradas exitosamente');
 
 // Servir archivos estáticos del frontend (DESPUÉS de las rutas API)
+// Silenciar solicitud automática de Chrome DevTools para su manifiesto de app
+// Evita 404 en consola cuando el navegador intenta leer esta ruta especial
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
+  res.type('application/json').status(200).send('{}');
+});
+
 app.use(express.static('public'));
 
 // Ruta de prueba simple
