@@ -238,6 +238,17 @@ class DashboardPaciente {
         const fechaInput = document.getElementById('citaFecha');
         if (fechaInput) {
             fechaInput.min = minDate;
+            
+            // Add event listener to prevent Sundays
+            fechaInput.addEventListener('change', (e) => {
+                const selectedDate = new Date(e.target.value + 'T00:00:00');
+                const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
+                
+                if (dayOfWeek === 0) {
+                    this.showAlert('❌ No se pueden agendar citas los domingos. La clínica permanece cerrada.', 'warning');
+                    e.target.value = '';
+                }
+            });
         }
     }
 
@@ -1262,6 +1273,16 @@ class DashboardPaciente {
         const odontologoId = document.getElementById('citaOdontologo').value;
         if (!odontologoId) {
             this.showAlert('Por favor, seleccione un odontólogo para la cita.', 'warning');
+            return;
+        }
+        
+        // Validar que no sea domingo
+        const fechaSeleccionada = document.getElementById('citaFecha').value;
+        const fecha = new Date(fechaSeleccionada + 'T00:00:00');
+        const dayOfWeek = fecha.getDay();
+        
+        if (dayOfWeek === 0) {
+            this.showAlert('❌ No se pueden agendar citas los domingos. La clínica permanece cerrada.', 'danger');
             return;
         }
         
