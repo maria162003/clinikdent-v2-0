@@ -7,6 +7,9 @@ class DashboardPaciente {
         this.perfil = {};
         this.charts = {};
         this.notificaciones = [];
+        this.configuracion = {
+            horasMinCancelacion: 2 // Valor por defecto
+        };
         
         // Pagination configuration
         this.pagination = {
@@ -70,6 +73,7 @@ class DashboardPaciente {
     init() {
         this.setupEventListeners();
         this.loadUserInfo();
+        this.loadConfiguracion();
         this.loadDashboardData();
         this.loadNotifications();
         this.initializeCharts();
@@ -114,6 +118,24 @@ class DashboardPaciente {
         
         // Reemplazar la entrada actual del historial para prevenir regreso
         window.location.replace('/index.html?session=expired');
+    }
+
+    // ==========================================
+    // CARGA DE CONFIGURACION
+    // ==========================================
+    
+    async loadConfiguracion() {
+        try {
+            const response = await this.authFetch('/api/configuracion/sistema');
+            if (response && response.ok) {
+                const config = await response.json();
+                this.configuracion.horasMinCancelacion = config.citas?.anticipacion_minima || 2;
+                console.log(`⚙️ Configuración cargada: ${this.configuracion.horasMinCancelacion} horas mínimas para cancelación`);
+            }
+        } catch (error) {
+            console.error('❌ Error cargando configuración:', error);
+            // Mantener valor por defecto en caso de error
+        }
     }
 
     // ==========================================
@@ -1608,8 +1630,10 @@ class DashboardPaciente {
         
         console.log(`⏱️ Diferencia de horas: ${diffHoras.toFixed(1)}`);
 
-        if (diffHoras >= 2) {
-            // Mas de 2 horas: permitir eliminar
+        const horasMinimas = this.configuracion.horasMinCancelacion;
+
+        if (diffHoras >= horasMinimas) {
+            // Mas de las horas minimas configuradas: permitir eliminar
             await this.mostrarModalAccionCita({
                 tipo: 'eliminar',
                 fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
@@ -1621,9 +1645,9 @@ class DashboardPaciente {
                 }
             });
         } else {
-            // Menos de 2 horas: no permitir
+            // Menos de las horas minimas: no permitir
             this.showAlert(
-                `No se puede eliminar la cita con menos de 2 horas de anticipacion. Faltan ${diffHoras.toFixed(1)} horas.`,
+                `No se puede eliminar la cita con menos de ${horasMinimas} horas de anticipación. Faltan ${diffHoras.toFixed(1)} horas.`,
                 'warning'
             );
             return;
