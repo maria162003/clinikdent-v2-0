@@ -247,46 +247,33 @@ exports.agendarCita = async (req, res) => {
     const nuevaCitaId = result.rows[0].id;
     console.log('✅ Cita insertada con ID:', nuevaCitaId);
 
+    // Obtener información del paciente para el email
+    const pacienteResult = await db.query(
+      'SELECT nombre, apellido, correo FROM usuarios WHERE id = $1',
+      [userId]
+    );
+    
     // 📧 Enviar email de confirmación de cita
-    try {
-      console.log('📧 Enviando email de confirmación de cita...');
-      const odontologoAsignado = ods.find(od => od.id === odontologoSeleccionado);
-      const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      
-      await emailService.enviarEmail(
-        pacienteInfo.email,
-        'Confirmación de Cita Agendada - Clinikdent',
-        `
-        <h2>🦷 Confirmación de Cita Agendada</h2>
-        <p>Estimado/a <strong>${pacienteInfo.nombre} ${pacienteInfo.apellido}</strong>,</p>
+    if (pacienteResult.rows.length > 0 && pacienteResult.rows[0].correo) {
+      try {
+        console.log('📧 Enviando email de confirmación de cita...');
+        const pacienteInfo = pacienteResult.rows[0];
+        const odontologoAsignado = ods.find(od => od.id === odontologoSeleccionado);
         
-        <p>Su cita ha sido agendada exitosamente con los siguientes detalles:</p>
+        await emailService.sendCitaAgendadaEmail(pacienteInfo.correo, {
+          fecha: fecha,
+          hora: hora,
+          motivo: motivo || 'Consulta general',
+          paciente: `${pacienteInfo.nombre} ${pacienteInfo.apellido}`,
+          odontologo: odontologoAsignado ? `Dr. ${odontologoAsignado.nombre} ${odontologoAsignado.apellido}` : 'Por asignar',
+          estado: estadoInicial
+        });
         
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
-          <p><strong>📅 Fecha:</strong> ${fechaFormateada}</p>
-          <p><strong>🕐 Hora:</strong> ${hora}</p>
-          <p><strong>👨‍⚕️ Odontólogo:</strong> Dr. ${odontologoAsignado ? odontologoAsignado.nombre + ' ' + odontologoAsignado.apellido : 'Por asignar'}</p>
-          <p><strong>📝 Motivo:</strong> ${motivo || 'Consulta general'}</p>
-          <p><strong>📊 Estado:</strong> ${estadoInicial}</p>
-        </div>
-        
-        <p><strong>Mensaje del sistema:</strong> ${mensajeEstado}</p>
-        
-        <p>Gracias por confiar en Clinikdent. Nos vemos pronto.</p>
-        
-        <p>Saludos cordiales,<br>
-        <strong>Equipo Clinikdent</strong></p>
-        `
-      );
-      console.log('✅ Email de confirmación enviado exitosamente');
-    } catch (emailError) {
-      console.error('❌ Error enviando email de confirmación:', emailError);
-      // No falla la operación principal si el email falla
+        console.log('✅ Email de confirmación enviado exitosamente');
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email de confirmación:', emailError);
+        // No falla la operación principal si el email falla
+      }
     }
 
     return res.json({ 

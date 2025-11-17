@@ -775,6 +775,83 @@ class EmailService {
 
     return await this.sendEmail(email, 'Cita Reprogramada - Clinik Dent', htmlContent);
   }
+
+  async sendCitaAgendadaEmail(email, citaData) {
+    console.log('📧 Enviando email de confirmación de cita a:', email);
+    
+    if (this.demoMode) {
+      console.log('📧 DEMO EMAIL - Cita agendada:', citaData);
+      return { success: true, demo: true };
+    }
+
+    const { fecha, hora, motivo, paciente, odontologo, estado } = citaData;
+    const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    const estadoTexto = estado === 'confirmada' ? 
+      '<span style="color: #28a745; font-weight: bold;">✅ Confirmada</span>' : 
+      '<span style="color: #ffc107; font-weight: bold;">⏳ Pendiente de confirmación</span>';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .info-box { background: #fff; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .reminder { background: #e7f3ff; border: 1px solid #b3d9ff; padding: 10px; border-radius: 5px; margin: 15px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🦷 Clinik Dent</h1>
+            <h2>✅ Cita Agendada</h2>
+          </div>
+          <div class="content">
+            <p>Hola <strong>${paciente}</strong>,</p>
+            <p>Tu cita ha sido <strong>agendada exitosamente</strong>.</p>
+            
+            <div class="info-box">
+              <p><strong>📅 Fecha:</strong> ${fechaFormateada}</p>
+              <p><strong>🕐 Hora:</strong> ${hora}</p>
+              <p><strong>👨‍⚕️ Odontólogo:</strong> ${odontologo || 'Por asignar'}</p>
+              <p><strong>📋 Motivo:</strong> ${motivo || 'Consulta general'}</p>
+              <p><strong>📊 Estado:</strong> ${estadoTexto}</p>
+            </div>
+            
+            <div class="reminder">
+              <p><strong>📌 Recordatorio:</strong></p>
+              <ul>
+                <li>Llegar 10 minutos antes de la cita</li>
+                <li>Traer documento de identidad</li>
+                <li>Si necesitas cancelar, hazlo con al menos 2 horas de anticipación</li>
+              </ul>
+            </div>
+            
+            <p>¡Gracias por confiar en nosotros!</p>
+            
+            <div class="footer">
+              <p>Este es un correo automático, por favor no responder.</p>
+              <p>© 2025 Clinik Dent - Todos los derechos reservados</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await this.sendEmail(email, 'Cita Agendada - Clinik Dent', htmlContent);
+  }
 }
 
 console.log('🔍 Creando instancia de EmailService...');
