@@ -1315,28 +1315,28 @@
     <!-- Modal Confirmar Acción Cita -->
     <div class="modal fade" id="confirmarAccionCitaModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header border-0" id="modalAccionHeader" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                    <h5 class="modal-title">
-                        <i class="bi bi-question-circle-fill me-2"></i>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header" id="modalAccionHeader" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <h5 class="modal-title" style="color: #212529;">
+                        <i class="bi bi-question-circle me-2"></i>
                         <span id="modalAccionTitle">Confirmar Acción</span>
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <div id="modalAccionContent" class="mb-3">
                         <!-- Contenido dinámico -->
                     </div>
-                    <div class="alert alert-info d-flex align-items-start mb-0" id="modalAccionNota" style="display: none !important;">
-                        <i class="bi bi-info-circle-fill me-2 mt-1"></i>
+                    <div class="alert alert-light d-flex align-items-start mb-0" id="modalAccionNota" style="display: none !important; border: 1px solid #dee2e6;">
+                        <i class="bi bi-info-circle me-2 mt-1"></i>
                         <div id="modalAccionNotaText"></div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle me-1"></i> Cancelar
+                <div class="modal-footer border-0" style="background-color: #f8f9fa;">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-arrow-left me-1"></i> Volver
                     </button>
-                    <button type="button" class="btn btn-primary" id="modalAccionConfirmarBtn">
+                    <button type="button" class="btn btn-outline-primary" id="modalAccionConfirmarBtn">
                         <i class="bi bi-check-circle me-1"></i> Confirmar
                     </button>
                 </div>

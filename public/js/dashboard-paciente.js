@@ -1681,26 +1681,34 @@ class DashboardPaciente {
 
             if (config.tipo === 'eliminar_o_cancelar') {
                 // Configurar modal para eliminar o cancelar
-                modalHeader.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                modalTitle.innerHTML = '<i class="bi bi-question-circle-fill me-2"></i>¿Qué desea hacer con la cita?';
+                modalHeader.style.background = '#f8f9fa';
+                modalHeader.style.color = '#212529';
+                modalTitle.innerHTML = '<i class="bi bi-question-circle me-2"></i>¿Qué desea hacer con la cita?';
                 modalContent.innerHTML = `
-                    <div class="text-center mb-4">
-                        <div class="bg-light rounded p-3 mb-3">
-                            <h5 class="mb-0"><i class="bi bi-calendar-event text-primary"></i> ${config.fecha}</h5>
-                            <p class="mb-0 text-muted"><i class="bi bi-clock"></i> ${config.hora}</p>
+                    <div class="mb-4">
+                        <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-calendar3 me-2 text-muted"></i>
+                                <span class="fw-medium">${config.fecha}</span>
+                                <span class="mx-2 text-muted">•</span>
+                                <i class="bi bi-clock me-2 text-muted"></i>
+                                <span class="fw-medium">${config.hora}</span>
+                            </div>
                         </div>
-                        <p class="text-muted mb-3">Seleccione la acción que desea realizar:</p>
+                        <p class="text-muted small mb-3 text-center">Seleccione la acción que desea realizar:</p>
                         <div class="d-grid gap-2">
-                            <button class="btn btn-danger btn-lg" id="btnEliminar">
-                                <i class="bi bi-trash-fill me-2"></i>Eliminar completamente la cita
+                            <button class="btn btn-outline-danger" id="btnEliminar" style="text-align: left; padding: 12px 16px;">
+                                <i class="bi bi-trash me-2"></i>Eliminar completamente la cita
                             </button>
-                            <button class="btn btn-warning btn-lg" id="btnCancelar">
-                                <i class="bi bi-x-circle-fill me-2"></i>Solo cambiar estado a cancelada
+                            <button class="btn btn-outline-secondary" id="btnCancelar" style="text-align: left; padding: 12px 16px;">
+                                <i class="bi bi-x-circle me-2"></i>Solo cambiar estado a cancelada
                             </button>
                         </div>
                     </div>
                 `;
                 modalNota.style.display = 'flex';
+                modalNota.className = 'alert alert-light d-flex align-items-start mb-0';
+                modalNota.style.border = '1px solid #dee2e6';
                 modalNotaText.innerHTML = `Faltan <strong>${config.diffHoras} horas</strong> para la cita.`;
                 confirmarBtn.style.display = 'none';
 
@@ -1718,21 +1726,30 @@ class DashboardPaciente {
 
             } else if (config.tipo === 'solo_cancelar') {
                 // Configurar modal para solo cancelar
-                modalHeader.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
-                modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Cancelación';
+                modalHeader.style.background = '#f8f9fa';
+                modalHeader.style.color = '#212529';
+                modalTitle.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>Confirmar Cancelación';
                 modalContent.innerHTML = `
-                    <div class="text-center">
-                        <div class="bg-light rounded p-3 mb-3">
-                            <h5 class="mb-0"><i class="bi bi-calendar-event text-danger"></i> ${config.fecha}</h5>
-                            <p class="mb-0 text-muted"><i class="bi bi-clock"></i> ${config.hora}</p>
+                    <div>
+                        <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-calendar3 me-2 text-muted"></i>
+                                <span class="fw-medium">${config.fecha}</span>
+                                <span class="mx-2 text-muted">•</span>
+                                <i class="bi bi-clock me-2 text-muted"></i>
+                                <span class="fw-medium">${config.hora}</span>
+                            </div>
                         </div>
-                        <p class="mb-0">¿Está seguro de que desea <strong class="text-danger">cancelar</strong> esta cita?</p>
+                        <p class="mb-0 text-center">¿Está seguro de que desea cancelar esta cita?</p>
                     </div>
                 `;
                 modalNota.style.display = 'flex';
-                modalNotaText.innerHTML = `Solo se puede <strong>cancelar</strong> (no eliminar) porque faltan menos de 4 horas para la cita.`;
+                modalNota.className = 'alert alert-warning d-flex align-items-start mb-0';
+                modalNota.style.border = '1px solid #ffc107';
+                modalNota.style.backgroundColor = '#fff3cd';
+                modalNotaText.innerHTML = `Solo se puede <strong>cancelar</strong> porque faltan menos de 4 horas.`;
                 confirmarBtn.style.display = 'inline-block';
-                confirmarBtn.className = 'btn btn-danger';
+                confirmarBtn.className = 'btn btn-outline-danger';
                 confirmarBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Cancelar Cita';
 
                 confirmarBtn.onclick = () => {
