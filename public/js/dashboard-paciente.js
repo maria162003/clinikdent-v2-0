@@ -1608,36 +1608,22 @@ class DashboardPaciente {
         
         console.log(`⏱️ Diferencia de horas: ${diffHoras.toFixed(1)}`);
 
-        if (diffHoras >= 4) {
-            // Mas de 4 horas: ofrecer eliminar o cancelar
+        if (diffHoras >= 2) {
+            // Mas de 2 horas: permitir eliminar
             await this.mostrarModalAccionCita({
-                tipo: 'eliminar_o_cancelar',
+                tipo: 'eliminar',
                 fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
                 hora: cita.hora,
                 diffHoras: diffHoras.toFixed(1)
             }, async (accionSeleccionada) => {
                 if (accionSeleccionada === 'eliminar') {
                     await this.ejecutarAccionCita(citaId, 'eliminar', `/api/citas/${citaId}/eliminar`, 'DELETE', 'eliminada completamente');
-                } else if (accionSeleccionada === 'cancelar') {
-                    await this.ejecutarAccionCita(citaId, 'cancelar', `/api/citas/${citaId}`, 'DELETE', 'cancelada exitosamente');
-                }
-            });
-        } else if (diffHoras >= 2) {
-            // Entre 2 y 4 horas: solo cancelar
-            await this.mostrarModalAccionCita({
-                tipo: 'solo_cancelar',
-                fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
-                hora: cita.hora,
-                diffHoras: diffHoras.toFixed(1)
-            }, async (accionSeleccionada) => {
-                if (accionSeleccionada === 'cancelar') {
-                    await this.ejecutarAccionCita(citaId, 'cancelar', `/api/citas/${citaId}`, 'DELETE', 'cancelada exitosamente');
                 }
             });
         } else {
             // Menos de 2 horas: no permitir
             this.showAlert(
-                `No se puede cancelar la cita con menos de 2 horas de anticipacion. Faltan ${diffHoras.toFixed(1)} horas.`,
+                `No se puede eliminar la cita con menos de 2 horas de anticipacion. Faltan ${diffHoras.toFixed(1)} horas.`,
                 'warning'
             );
             return;
@@ -1679,85 +1665,37 @@ class DashboardPaciente {
             const modalNotaText = document.getElementById('modalAccionNotaText');
             const confirmarBtn = document.getElementById('modalAccionConfirmarBtn');
 
-            if (config.tipo === 'eliminar_o_cancelar') {
-                // Configurar modal para eliminar o cancelar
-                modalHeader.style.background = '#f8f9fa';
-                modalHeader.style.color = '#212529';
-                modalTitle.innerHTML = '<i class="bi bi-question-circle me-2"></i>¿Qué desea hacer con la cita?';
-                modalContent.innerHTML = `
-                    <div class="mb-4">
-                        <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="bi bi-calendar3 me-2 text-muted"></i>
-                                <span class="fw-medium">${config.fecha}</span>
-                                <span class="mx-2 text-muted">•</span>
-                                <i class="bi bi-clock me-2 text-muted"></i>
-                                <span class="fw-medium">${config.hora}</span>
-                            </div>
-                        </div>
-                        <p class="text-muted small mb-3 text-center">Seleccione la acción que desea realizar:</p>
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-danger" id="btnEliminar" style="text-align: left; padding: 12px 16px;">
-                                <i class="bi bi-trash me-2"></i>Eliminar completamente la cita
-                            </button>
-                            <button class="btn btn-outline-secondary" id="btnCancelar" style="text-align: left; padding: 12px 16px;">
-                                <i class="bi bi-x-circle me-2"></i>Solo cambiar estado a cancelada
-                            </button>
+            // Configurar modal para eliminar
+            modalHeader.style.background = '#f8f9fa';
+            modalHeader.style.color = '#212529';
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>Confirmar Eliminación';
+            modalContent.innerHTML = `
+                <div>
+                    <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="bi bi-calendar3 me-2 text-muted"></i>
+                            <span class="fw-medium">${config.fecha}</span>
+                            <span class="mx-2 text-muted">•</span>
+                            <i class="bi bi-clock me-2 text-muted"></i>
+                            <span class="fw-medium">${config.hora}</span>
                         </div>
                     </div>
-                `;
-                modalNota.style.display = 'flex';
-                modalNota.className = 'alert alert-light d-flex align-items-start mb-0';
-                modalNota.style.border = '1px solid #dee2e6';
-                modalNotaText.innerHTML = `Faltan <strong>${config.diffHoras} horas</strong> para la cita.`;
-                confirmarBtn.style.display = 'none';
+                    <p class="mb-0 text-center">¿Está seguro de que desea eliminar completamente esta cita?</p>
+                </div>
+            `;
+            modalNota.style.display = 'flex';
+            modalNota.className = 'alert alert-light d-flex align-items-start mb-0';
+            modalNota.style.border = '1px solid #dee2e6';
+            modalNotaText.innerHTML = `Faltan <strong>${config.diffHoras} horas</strong> para la cita.`;
+            confirmarBtn.style.display = 'inline-block';
+            confirmarBtn.className = 'btn btn-outline-danger';
+            confirmarBtn.innerHTML = '<i class="bi bi-trash me-1"></i> Eliminar Cita';
 
-                // Manejadores de eventos
-                document.getElementById('btnEliminar').onclick = () => {
-                    modal.hide();
-                    callback('eliminar');
-                    resolve('eliminar');
-                };
-                document.getElementById('btnCancelar').onclick = () => {
-                    modal.hide();
-                    callback('cancelar');
-                    resolve('cancelar');
-                };
-
-            } else if (config.tipo === 'solo_cancelar') {
-                // Configurar modal para solo cancelar
-                modalHeader.style.background = '#f8f9fa';
-                modalHeader.style.color = '#212529';
-                modalTitle.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>Confirmar Cancelación';
-                modalContent.innerHTML = `
-                    <div>
-                        <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="bi bi-calendar3 me-2 text-muted"></i>
-                                <span class="fw-medium">${config.fecha}</span>
-                                <span class="mx-2 text-muted">•</span>
-                                <i class="bi bi-clock me-2 text-muted"></i>
-                                <span class="fw-medium">${config.hora}</span>
-                            </div>
-                        </div>
-                        <p class="mb-0 text-center">¿Está seguro de que desea cancelar esta cita?</p>
-                    </div>
-                `;
-                modalNota.style.display = 'flex';
-                modalNota.className = 'alert alert-warning d-flex align-items-start mb-0';
-                modalNota.style.border = '1px solid #ffc107';
-                modalNota.style.backgroundColor = '#fff3cd';
-                modalNotaText.innerHTML = `Solo se puede <strong>cancelar</strong> porque faltan menos de 4 horas.`;
-                confirmarBtn.style.display = 'inline-block';
-                confirmarBtn.className = 'btn btn-outline-danger';
-                confirmarBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Cancelar Cita';
-
-                confirmarBtn.onclick = () => {
-                    modal.hide();
-                    callback('cancelar');
-                    resolve('cancelar');
-                };
-            }
+            confirmarBtn.onclick = () => {
+                modal.hide();
+                callback('eliminar');
+                resolve('eliminar');
+            };
 
             modal.show();
 
