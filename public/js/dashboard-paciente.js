@@ -1606,48 +1606,34 @@ class DashboardPaciente {
         const fechaCita = new Date(`${fechaStr} ${cita.hora}`);
         const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
         
-        console.log(`Diferencia de horas: ${diffHoras.toFixed(1)}`);
-
-        let accion = 'cancelar';
-        let mensaje = '';
-        let endpoint = `/api/citas/${citaId}`;
-        let method = 'DELETE';
+        console.log(`⏱️ Diferencia de horas: ${diffHoras.toFixed(1)}`);
 
         if (diffHoras >= 4) {
             // Mas de 4 horas: ofrecer eliminar o cancelar
-            const confirmacion = confirm(
-                `¿Que desea hacer con la cita del ${new Date(cita.fecha).toLocaleDateString('es-ES')} a las ${cita.hora}?\n\n` +
-                `Opciones:\n` +
-                `• OK = Eliminar completamente la cita\n` +
-                `• Cancelar = Solo cambiar estado a cancelada\n\n` +
-                `Nota: Faltan ${diffHoras.toFixed(1)} horas para la cita.`
-            );
-            
-            if (confirmacion) {
-                accion = 'eliminar';
-                endpoint = `/api/citas/${citaId}/eliminar`;
-                method = 'DELETE';
-                mensaje = 'eliminada completamente';
-            } else {
-                // Usuario eligio cancelar en lugar de eliminar
-                const confirmarCancelacion = confirm(
-                    `¿Esta seguro de que desea cancelar (no eliminar) la cita del ${new Date(cita.fecha).toLocaleDateString('es-ES')} a las ${cita.hora}?`
-                );
-                if (!confirmarCancelacion) return;
-                
-                accion = 'cancelar';
-                mensaje = 'cancelada exitosamente';
-            }
+            await this.mostrarModalAccionCita({
+                tipo: 'eliminar_o_cancelar',
+                fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
+                hora: cita.hora,
+                diffHoras: diffHoras.toFixed(1)
+            }, async (accionSeleccionada) => {
+                if (accionSeleccionada === 'eliminar') {
+                    await this.ejecutarAccionCita(citaId, 'eliminar', `/api/citas/${citaId}/eliminar`, 'DELETE', 'eliminada completamente');
+                } else if (accionSeleccionada === 'cancelar') {
+                    await this.ejecutarAccionCita(citaId, 'cancelar', `/api/citas/${citaId}`, 'DELETE', 'cancelada exitosamente');
+                }
+            });
         } else if (diffHoras >= 2) {
             // Entre 2 y 4 horas: solo cancelar
-            const confirmacion = confirm(
-                `¿Esta seguro de que desea cancelar la cita del ${new Date(cita.fecha).toLocaleDateString('es-ES')} a las ${cita.hora}?\n\n` +
-                `Nota: Solo se puede cancelar (no eliminar) porque faltan menos de 4 horas.`
-            );
-            if (!confirmacion) return;
-            
-            accion = 'cancelar';
-            mensaje = 'cancelada exitosamente';
+            await this.mostrarModalAccionCita({
+                tipo: 'solo_cancelar',
+                fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
+                hora: cita.hora,
+                diffHoras: diffHoras.toFixed(1)
+            }, async (accionSeleccionada) => {
+                if (accionSeleccionada === 'cancelar') {
+                    await this.ejecutarAccionCita(citaId, 'cancelar', `/api/citas/${citaId}`, 'DELETE', 'cancelada exitosamente');
+                }
+            });
         } else {
             // Menos de 2 horas: no permitir
             this.showAlert(
@@ -1656,8 +1642,10 @@ class DashboardPaciente {
             );
             return;
         }
+    }
 
-        console.log(` Accion seleccionada: ${accion}`);
+    async ejecutarAccionCita(citaId, accion, endpoint, method, mensaje) {
+        console.log(`🎬 Accion seleccionada: ${accion}`);
 
         try {
             const response = await this.authFetch(endpoint, { 
@@ -1670,15 +1658,97 @@ class DashboardPaciente {
             console.log('📄 Resultado:', result);
             
             if (response.ok) {
-                this.showAlert(` Cita ${mensaje}.`, 'success');
+                this.showAlert(`✅ Cita ${mensaje}.`, 'success');
                 await this.loadCitas();
             } else {
                 throw new Error(result.msg || `Error al ${accion} la cita`);
             }
         } catch (error) {
-            console.error(` Error ${accion}ndo cita:`, error);
-            this.showAlert(` ${error.message || `Error al ${accion} la cita. Intentelo nuevamente.`}`, 'danger');
+            console.error(`❌ Error ${accion}ndo cita:`, error);
+            this.showAlert(`⚠️ ${error.message || `Error al ${accion} la cita. Intentelo nuevamente.`}`, 'danger');
         }
+    }
+
+    mostrarModalAccionCita(config, callback) {
+        return new Promise((resolve) => {
+            const modal = new bootstrap.Modal(document.getElementById('confirmarAccionCitaModal'));
+            const modalHeader = document.getElementById('modalAccionHeader');
+            const modalTitle = document.getElementById('modalAccionTitle');
+            const modalContent = document.getElementById('modalAccionContent');
+            const modalNota = document.getElementById('modalAccionNota');
+            const modalNotaText = document.getElementById('modalAccionNotaText');
+            const confirmarBtn = document.getElementById('modalAccionConfirmarBtn');
+
+            if (config.tipo === 'eliminar_o_cancelar') {
+                // Configurar modal para eliminar o cancelar
+                modalHeader.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                modalTitle.innerHTML = '<i class="bi bi-question-circle-fill me-2"></i>¿Qué desea hacer con la cita?';
+                modalContent.innerHTML = `
+                    <div class="text-center mb-4">
+                        <div class="bg-light rounded p-3 mb-3">
+                            <h5 class="mb-0"><i class="bi bi-calendar-event text-primary"></i> ${config.fecha}</h5>
+                            <p class="mb-0 text-muted"><i class="bi bi-clock"></i> ${config.hora}</p>
+                        </div>
+                        <p class="text-muted mb-3">Seleccione la acción que desea realizar:</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger btn-lg" id="btnEliminar">
+                                <i class="bi bi-trash-fill me-2"></i>Eliminar completamente la cita
+                            </button>
+                            <button class="btn btn-warning btn-lg" id="btnCancelar">
+                                <i class="bi bi-x-circle-fill me-2"></i>Solo cambiar estado a cancelada
+                            </button>
+                        </div>
+                    </div>
+                `;
+                modalNota.style.display = 'flex';
+                modalNotaText.innerHTML = `Faltan <strong>${config.diffHoras} horas</strong> para la cita.`;
+                confirmarBtn.style.display = 'none';
+
+                // Manejadores de eventos
+                document.getElementById('btnEliminar').onclick = () => {
+                    modal.hide();
+                    callback('eliminar');
+                    resolve('eliminar');
+                };
+                document.getElementById('btnCancelar').onclick = () => {
+                    modal.hide();
+                    callback('cancelar');
+                    resolve('cancelar');
+                };
+
+            } else if (config.tipo === 'solo_cancelar') {
+                // Configurar modal para solo cancelar
+                modalHeader.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+                modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Cancelación';
+                modalContent.innerHTML = `
+                    <div class="text-center">
+                        <div class="bg-light rounded p-3 mb-3">
+                            <h5 class="mb-0"><i class="bi bi-calendar-event text-danger"></i> ${config.fecha}</h5>
+                            <p class="mb-0 text-muted"><i class="bi bi-clock"></i> ${config.hora}</p>
+                        </div>
+                        <p class="mb-0">¿Está seguro de que desea <strong class="text-danger">cancelar</strong> esta cita?</p>
+                    </div>
+                `;
+                modalNota.style.display = 'flex';
+                modalNotaText.innerHTML = `Solo se puede <strong>cancelar</strong> (no eliminar) porque faltan menos de 4 horas para la cita.`;
+                confirmarBtn.style.display = 'inline-block';
+                confirmarBtn.className = 'btn btn-danger';
+                confirmarBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Cancelar Cita';
+
+                confirmarBtn.onclick = () => {
+                    modal.hide();
+                    callback('cancelar');
+                    resolve('cancelar');
+                };
+            }
+
+            modal.show();
+
+            // Limpiar cuando se cierra
+            document.getElementById('confirmarAccionCitaModal').addEventListener('hidden.bs.modal', () => {
+                resolve(null);
+            }, { once: true });
+        });
     }
 
     verDetalleCita(citaId) {
