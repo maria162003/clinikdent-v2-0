@@ -1681,13 +1681,33 @@ class DashboardPaciente {
 
     mostrarModalAccionCita(config, callback) {
         return new Promise((resolve) => {
-            const modal = new bootstrap.Modal(document.getElementById('confirmarAccionCitaModal'));
+            const modalElement = document.getElementById('confirmarAccionCitaModal');
+            if (!modalElement) {
+                console.error('❌ Modal confirmarAccionCitaModal no encontrado');
+                resolve(null);
+                return;
+            }
+
+            const modal = new bootstrap.Modal(modalElement);
             const modalHeader = document.getElementById('modalAccionHeader');
             const modalTitle = document.getElementById('modalAccionTitle');
             const modalContent = document.getElementById('modalAccionContent');
             const modalNota = document.getElementById('modalAccionNota');
             const modalNotaText = document.getElementById('modalAccionNotaText');
             const confirmarBtn = document.getElementById('modalAccionConfirmarBtn');
+
+            if (!modalHeader || !modalTitle || !modalContent || !modalNota || !modalNotaText || !confirmarBtn) {
+                console.error('❌ Elementos del modal no encontrados:', {
+                    modalHeader: !!modalHeader,
+                    modalTitle: !!modalTitle,
+                    modalContent: !!modalContent,
+                    modalNota: !!modalNota,
+                    modalNotaText: !!modalNotaText,
+                    confirmarBtn: !!confirmarBtn
+                });
+                resolve(null);
+                return;
+            }
 
             // Configurar modal para eliminar
             modalHeader.style.background = '#f8f9fa';
@@ -1724,7 +1744,7 @@ class DashboardPaciente {
             modal.show();
 
             // Limpiar cuando se cierra
-            document.getElementById('confirmarAccionCitaModal').addEventListener('hidden.bs.modal', () => {
+            modalElement.addEventListener('hidden.bs.modal', () => {
                 resolve(null);
             }, { once: true });
         });
