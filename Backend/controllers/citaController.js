@@ -676,8 +676,21 @@ exports.eliminarCita = async (req, res) => {
   console.log(`🗑️ [citaController] Eliminando cita ID: ${id_cita}`);
   
   try {
-    // Verificar que la cita existe
-    const citaResult = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener información del paciente
+    const citaResult = await db.query(
+      `SELECT c.*, 
+              p.nombre as paciente_nombre, 
+              p.apellido as paciente_apellido, 
+              p.correo as paciente_correo,
+              o.nombre as odontologo_nombre,
+              o.apellido as odontologo_apellido
+       FROM citas c
+       LEFT JOIN usuarios p ON c.paciente_id = p.id
+       LEFT JOIN usuarios o ON c.odontologo_id = o.id
+       WHERE c.id = $1`, 
+      [id_cita]
+    );
+    
     if (citaResult.rows.length === 0) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
     }
@@ -698,6 +711,25 @@ exports.eliminarCita = async (req, res) => {
 
     // Eliminar la cita completamente
     await db.query('DELETE FROM citas WHERE id = $1', [id_cita]);
+    
+    // Enviar email de notificación de eliminación
+    if (cita.paciente_correo) {
+      try {
+        console.log('📧 Enviando email de notificación de cita eliminada...');
+        const emailService = require('../services/emailService');
+        await emailService.sendCitaCanceladaEmail(cita.paciente_correo, {
+          fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
+          hora: cita.hora,
+          motivo: 'Cita eliminada por solicitud del paciente',
+          paciente: `${cita.paciente_nombre} ${cita.paciente_apellido}`,
+          odontologo: `Dr(a). ${cita.odontologo_nombre || ''} ${cita.odontologo_apellido || ''}`
+        });
+        console.log('✅ Email de eliminación enviado correctamente');
+      } catch (emailError) {
+        console.error('❌ Error enviando email de eliminación:', emailError);
+        // No bloquear la respuesta si falla el email
+      }
+    }
     
     console.log('✅ Cita eliminada exitosamente');
     return res.json({ 
