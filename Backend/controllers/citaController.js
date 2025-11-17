@@ -471,8 +471,17 @@ exports.reagendarCita = async (req, res) => {
   console.log(`🔄 [citaController] Actualizando cita ID: ${id_cita}`, req.body);
   
   try {
-    // Verificar que la cita existe y obtener datos actuales
-    const citaActual = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener datos actuales con info del paciente
+    const citaActual = await db.query(`
+      SELECT c.*, 
+             p.nombre as paciente_nombre, 
+             p.apellido as paciente_apellido,
+             p.correo as paciente_correo
+      FROM citas c
+      LEFT JOIN usuarios p ON c.paciente_id = p.id
+      WHERE c.id = $1
+    `, [id_cita]);
+    
     if (citaActual.rows.length === 0) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
     }
@@ -484,6 +493,10 @@ exports.reagendarCita = async (req, res) => {
     if (cita.estado === 'cancelada') {
       return res.status(400).json({ msg: 'No se puede modificar una cita cancelada.' });
     }
+
+    // Guardar datos anteriores para el email
+    const fechaAnterior = cita.fecha;
+    const horaAnterior = cita.hora;
 
     // Actualizar la cita
     const updateData = {
@@ -500,6 +513,26 @@ exports.reagendarCita = async (req, res) => {
       'UPDATE citas SET fecha = $1, hora = $2, motivo = $3, notas = $4 WHERE id = $5 RETURNING *',
       [updateData.fecha, updateData.hora, updateData.motivo, updateData.notas, id_cita]
     );
+
+    // Enviar email de notificación solo si cambió la fecha o la hora
+    if ((fecha && fecha !== fechaAnterior) || (hora && hora !== horaAnterior)) {
+      if (cita.paciente_correo) {
+        try {
+          await emailService.sendCitaReprogramadaEmail(cita.paciente_correo, {
+            fechaAnterior: fechaAnterior,
+            horaAnterior: horaAnterior,
+            fechaNueva: updateData.fecha,
+            horaNueva: updateData.hora,
+            motivo: updateData.motivo,
+            paciente: `${cita.paciente_nombre} ${cita.paciente_apellido}`
+          });
+          console.log('✅ Email de reprogramación enviado');
+        } catch (emailError) {
+          console.error('⚠️ Error enviando email de reprogramación:', emailError);
+          // No bloquear la operación si falla el email
+        }
+      }
+    }
 
     console.log('✅ Cita actualizada exitosamente');
     return res.json({ 
@@ -581,8 +614,17 @@ exports.cancelarCita = async (req, res) => {
   console.log(`❌ [citaController] Cancelando cita ID: ${id_cita}`);
   
   try {
-    // Verificar que la cita existe
-    const result = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener datos completos
+    const result = await db.query(`
+      SELECT c.*, 
+             p.nombre as paciente_nombre, 
+             p.apellido as paciente_apellido,
+             p.correo as paciente_correo
+      FROM citas c
+      LEFT JOIN usuarios p ON c.paciente_id = p.id
+      WHERE c.id = $1
+    `, [id_cita]);
+    
     const citaActual = result.rows || [];
     if (!citaActual.length) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
@@ -609,6 +651,22 @@ exports.cancelarCita = async (req, res) => {
 
     // Cancelar la cita
     await db.query('UPDATE citas SET estado = $1 WHERE id = $2', ['cancelada', id_cita]);
+    
+    // Enviar email de notificación
+    if (cita.paciente_correo) {
+      try {
+        await emailService.sendCitaCanceladaEmail(cita.paciente_correo, {
+          fecha: cita.fecha,
+          hora: cita.hora,
+          motivo: cita.motivo,
+          paciente: `${cita.paciente_nombre} ${cita.paciente_apellido}`
+        });
+        console.log('✅ Email de cancelación enviado');
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email de cancelación:', emailError);
+        // No bloquear la operación si falla el email
+      }
+    }
     
     console.log('✅ Cita cancelada exitosamente');
     return res.json({ 
