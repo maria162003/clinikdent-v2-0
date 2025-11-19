@@ -564,7 +564,8 @@ class DashboardAdmin {
             faqs: 'Preguntas Frecuentes',
             evaluaciones: 'Evaluaciones de Servicio',
             reportes: 'Reportes y Estadísticas',
-            inventario: 'Inventario y Sedes'
+            inventario: 'Inventario y Sedes',
+            contenido: 'Contenido Web'
         };
         return titles[section] || 'Inicio';
     }
@@ -1110,6 +1111,12 @@ class DashboardAdmin {
                 await inicializarModuloInventario();
             } else {
                 console.warn('⚠️ Funciones de inventario adicionales no encontradas');
+            }
+        } else if (sectionName === 'contenido') {
+            if (window.siteContentManager && typeof window.siteContentManager.ensureLoaded === 'function') {
+                window.siteContentManager.ensureLoaded();
+            } else {
+                console.warn('⚠️ Gestor de contenido no inicializado');
             }
         }
         

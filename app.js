@@ -78,6 +78,10 @@ console.log('🔄 Cargando rutas de MercadoPago...');
 const mercadoPagoRoutes = require('./Backend/routes/mercadoPagoRoutes');
 console.log('✅ Rutas de MercadoPago cargadas');
 
+console.log('🔄 Cargando rutas de contenido del sitio...');
+const siteContentRoutes = require('./Backend/routes/siteContentRoutes');
+console.log('✅ Rutas de contenido del sitio cargadas');
+
 const app = express();
 
 // Middlewares
@@ -304,6 +308,10 @@ console.log('✅ Rutas de seguridad avanzada registradas exitosamente');
 console.log('🔗 Registrando rutas de MercadoPago...');
 app.use('/api/mercadopago', mercadoPagoRoutes);
 console.log('✅ Rutas de MercadoPago registradas exitosamente');
+
+console.log('🔗 Registrando rutas de contenido del sitio...');
+app.use('/api/site-content', siteContentRoutes);
+console.log('✅ Rutas de contenido del sitio registradas exitosamente');
 
 // Agregar rutas de reportes básicos
 console.log('🔗 Registrando rutas de reportes básicos...');
