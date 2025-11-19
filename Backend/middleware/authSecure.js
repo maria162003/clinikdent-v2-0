@@ -1,6 +1,6 @@
 const { body } = require('express-validator');
 const jwt = require('jsonwebtoken');
-const pool = require('../config/database');
+const pool = require('../config/databaseSecure');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = rateLimit;
 const helmet = require('helmet');
