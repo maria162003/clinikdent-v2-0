@@ -177,7 +177,7 @@
                 submitBtn.disabled = true;
 
                 try {
-                    const response = await fetch('/api/auth/recuperar', {
+                    const response = await fetch('/api/seguridad/recuperar-password-supabase', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ correo, numero_documento })

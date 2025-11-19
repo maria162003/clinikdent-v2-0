@@ -1,5 +1,23 @@
 const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
+
+// Cargar .env del CWD y fallback al .env del proyecto anidado
 require('dotenv').config();
+if (!process.env.PGHOST || !process.env.PGUSER || !process.env.PGPASSWORD) {
+  const nestedEnvPath = path.resolve(__dirname, '../../.env');
+  if (fs.existsSync(nestedEnvPath)) {
+    require('dotenv').config({ path: nestedEnvPath });
+    console.log(`🔄 Variables de BD re-cargadas desde fallback: ${nestedEnvPath}`);
+  }
+}
+
+// Compatibilidad: mapear variables legacy DB_* a PG_* si faltan
+process.env.PGHOST = process.env.PGHOST || process.env.DB_HOST;
+process.env.PGUSER = process.env.PGUSER || process.env.DB_USER;
+process.env.PGPASSWORD = process.env.PGPASSWORD || process.env.DB_PASSWORD;
+process.env.PGDATABASE = process.env.PGDATABASE || process.env.DB_NAME;
+process.env.PGPORT = process.env.PGPORT || process.env.DB_PORT;
 
 console.log('🔧 Configurando conexión PostgreSQL:', {
   host: process.env.PGHOST,
@@ -8,6 +26,11 @@ console.log('🔧 Configurando conexión PostgreSQL:', {
   database: process.env.PGDATABASE,
   port: process.env.PGPORT
 });
+
+// Validaciones básicas
+if (typeof process.env.PGPASSWORD !== 'string' || !process.env.PGPASSWORD.length) {
+  console.error('❌ PGPASSWORD no está definido o no es una cadena');
+}
 
 const pool = new Pool({
   host: process.env.PGHOST,

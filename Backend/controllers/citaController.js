@@ -247,61 +247,33 @@ exports.agendarCita = async (req, res) => {
     const nuevaCitaId = result.rows[0].id;
     console.log('✅ Cita insertada con ID:', nuevaCitaId);
 
+    // Obtener información del paciente para el email
+    const pacienteResult = await db.query(
+      'SELECT nombre, apellido, correo FROM usuarios WHERE id = $1',
+      [userId]
+    );
+    
     // 📧 Enviar email de confirmación de cita
-    try {
-      console.log('📧 Enviando email de confirmación de cita...');
-      
-      // Obtener información del paciente para el correo
-      const pacienteResult = await db.query(
-        'SELECT nombre, apellido, correo FROM usuarios WHERE id = $1',
-        [userId]
-      );
-      
-      if (pacienteResult.rows.length > 0 && pacienteResult.rows[0].correo) {
+    if (pacienteResult.rows.length > 0 && pacienteResult.rows[0].correo) {
+      try {
+        console.log('📧 Enviando email de confirmación de cita...');
         const pacienteInfo = pacienteResult.rows[0];
         const odontologoAsignado = ods.find(od => od.id === odontologoSeleccionado);
-        const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
+        
+        await emailService.sendCitaAgendadaEmail(pacienteInfo.correo, {
+          fecha: fecha,
+          hora: hora,
+          motivo: motivo || 'Consulta general',
+          paciente: `${pacienteInfo.nombre} ${pacienteInfo.apellido}`,
+          odontologo: odontologoAsignado ? `Dr. ${odontologoAsignado.nombre} ${odontologoAsignado.apellido}` : 'Por asignar',
+          estado: estadoInicial
         });
         
-        // Preparar datos para el email
-        const citaData = {
-          correo: pacienteInfo.correo,
-          pacienteNombre: `${pacienteInfo.nombre} ${pacienteInfo.apellido}`,
-          fecha: fechaFormateada,
-          hora: hora,
-          odontologoNombre: odontologoAsignado ? `${odontologoAsignado.nombre} ${odontologoAsignado.apellido}` : 'Por asignar',
-          motivo: motivo || 'Consulta general',
-          estado: estadoInicial === 'confirmada' ? 'Confirmada' : 'Programada'
-        };
-        
-        // Enviar email de confirmación
-        const resultado = await emailService.enviarConfirmacionCita(citaData);
-        
-        if (resultado.success) {
-          console.log('✅ Email de confirmación enviado exitosamente');
-          
-          // Registrar notificación en la base de datos
-          try {
-            await db.query(
-              'INSERT INTO notificaciones_citas (cita_id, tipo, enviado, detalles) VALUES ($1, $2, $3, $4)',
-              [nuevaCitaId, 'confirmacion', true, JSON.stringify(resultado)]
-            );
-          } catch (notifError) {
-            console.error('⚠️ Error registrando notificación:', notifError);
-          }
-        } else {
-          console.log('⚠️ No se pudo enviar email:', resultado.reason || resultado.error);
-        }
-      } else {
-        console.log('⚠️ Paciente sin correo electrónico registrado');
+        console.log('✅ Email de confirmación enviado exitosamente');
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email de confirmación:', emailError);
+        // No falla la operación principal si el email falla
       }
-    } catch (emailError) {
-      console.error('❌ Error enviando email de confirmación:', emailError);
-      // No falla la operación principal si el email falla
     }
 
     return res.json({ 
@@ -486,8 +458,17 @@ exports.reagendarCita = async (req, res) => {
   console.log(`🔄 [citaController] Actualizando cita ID: ${id_cita}`, req.body);
   
   try {
-    // Verificar que la cita existe y obtener datos actuales
-    const citaActual = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener datos actuales con info del paciente
+    const citaActual = await db.query(`
+      SELECT c.*, 
+             p.nombre as paciente_nombre, 
+             p.apellido as paciente_apellido,
+             p.correo as paciente_correo
+      FROM citas c
+      LEFT JOIN usuarios p ON c.paciente_id = p.id
+      WHERE c.id = $1
+    `, [id_cita]);
+    
     if (citaActual.rows.length === 0) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
     }
@@ -500,30 +481,9 @@ exports.reagendarCita = async (req, res) => {
       return res.status(400).json({ msg: 'No se puede modificar una cita cancelada.' });
     }
 
-    // Regla de negocio: solo se puede reprogramar si faltan más de 24 horas para la cita actual
-    try {
-      const ahora = new Date();
-      // cita.fecha es tipo date en PG; combinar con hora "HH:MM:SS" de forma segura en zona local
-      const base = new Date(cita.fecha);
-      const [hh = '0', mm = '0', ss = '0'] = (cita.hora || '00:00:00').split(':');
-      const fechaCita = new Date(
-        base.getFullYear(),
-        base.getMonth(),
-        base.getDate(),
-        parseInt(hh, 10) || 0,
-        parseInt(mm, 10) || 0,
-        parseInt(ss, 10) || 0,
-        0
-      );
-      const diffHoras = (fechaCita - ahora) / (1000 * 60 * 60);
-      if (diffHoras < 24) {
-        return res.status(400).json({
-          msg: `No se puede reprogramar la cita con menos de 24 horas de anticipación. Faltan ${diffHoras.toFixed(1)} horas.`
-        });
-      }
-    } catch (e) {
-      console.warn('⚠️ No se pudo evaluar la regla de 24h para reprogramar:', e?.message);
-    }
+    // Guardar datos anteriores para el email
+    const fechaAnterior = cita.fecha;
+    const horaAnterior = cita.hora;
 
     // Actualizar la cita
     const updateData = {
@@ -540,6 +500,26 @@ exports.reagendarCita = async (req, res) => {
       'UPDATE citas SET fecha = $1, hora = $2, motivo = $3, notas = $4 WHERE id = $5 RETURNING *',
       [updateData.fecha, updateData.hora, updateData.motivo, updateData.notas, id_cita]
     );
+
+    // Enviar email de notificación solo si cambió la fecha o la hora
+    if ((fecha && fecha !== fechaAnterior) || (hora && hora !== horaAnterior)) {
+      if (cita.paciente_correo) {
+        try {
+          await emailService.sendCitaReprogramadaEmail(cita.paciente_correo, {
+            fechaAnterior: fechaAnterior,
+            horaAnterior: horaAnterior,
+            fechaNueva: updateData.fecha,
+            horaNueva: updateData.hora,
+            motivo: updateData.motivo,
+            paciente: `${cita.paciente_nombre} ${cita.paciente_apellido}`
+          });
+          console.log('✅ Email de reprogramación enviado');
+        } catch (emailError) {
+          console.error('⚠️ Error enviando email de reprogramación:', emailError);
+          // No bloquear la operación si falla el email
+        }
+      }
+    }
 
     console.log('✅ Cita actualizada exitosamente');
     return res.json({ 
@@ -621,8 +601,17 @@ exports.cancelarCita = async (req, res) => {
   console.log(`❌ [citaController] Cancelando cita ID: ${id_cita}`);
   
   try {
-    // Verificar que la cita existe
-    const result = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener datos completos
+    const result = await db.query(`
+      SELECT c.*, 
+             p.nombre as paciente_nombre, 
+             p.apellido as paciente_apellido,
+             p.correo as paciente_correo
+      FROM citas c
+      LEFT JOIN usuarios p ON c.paciente_id = p.id
+      WHERE c.id = $1
+    `, [id_cita]);
+    
     const citaActual = result.rows || [];
     if (!citaActual.length) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
@@ -649,6 +638,22 @@ exports.cancelarCita = async (req, res) => {
 
     // Cancelar la cita
     await db.query('UPDATE citas SET estado = $1 WHERE id = $2', ['cancelada', id_cita]);
+    
+    // Enviar email de notificación
+    if (cita.paciente_correo) {
+      try {
+        await emailService.sendCitaCanceladaEmail(cita.paciente_correo, {
+          fecha: cita.fecha,
+          hora: cita.hora,
+          motivo: cita.motivo,
+          paciente: `${cita.paciente_nombre} ${cita.paciente_apellido}`
+        });
+        console.log('✅ Email de cancelación enviado');
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email de cancelación:', emailError);
+        // No bloquear la operación si falla el email
+      }
+    }
     
     console.log('✅ Cita cancelada exitosamente');
     
@@ -731,8 +736,21 @@ exports.eliminarCita = async (req, res) => {
   console.log(`🗑️ [citaController] Eliminando cita ID: ${id_cita}`);
   
   try {
-    // Verificar que la cita existe
-    const citaResult = await db.query('SELECT * FROM citas WHERE id = $1', [id_cita]);
+    // Verificar que la cita existe y obtener información del paciente
+    const citaResult = await db.query(
+      `SELECT c.*, 
+              p.nombre as paciente_nombre, 
+              p.apellido as paciente_apellido, 
+              p.correo as paciente_correo,
+              o.nombre as odontologo_nombre,
+              o.apellido as odontologo_apellido
+       FROM citas c
+       LEFT JOIN usuarios p ON c.paciente_id = p.id
+       LEFT JOIN usuarios o ON c.odontologo_id = o.id
+       WHERE c.id = $1`, 
+      [id_cita]
+    );
+    
     if (citaResult.rows.length === 0) {
       return res.status(404).json({ msg: 'Cita no encontrada.' });
     }
@@ -753,6 +771,25 @@ exports.eliminarCita = async (req, res) => {
 
     // Eliminar la cita completamente
     await db.query('DELETE FROM citas WHERE id = $1', [id_cita]);
+    
+    // Enviar email de notificación de eliminación
+    if (cita.paciente_correo) {
+      try {
+        console.log('📧 Enviando email de notificación de cita eliminada...');
+        const emailService = require('../services/emailService');
+        await emailService.sendCitaCanceladaEmail(cita.paciente_correo, {
+          fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
+          hora: cita.hora,
+          motivo: 'Cita eliminada por solicitud del paciente',
+          paciente: `${cita.paciente_nombre} ${cita.paciente_apellido}`,
+          odontologo: `Dr(a). ${cita.odontologo_nombre || ''} ${cita.odontologo_apellido || ''}`
+        });
+        console.log('✅ Email de eliminación enviado correctamente');
+      } catch (emailError) {
+        console.error('❌ Error enviando email de eliminación:', emailError);
+        // No bloquear la respuesta si falla el email
+      }
+    }
     
     console.log('✅ Cita eliminada exitosamente');
     return res.json({ 

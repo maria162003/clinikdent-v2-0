@@ -25,7 +25,6 @@ const pagoRoutes = require('./Backend/routes/pagoRoutes');
 const chatRoutes = require('./Backend/routes/chatRoutes');
 const contactoRoutes = require('./Backend/routes/contactoRoutes');
 const usuarioRoutes = require('./Backend/routes/usuarioRoutes');
-const testEmailRoutes = require('./Backend/routes/testEmailRoutes'); // Rutas de prueba aisladas
 
 console.log('🔄 Cargando rutas de inventario...');
 const inventarioRoutes = require('./Backend/routes/inventarioRoutes');
@@ -79,10 +78,23 @@ console.log('🔄 Cargando rutas de MercadoPago...');
 const mercadoPagoRoutes = require('./Backend/routes/mercadoPagoRoutes');
 console.log('✅ Rutas de MercadoPago cargadas');
 
+console.log('🔄 Cargando rutas de contenido del sitio...');
+const siteContentRoutes = require('./Backend/routes/siteContentRoutes');
+console.log('✅ Rutas de contenido del sitio cargadas');
+
 const app = express();
 
 // Middlewares
 app.use(cors());
+
+// ANTI-CACHE MIDDLEWARE: Prevenir que Chrome cachee archivos localmente
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Log global para debug
 app.use((req, res, next) => {
   console.log(`🌍 GLOBAL REQUEST: ${req.method} ${req.url}`);
@@ -232,7 +244,6 @@ app.use('/api/pagos', pagoRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/contacto', contactoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/test-email', testEmailRoutes); // 🧪 Rutas de prueba aisladas
 console.log('🔗 Registrando rutas de inventario...');
 app.use('/api/inventario', inventarioRoutes);
 console.log('✅ Rutas de inventario registradas exitosamente');
@@ -298,6 +309,10 @@ console.log('🔗 Registrando rutas de MercadoPago...');
 app.use('/api/mercadopago', mercadoPagoRoutes);
 console.log('✅ Rutas de MercadoPago registradas exitosamente');
 
+console.log('🔗 Registrando rutas de contenido del sitio...');
+app.use('/api/site-content', siteContentRoutes);
+console.log('✅ Rutas de contenido del sitio registradas exitosamente');
+
 // Agregar rutas de reportes básicos
 console.log('🔗 Registrando rutas de reportes básicos...');
 const reportesRoutes = require('./Backend/routes/reportesRoutes');
@@ -310,7 +325,19 @@ const configuracionRoutes = require('./Backend/routes/configuracionRoutes');
 app.use('/api/configuracion', configuracionRoutes);
 console.log('✅ Rutas de configuración registradas exitosamente');
 
+// Agregar rutas de preferencias de notificaciones
+console.log('🔗 Registrando rutas de preferencias de notificaciones...');
+const preferenciasRoutes = require('./Backend/routes/preferenciasRoutes');
+app.use('/api/preferencias', preferenciasRoutes);
+console.log('✅ Rutas de preferencias de notificaciones registradas exitosamente');
+
 // Servir archivos estáticos del frontend (DESPUÉS de las rutas API)
+// Silenciar solicitud automática de Chrome DevTools para su manifiesto de app
+// Evita 404 en consola cuando el navegador intenta leer esta ruta especial
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
+  res.type('application/json').status(200).send('{}');
+});
+
 app.use(express.static('public'));
 
 // Ruta de prueba simple

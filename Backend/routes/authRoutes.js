@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authControllerNew');
+const supabaseAuthController = require('../controllers/supabaseAuthController');
 
 console.log('🔍 AuthController funciones disponibles:', Object.keys(authController));
 
@@ -39,5 +40,8 @@ router.post('/cambiar-password-token', (req, res) => {
   console.log('🔑 Ruta /cambiar-password-token llamada');
   authController.cambiarPasswordConToken(req, res);
 });
+
+// Supabase Auth - Actualizar password después de magic link
+router.post('/actualizar-password-supabase', supabaseAuthController.actualizarPassword);
 
 module.exports = router;

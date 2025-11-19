@@ -33,9 +33,10 @@ class PasswordValidator {
     }
 
     setupPasswordFields() {
-        // Buscar campos de contraseña en registro
-        const passwordField = document.getElementById('register-password');
-        const confirmField = document.getElementById('register-confirm-password');
+    // Buscar campos de contraseña en registro
+    const passwordField = document.getElementById('register-password');
+    // ID real en index.html es 'register-confirm'
+    const confirmField = document.getElementById('register-confirm');
         
         if (passwordField) {
             this.enhancePasswordField(passwordField, 'register');
@@ -56,9 +57,16 @@ class PasswordValidator {
         const container = field.parentElement;
         
         // Crear contenedor de validación
-        const validationContainer = document.createElement('div');
-        validationContainer.id = `${type}-password-validation`;
-        validationContainer.className = 'password-validation mt-2';
+        // Evitar duplicados si el modal se abre varias veces
+        let validationContainer = container.querySelector('.password-validation');
+        if (!validationContainer) {
+            validationContainer = document.createElement('div');
+            validationContainer.id = `${type}-password-validation`;
+            validationContainer.className = 'password-validation mt-2';
+        } else {
+            // Limpiar contenido si ya existe
+            validationContainer.innerHTML = '';
+        }
         
         // Crear barra de fortaleza
         const strengthBar = this.createStrengthBar();
@@ -73,8 +81,14 @@ class PasswordValidator {
         validationContainer.appendChild(requirementsList);
         validationContainer.appendChild(suggestions);
         
-        // Insertar después del campo
-        container.appendChild(validationContainer);
+        // Insertar después del campo o dentro del placeholder si existe
+        const placeholder = document.getElementById('password-strength-container-register');
+        if (placeholder) {
+            placeholder.innerHTML = '';
+            placeholder.appendChild(validationContainer);
+        } else {
+            container.appendChild(validationContainer);
+        }
         
         // Event listeners
         field.addEventListener('input', (e) => {
@@ -121,14 +135,14 @@ class PasswordValidator {
             if (password === confirm) {
                 matchIndicator.innerHTML = `
                     <div class="alert alert-success py-2 small">
-                        <i class="bi bi-check-circle me-2"></i>
+                        <i class="fas fa-circle-check me-2"></i>
                         Las contraseñas coinciden
                     </div>
                 `;
             } else {
                 matchIndicator.innerHTML = `
                     <div class="alert alert-danger py-2 small">
-                        <i class="bi bi-x-circle me-2"></i>
+                        <i class="fas fa-circle-xmark me-2"></i>
                         Las contraseñas no coinciden
                     </div>
                 `;
@@ -159,44 +173,31 @@ class PasswordValidator {
     createRequirementsList() {
         const requirementsContainer = document.createElement('div');
         requirementsContainer.className = 'password-requirements mb-2';
-        
         requirementsContainer.innerHTML = `
-            <div class="small text-muted mb-2">
-                <i class="bi bi-shield-check me-1"></i>
-                <strong>Requisitos de seguridad:</strong>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+               <span class="small text-muted fw-semibold"><i class="fas fa-shield-check me-1"></i>Requisitos de seguridad</span>
+               <span class="small text-muted"><i class="fas fa-info-circle me-1"></i>Debe cumplir todos</span>
             </div>
-            <div class="row g-1">
-                <div class="col-md-6">
-                    <div id="req-length" class="requirement-item">
-                        <i class="bi bi-circle text-muted me-1"></i>
-                        <small>Mínimo 8 caracteres</small>
-                    </div>
-                    <div id="req-uppercase" class="requirement-item">
-                        <i class="bi bi-circle text-muted me-1"></i>
-                        <small>Una letra mayúscula</small>
-                    </div>
-                    <div id="req-lowercase" class="requirement-item">
-                        <i class="bi bi-circle text-muted me-1"></i>
-                        <small>Una letra minúscula</small>
-                    </div>
+            <div class="row">
+                <div class="requirement-item" id="req-length">
+                    <i class="far fa-circle text-muted"></i><small>Mínimo 8 caracteres</small>
                 </div>
-                <div class="col-md-6">
-                    <div id="req-number" class="requirement-item">
-                        <i class="bi bi-circle text-muted me-1"></i>
-                        <small>Un número</small>
-                    </div>
-                    <div id="req-special" class="requirement-item">
-                        <i class="bi bi-circle text-muted me-1"></i>
-                        <small>Un carácter especial</small>
-                    </div>
-                    <div id="req-common" class="requirement-item">
-                        <i class="bi bi-circle text-muted me-1"></i>
-                        <small>No ser común</small>
-                    </div>
+                <div class="requirement-item" id="req-uppercase">
+                    <i class="far fa-circle text-muted"></i><small>Una letra mayúscula</small>
                 </div>
-            </div>
-        `;
-        
+                <div class="requirement-item" id="req-lowercase">
+                    <i class="far fa-circle text-muted"></i><small>Una letra minúscula</small>
+                </div>
+                <div class="requirement-item" id="req-number">
+                    <i class="far fa-circle text-muted"></i><small>Un número</small>
+                </div>
+                <div class="requirement-item" id="req-special">
+                    <i class="far fa-circle text-muted"></i><small>Un carácter especial</small>
+                </div>
+                <div class="requirement-item" id="req-common">
+                    <i class="far fa-circle text-muted"></i><small>No ser común</small>
+                </div>
+            </div>`;
         return requirementsContainer;
     }
 
@@ -330,11 +331,11 @@ class PasswordValidator {
                 const isMet = validation.requirements[req];
                 
                 if (isMet) {
-                    icon.className = 'bi bi-check-circle-fill text-success me-1';
+                    icon.className = 'fas fa-circle-check text-success me-1';
                     element.classList.add('text-success');
                     element.classList.remove('text-muted');
                 } else {
-                    icon.className = 'bi bi-circle text-muted me-1';
+                    icon.className = 'far fa-circle text-muted me-1';
                     element.classList.remove('text-success');
                     element.classList.add('text-muted');
                 }
@@ -346,12 +347,12 @@ class PasswordValidator {
         if (suggestionsContainer && validation.suggestions.length > 0) {
             suggestionsContainer.style.display = 'block';
             suggestionsContainer.innerHTML = `
-                <div class="alert alert-info py-2 small mt-2">
-                    <div class="fw-bold mb-1">
-                        <i class="bi bi-lightbulb me-1"></i>
+                <div class=\"alert alert-info py-2 small mt-2\">
+                    <div class=\"fw-bold mb-1\">
+                        <i class=\"far fa-lightbulb me-1\"></i>
                         Sugerencias:
                     </div>
-                    <ul class="mb-0 ps-3">
+                    <ul class=\"mb-0 ps-3\">
                         ${validation.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
                     </ul>
                 </div>
@@ -369,7 +370,7 @@ class PasswordValidator {
         capsLockIndicator.style.display = 'none';
         capsLockIndicator.innerHTML = `
             <div class="alert alert-warning py-1 small">
-                <i class="bi bi-capslock me-1"></i>
+                <i class="fas fa-lock me-1"></i>
                 Bloq Mayús está activado
             </div>
         `;
@@ -395,7 +396,7 @@ class PasswordValidator {
 
     addSecurityFeatures() {
         // Prevenir pegado de contraseñas en el campo de confirmación
-        const confirmField = document.getElementById('register-confirm-password');
+    const confirmField = document.getElementById('register-confirm');
         if (confirmField) {
             confirmField.addEventListener('paste', (e) => {
                 e.preventDefault();
@@ -418,11 +419,21 @@ class PasswordValidator {
         const registerForm = document.getElementById('registerForm');
         if (!registerForm) return;
 
-        const originalSubmitHandler = registerForm.onsubmit;
+        const passwordField = document.getElementById('register-password');
+        const confirmField = document.getElementById('register-confirm');
         
         registerForm.addEventListener('submit', (e) => {
-            const passwordField = document.getElementById('register-password');
-            const confirmField = document.getElementById('register-confirm-password');
+            // Re-validar confirmación manual antes de validar reglas de complejidad
+            if (passwordField && confirmField && passwordField.value !== confirmField.value) {
+                e.preventDefault();
+                if (window.notify) {
+                    window.notify.warning('Las contraseñas no coinciden');
+                } else {
+                    alert('Las contraseñas no coinciden');
+                }
+                confirmField.focus();
+                return false;
+            }
             
             if (passwordField && confirmField) {
                 const validation = this.validatePassword(passwordField.value);
@@ -442,7 +453,7 @@ class PasswordValidator {
                                         ${validation.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
                                     </ul>
                                     <div style="background: #e9ecef; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
-                                        <small><i class="bi bi-shield-check text-primary"></i> 
+                                        <small><i class="fas fa-shield-check text-primary"></i> 
                                         <strong>Importante:</strong> Una contraseña segura protege su información médica personal.</small>
                                     </div>
                                 </div>
@@ -453,7 +464,6 @@ class PasswordValidator {
                         alert('Por favor, cree una contraseña que cumpla con todos los requisitos de seguridad.');
                     }
                     
-                    // Enfocar el campo de contraseña
                     passwordField.focus();
                     return false;
                 }
