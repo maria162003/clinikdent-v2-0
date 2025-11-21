@@ -78,9 +78,9 @@ console.log('🔄 Cargando rutas de MercadoPago...');
 const mercadoPagoRoutes = require('./Backend/routes/mercadoPagoRoutes');
 console.log('✅ Rutas de MercadoPago cargadas');
 
-console.log('🔄 Cargando rutas de Chatbot Inteligente...');
-const chatInteligentRoutes = require('./Backend/routes/chatInteligentRoutes');
-console.log('✅ Rutas de Chatbot Inteligente cargadas');
+console.log('🔄 Cargando rutas de contenido del sitio...');
+const siteContentRoutes = require('./Backend/routes/siteContentRoutes');
+console.log('✅ Rutas de contenido del sitio cargadas');
 
 const app = express();
 
@@ -309,19 +309,9 @@ console.log('🔗 Registrando rutas de MercadoPago...');
 app.use('/api/mercadopago', mercadoPagoRoutes);
 console.log('✅ Rutas de MercadoPago registradas exitosamente');
 
-// Agregar rutas de Chatbot Inteligente
-console.log('🔗 Registrando rutas de Chatbot Inteligente...');
-app.use('/api/chat', chatInteligentRoutes);
-console.log('✅ Rutas de Chatbot Inteligente registradas exitosamente');
-
-// WhatsApp Routes
-console.log('🔄 Cargando rutas de WhatsApp...');
-const whatsappRoutes = require('./Backend/routes/whatsappRoutes');
-console.log('✅ Rutas de WhatsApp cargadas');
-
-console.log('🔗 Registrando rutas de WhatsApp...');
-app.use('/api/whatsapp', whatsappRoutes);
-console.log('✅ Rutas de WhatsApp registradas exitosamente');
+console.log('🔗 Registrando rutas de contenido del sitio...');
+app.use('/api/site-content', siteContentRoutes);
+console.log('✅ Rutas de contenido del sitio registradas exitosamente');
 
 // Agregar rutas de reportes básicos
 console.log('🔗 Registrando rutas de reportes básicos...');
@@ -424,6 +414,36 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor corriendo en: http://localhost:${PORT}`);
   console.log(`🌐 También accesible en: http://0.0.0.0:${PORT}`);
 });
+
+// ============================================================================
+// SISTEMA DE RECORDATORIOS AUTOMÁTICOS
+// ============================================================================
+const cron = require('node-cron');
+const { procesarRecordatorios } = require('./services/email-service');
+
+// Ejecutar recordatorios cada hora (al minuto 0)
+// Formato cron: segundo minuto hora día mes día-semana
+cron.schedule('0 * * * *', async () => {
+    console.log('🔄 [CRON] Ejecutando proceso de recordatorios programado...');
+    try {
+        await procesarRecordatorios();
+        console.log('✅ [CRON] Proceso de recordatorios completado exitosamente');
+    } catch (error) {
+        console.error('❌ [CRON] Error en proceso de recordatorios:', error);
+    }
+});
+
+console.log('✅ Sistema de recordatorios automáticos activado (cada hora)');
+
+// Ejecutar una vez al iniciar el servidor para procesar recordatorios pendientes
+setTimeout(async () => {
+    console.log('🔄 Ejecutando proceso inicial de recordatorios...');
+    try {
+        await procesarRecordatorios();
+    } catch (error) {
+        console.error('❌ Error en proceso inicial de recordatorios:', error);
+    }
+}, 5000); // Esperar 5 segundos después del inicio del servidor
 
 // Manejo de errores del servidor
 server.on('error', (error) => {

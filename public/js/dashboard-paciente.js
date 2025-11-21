@@ -7,9 +7,6 @@ class DashboardPaciente {
         this.perfil = {};
         this.charts = {};
         this.notificaciones = [];
-        this.configuracion = {
-            horasMinCancelacion: 2 // Valor por defecto
-        };
         
         // Pagination configuration
         this.pagination = {
@@ -73,7 +70,6 @@ class DashboardPaciente {
     init() {
         this.setupEventListeners();
         this.loadUserInfo();
-        this.loadConfiguracion();
         this.loadDashboardData();
         this.loadNotifications();
         this.initializeCharts();
@@ -118,24 +114,6 @@ class DashboardPaciente {
         
         // Reemplazar la entrada actual del historial para prevenir regreso
         window.location.replace('/index.html?session=expired');
-    }
-
-    // ==========================================
-    // CARGA DE CONFIGURACION
-    // ==========================================
-    
-    async loadConfiguracion() {
-        try {
-            const response = await this.authFetch('/api/configuracion/sistema');
-            if (response && response.ok) {
-                const config = await response.json();
-                this.configuracion.horasMinCancelacion = config.citas?.anticipacion_minima || 2;
-                console.log(`⚙️ Configuración cargada: ${this.configuracion.horasMinCancelacion} horas mínimas para cancelación`);
-            }
-        } catch (error) {
-            console.error('❌ Error cargando configuración:', error);
-            // Mantener valor por defecto en caso de error
-        }
     }
 
     // ==========================================
@@ -249,6 +227,34 @@ class DashboardPaciente {
             this.togglePerfilEdit(false);
             this.loadPerfil(); // Reload original data
         });
+
+        // Validación de domingos en el campo de fecha para agendar cita
+        const citaFechaInput = document.getElementById('citaFecha');
+        if (citaFechaInput) {
+            citaFechaInput.addEventListener('change', (e) => {
+                const fechaSeleccionada = new Date(e.target.value + 'T00:00:00');
+                const diaSemana = fechaSeleccionada.getDay();
+                
+                if (diaSemana === 0) {
+                    this.showAlert('⚠️ La clínica no atiende los domingos. Horario: Lunes a Sábado.', 'warning');
+                    e.target.value = ''; // Limpiar el campo
+                }
+            });
+        }
+
+        // Validación de domingos en el campo de fecha para reprogramar cita
+        const nuevaFechaInput = document.getElementById('nuevaFecha');
+        if (nuevaFechaInput) {
+            nuevaFechaInput.addEventListener('change', (e) => {
+                const fechaSeleccionada = new Date(e.target.value + 'T00:00:00');
+                const diaSemana = fechaSeleccionada.getDay();
+                
+                if (diaSemana === 0) {
+                    this.showAlert('⚠️ La clínica no atiende los domingos. Horario: Lunes a Sábado.', 'warning');
+                    e.target.value = ''; // Limpiar el campo
+                }
+            });
+        }
     }
 
     setMinDate() {
@@ -261,14 +267,69 @@ class DashboardPaciente {
         if (fechaInput) {
             fechaInput.min = minDate;
             
-            // Add event listener to prevent Sundays
-            fechaInput.addEventListener('change', (e) => {
-                const selectedDate = new Date(e.target.value + 'T00:00:00');
-                const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
+            // Agregar validación para bloquear domingos
+            fechaInput.addEventListener('input', function() {
+                const selectedDate = new Date(this.value + 'T00:00:00');
+                const dayOfWeek = selectedDate.getDay();
+                
+                // Si es domingo (0), mostrar alerta y limpiar el campo
+                if (dayOfWeek === 0) {
+                    // Mostrar notificación profesional
+                    const toastHtml = `
+                        <div class="toast align-items-center text-white bg-warning border-0 position-fixed top-0 start-50 translate-middle-x mt-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 9999;">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Los domingos no se labora. Por favor, seleccione otro día.
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    `;
+                    const toastContainer = document.createElement('div');
+                    toastContainer.innerHTML = toastHtml;
+                    document.body.appendChild(toastContainer);
+                    const toastElement = toastContainer.querySelector('.toast');
+                    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+                    toast.show();
+                    toastElement.addEventListener('hidden.bs.toast', () => toastContainer.remove());
+                    
+                    this.value = '';
+                }
+            });
+        }
+        
+        // Aplicar la misma validación al input de reprogramar cita
+        const nuevaFechaInput = document.getElementById('nuevaFecha');
+        if (nuevaFechaInput) {
+            nuevaFechaInput.min = minDate;
+            
+            nuevaFechaInput.addEventListener('input', function() {
+                const selectedDate = new Date(this.value + 'T00:00:00');
+                const dayOfWeek = selectedDate.getDay();
                 
                 if (dayOfWeek === 0) {
-                    this.showAlert('❌ No se pueden agendar citas los domingos. La clínica permanece cerrada.', 'warning');
-                    e.target.value = '';
+                    // Mostrar notificación profesional
+                    const toastHtml = `
+                        <div class="toast align-items-center text-white bg-warning border-0 position-fixed top-0 start-50 translate-middle-x mt-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 9999;">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Los domingos no se labora. Por favor, seleccione otro día.
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    `;
+                    const toastContainer = document.createElement('div');
+                    toastContainer.innerHTML = toastHtml;
+                    document.body.appendChild(toastContainer);
+                    const toastElement = toastContainer.querySelector('.toast');
+                    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+                    toast.show();
+                    toastElement.addEventListener('hidden.bs.toast', () => toastContainer.remove());
+                    
+                    this.value = '';
                 }
             });
         }
@@ -867,6 +928,24 @@ class DashboardPaciente {
                 ? `Dr. ${cita.odontologo_nombre} ${cita.odontologo_apellido}`
                 : 'Dr. Por asignar';
             
+            // Verificar si se puede reprogramar (no completada, no cancelada, no del pasado, más de 24h)
+            const fechaActual = new Date();
+            // Construcción robusta de la fecha y hora de la cita evitando parseos ambiguos
+            const base = new Date(cita.fecha);
+            const [hh, mm = '0', ss = '0'] = (cita.hora || '00:00:00').split(':');
+            const fechaCita = new Date(
+                base.getFullYear(),
+                base.getMonth(),
+                base.getDate(),
+                parseInt(hh, 10) || 0,
+                parseInt(mm, 10) || 0,
+                parseInt(ss, 10) || 0,
+                0
+            );
+            const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
+            // Permitir reprogramar solo si faltan más de 24 horas
+            const puedeReprogramar = estado !== 'completada' && estado !== 'cancelada' && diffHoras > 24;
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${fecha}</td>
@@ -878,7 +957,10 @@ class DashboardPaciente {
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="dashboardPaciente.verDetalleCita(${cita.id})" title="Ver detalles">
                         <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-warning me-1" onclick="dashboardPaciente.reprogramarCita(${cita.id})" title="Reprogramar">
+                    <button class="btn btn-sm btn-outline-warning me-1" 
+                            onclick="dashboardPaciente.reprogramarCita(${cita.id})" 
+                            title="${puedeReprogramar ? 'Reprogramar' : 'No se puede reprogramar'}"
+                            ${!puedeReprogramar ? 'disabled' : ''}>
                         <i class="bi bi-calendar-event"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="dashboardPaciente.cancelarCita(${cita.id})" title="Cancelar">
@@ -915,17 +997,31 @@ class DashboardPaciente {
                 console.log('No hay usuario logueado');
                 return;
             }
-            
-            console.log(' Cargando historial para paciente ID:', userId);
+
+            console.log('🩺 Cargando historial para paciente ID:', userId);
             const res = await this.authFetch(`/api/historial/paciente/${userId}`);
-            
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
+
+            if (!res || !res.ok) {
+                throw new Error(res ? `HTTP ${res.status}` : 'Respuesta no válida');
             }
-            
+
             const response = await res.json();
-            console.log('Historial cargado:', response.total || 0, 'registros');
-            this.historial = response.data || response.historial || [];
+
+            let historiales = [];
+            if (Array.isArray(response)) {
+                historiales = response;
+            } else if (response && typeof response === 'object') {
+                historiales = response.data || response.historial || response.rows || [];
+            }
+
+            // Ordenar por fecha descendente para mostrar los más recientes primero
+            historiales.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+
+            console.log('✅ Historial cargado:', historiales.length, 'registros');
+            this.historial = historiales;
+            this.pagination.historial.totalItems = historiales.length;
+            this.pagination.historial.currentPage = Math.min(this.pagination.historial.currentPage, Math.max(1, Math.ceil(historiales.length / this.pagination.historial.itemsPerPage) || 1));
+
             this.renderHistorialTable();
         } catch (err) {
             console.error(' Error al cargar historial:', err);
@@ -1298,13 +1394,12 @@ class DashboardPaciente {
             return;
         }
         
-        // Validar que no sea domingo
-        const fechaSeleccionada = document.getElementById('citaFecha').value;
-        const fecha = new Date(fechaSeleccionada + 'T00:00:00');
-        const dayOfWeek = fecha.getDay();
+        // Validar que no sea domingo (día 0 en JavaScript)
+        const fechaSeleccionada = new Date(document.getElementById('citaFecha').value + 'T00:00:00');
+        const diaSemana = fechaSeleccionada.getDay();
         
-        if (dayOfWeek === 0) {
-            this.showAlert('❌ No se pueden agendar citas los domingos. La clínica permanece cerrada.', 'danger');
+        if (diaSemana === 0) {
+            this.showAlert('⚠️ La clínica no atiende los domingos. Por favor, seleccione un día de lunes a sábado.', 'warning');
             return;
         }
         
@@ -1518,13 +1613,37 @@ class DashboardPaciente {
             return;
         }
 
-        // Verificar restriccion de 24 horas
+        // Verificar que la cita no este completada
+        if (cita.estado === 'completada') {
+            this.showAlert('No se puede reprogramar una cita que ya fue completada.', 'warning');
+            return;
+        }
+
+        // Verificar restriccion de 24 horas y que no sea del pasado
         const fechaActual = new Date();
-        const fechaCita = new Date(`${cita.fecha} ${cita.hora}`);
+        // Construcción robusta de la fecha-hora de la cita para evitar errores de parseo (DD/MM vs MM/DD)
+        const base = new Date(cita.fecha);
+        const [hh, mm = '0', ss = '0'] = (cita.hora || '00:00:00').split(':');
+        const fechaCita = new Date(
+            base.getFullYear(),
+            base.getMonth(),
+            base.getDate(),
+            parseInt(hh, 10) || 0,
+            parseInt(mm, 10) || 0,
+            parseInt(ss, 10) || 0,
+            0
+        );
         const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
         
+        // Si la cita es del pasado
+        if (diffHoras < 0) {
+            this.showAlert('No se puede reprogramar una cita que ya pasó.', 'warning');
+            return;
+        }
+        
+        // Si la cita es en menos de 24 horas
         if (diffHoras < 24) {
-            this.showAlert('No se puede reprogramar la cita con menos de 24 horas de anticipacion.', 'warning');
+            this.showAlert('No se puede reprogramar la cita con menos de 24 horas de anticipación.', 'warning');
             return;
         }
 
@@ -1621,6 +1740,21 @@ class DashboardPaciente {
             return;
         }
 
+        // Obtener configuración del sistema para validar horas mínimas
+        let horasMinCancelacion = 2; // Valor por defecto
+        try {
+            const configResponse = await fetch('/api/configuracion/cancelacion_horas_min');
+            if (configResponse.ok) {
+                const configData = await configResponse.json();
+                if (configData.success && configData.valor) {
+                    horasMinCancelacion = parseInt(configData.valor) || 2;
+                    console.log(`⚙️ Horas mínimas para cancelar desde configuración: ${horasMinCancelacion}`);
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo obtener configuración, usando valor por defecto:', error);
+        }
+
         // Verificar restricciones de tiempo
         const fechaActual = new Date();
         // Extraer solo la parte de fecha (sin zona horaria) y combinar con hora
@@ -1628,34 +1762,70 @@ class DashboardPaciente {
         const fechaCita = new Date(`${fechaStr} ${cita.hora}`);
         const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
         
-        console.log(`⏱️ Diferencia de horas: ${diffHoras.toFixed(1)}`);
+        console.log(`⏰ Diferencia de horas: ${diffHoras.toFixed(1)} | Mínimo requerido: ${horasMinCancelacion}`);
 
-        const horasMinimas = this.configuracion.horasMinCancelacion;
+        const fechaFormateada = new Date(cita.fecha).toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
 
-        if (diffHoras >= horasMinimas) {
-            // Mas de las horas minimas configuradas: permitir eliminar
-            await this.mostrarModalAccionCita({
-                tipo: 'eliminar',
-                fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
-                hora: cita.hora,
-                diffHoras: diffHoras.toFixed(1)
-            }, async (accionSeleccionada) => {
-                if (accionSeleccionada === 'eliminar') {
-                    await this.ejecutarAccionCita(citaId, 'eliminar', `/api/citas/${citaId}/eliminar`, 'DELETE', 'eliminada completamente');
-                }
-            });
-        } else {
-            // Menos de las horas minimas: no permitir
-            this.showAlert(
-                `No se puede eliminar la cita con menos de ${horasMinimas} horas de anticipación. Faltan ${diffHoras.toFixed(1)} horas.`,
-                'warning'
+        // Verificar si no cumple con el tiempo mínimo
+        if (diffHoras < horasMinCancelacion) {
+            await window.modalModerno.mostrarAdvertencia(
+                `No se puede cancelar la cita con menos de ${horasMinCancelacion} horas de anticipación.`,
+                diffHoras.toFixed(1)
             );
             return;
         }
-    }
 
-    async ejecutarAccionCita(citaId, accion, endpoint, method, mensaje) {
-        console.log(`🎬 Accion seleccionada: ${accion}`);
+        let accion = 'cancelar';
+        let mensaje = '';
+        let endpoint = `/api/citas/${citaId}`;
+        let method = 'DELETE';
+
+        // Si faltan más de 4 horas, ofrecer eliminar o cancelar
+        if (diffHoras >= 4) {
+            const respuesta = await window.modalModerno.mostrarOpcionesCita(
+                fechaFormateada,
+                cita.hora,
+                diffHoras.toFixed(1)
+            );
+            
+            if (respuesta === 'ok') {
+                // Usuario eligió eliminar
+                accion = 'eliminar';
+                endpoint = `/api/citas/${citaId}/eliminar`;
+                method = 'DELETE';
+                mensaje = 'eliminada completamente';
+            } else if (respuesta === 'cancel') {
+                // Usuario eligió cancelar (cambiar estado)
+                const confirmar = await window.modalModerno.confirmarCancelacion(
+                    fechaFormateada,
+                    cita.hora
+                );
+                if (!confirmar) return;
+                
+                accion = 'cancelar';
+                mensaje = 'cancelada exitosamente';
+            } else {
+                return; // Usuario cerró el modal
+            }
+        } else {
+            // Entre horasMinCancelacion y 4 horas: solo cancelar
+            const confirmar = await window.modalModerno.confirmarCancelacion(
+                fechaFormateada,
+                cita.hora,
+                `Solo se puede cancelar (no eliminar) porque faltan menos de 4 horas.`
+            );
+            if (!confirmar) return;
+            
+            accion = 'cancelar';
+            mensaje = 'cancelada exitosamente';
+        }
+
+        console.log(` Accion seleccionada: ${accion}`);
 
         try {
             const response = await this.authFetch(endpoint, { 
@@ -1668,86 +1838,15 @@ class DashboardPaciente {
             console.log('📄 Resultado:', result);
             
             if (response.ok) {
-                this.showAlert(`✅ Cita ${mensaje}.`, 'success');
+                this.showAlert(` Cita ${mensaje}.`, 'success');
                 await this.loadCitas();
             } else {
                 throw new Error(result.msg || `Error al ${accion} la cita`);
             }
         } catch (error) {
-            console.error(`❌ Error ${accion}ndo cita:`, error);
-            this.showAlert(`⚠️ ${error.message || `Error al ${accion} la cita. Intentelo nuevamente.`}`, 'danger');
+            console.error(` Error ${accion}ndo cita:`, error);
+            this.showAlert(` ${error.message || `Error al ${accion} la cita. Intentelo nuevamente.`}`, 'danger');
         }
-    }
-
-    mostrarModalAccionCita(config, callback) {
-        return new Promise((resolve) => {
-            const modalElement = document.getElementById('confirmarAccionCitaModal');
-            if (!modalElement) {
-                console.error('❌ Modal confirmarAccionCitaModal no encontrado');
-                resolve(null);
-                return;
-            }
-
-            const modal = new bootstrap.Modal(modalElement);
-            const modalHeader = document.getElementById('modalAccionHeader');
-            const modalTitle = document.getElementById('modalAccionTitle');
-            const modalContent = document.getElementById('modalAccionContent');
-            const modalNota = document.getElementById('modalAccionNota');
-            const modalNotaText = document.getElementById('modalAccionNotaText');
-            const confirmarBtn = document.getElementById('modalAccionConfirmarBtn');
-
-            if (!modalHeader || !modalTitle || !modalContent || !modalNota || !modalNotaText || !confirmarBtn) {
-                console.error('❌ Elementos del modal no encontrados:', {
-                    modalHeader: !!modalHeader,
-                    modalTitle: !!modalTitle,
-                    modalContent: !!modalContent,
-                    modalNota: !!modalNota,
-                    modalNotaText: !!modalNotaText,
-                    confirmarBtn: !!confirmarBtn
-                });
-                resolve(null);
-                return;
-            }
-
-            // Configurar modal para eliminar
-            modalHeader.style.background = '#f8f9fa';
-            modalHeader.style.color = '#212529';
-            modalTitle.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>Confirmar Eliminación';
-            modalContent.innerHTML = `
-                <div>
-                    <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <i class="bi bi-calendar3 me-2 text-muted"></i>
-                            <span class="fw-medium">${config.fecha}</span>
-                            <span class="mx-2 text-muted">•</span>
-                            <i class="bi bi-clock me-2 text-muted"></i>
-                            <span class="fw-medium">${config.hora}</span>
-                        </div>
-                    </div>
-                    <p class="mb-0 text-center">¿Está seguro de que desea eliminar completamente esta cita?</p>
-                </div>
-            `;
-            modalNota.style.display = 'flex';
-            modalNota.className = 'alert alert-light d-flex align-items-start mb-0';
-            modalNota.style.border = '1px solid #dee2e6';
-            modalNotaText.innerHTML = `Faltan <strong>${config.diffHoras} horas</strong> para la cita.`;
-            confirmarBtn.style.display = 'inline-block';
-            confirmarBtn.className = 'btn btn-outline-danger';
-            confirmarBtn.innerHTML = '<i class="bi bi-trash me-1"></i> Eliminar Cita';
-
-            confirmarBtn.onclick = () => {
-                modal.hide();
-                callback('eliminar');
-                resolve('eliminar');
-            };
-
-            modal.show();
-
-            // Limpiar cuando se cierra
-            modalElement.addEventListener('hidden.bs.modal', () => {
-                resolve(null);
-            }, { once: true });
-        });
     }
 
     verDetalleCita(citaId) {

@@ -130,7 +130,7 @@
         <p class="lead">Tratamientos dentales especializados con la más alta tecnología</p>
       </div>
       
-      <div class="row g-4">
+      <div class="row g-4" data-static="true">
         <div class="col-md-4">
           <div class="card service-card h-100 border-0 shadow-sm">
             <img src="images/service1.jpg" class="card-img-top" alt="Odontología General">
@@ -204,7 +204,7 @@
         <p class="lead">Profesionales altamente calificados</p>
       </div>
       
-      <div class="row g-4">
+      <div class="row g-4" id="teamCards" data-static="true">
         <div class="col-md-3 col-sm-6">
           <div class="card team-card h-100 border-0 shadow-sm">
             <img src="images/doctor1.jpg" class="card-img-top rounded-circle mx-auto mt-3" style="width: 150px; height: 150px; object-fit: cover;" alt="Dra. Ana Pérez">
@@ -264,7 +264,7 @@
         <p class="lead">Mantente informado sobre nuestras últimas novedades</p>
       </div>
       
-      <div class="row g-4">
+      <div class="row g-4" id="newsCards" data-static="true">
         <div class="col-md-4">
           <div class="card news-card h-100 border-0 shadow-sm">
             <div class="badge bg-primary position-absolute top-0 start-0 m-2">15 JUN</div>
@@ -1623,6 +1623,9 @@
     })();
   </script>
 
+  <!-- Contenido dinámico de landing -->
+  <script src="/js/site-content.js"></script>
+
   <!-- Bootstrap Icons -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   
@@ -1654,7 +1657,10 @@
       if (failed.length > 0) {
         console.log(`⚠️ Componentes pendientes: ${failed.join(', ')}`);
       }
+ clinikdent-total
+
       
+ main
     });
     
     // Función para dashboard de seguridad

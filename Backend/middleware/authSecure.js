@@ -2,6 +2,7 @@ const { body } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/databaseSecure');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = rateLimit;
 const helmet = require('helmet');
 
 // 🔐 Configuración JWT
@@ -61,8 +62,8 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true, // No contar logins exitosos
   keyGenerator: (req) => {
-    // Rate limit por IP + email para mayor seguridad
-    return `${req.ip}-${req.body.correo || 'unknown'}`;
+    const ipKey = ipKeyGenerator(req.ip, 56);
+    return `${ipKey}-${req.body?.correo || 'unknown'}`;
   }
 });
 

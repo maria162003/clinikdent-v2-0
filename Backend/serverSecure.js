@@ -162,6 +162,7 @@ app.get('/api/security/status', authenticateToken, authorizeRole('admin'), async
 
 // Importar controlador de autenticación segura
 const authController = require('./controllers/authControllerSecure');
+const siteContentRoutes = require('./routes/siteContentRoutes');
 
 // Registro con rate limiting estricto
 app.post('/api/auth/register', registerLimiter, authController.registerUser);
@@ -220,6 +221,9 @@ const historialController = require('./controllers/historialController');
 app.get('/api/usuarios', authenticateToken, authorizeRole('admin', 'odontologo'), usuarioController.obtenerUsuarios);
 app.get('/api/usuarios/:id', authenticateToken, usuarioController.obtenerUsuarioPorId);
 app.put('/api/usuarios/:id', authenticateToken, usuarioController.actualizarUsuario);
+
+// 🌐 Contenido público administrable
+app.use('/api/site-content', siteContentRoutes);
 
 // 📊 Evaluaciones - Solo usuarios autenticados
 app.get('/api/evaluaciones', authenticateToken, evaluacionesController.obtenerTodasEvaluaciones);

@@ -22,15 +22,21 @@
     "docker": "^1.0.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+ clinikdent-total
+    "express-rate-limit": "^8.1.0",
+    "follow-redirects": "^1.15.11",
+
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
     "express-validator": "^7.3.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+ main
     "mercadopago": "^2.8.0",
     "multer": "^2.0.2",
     "mysql": "^2.18.1",
     "mysql2": "^3.14.3",
+    "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.10",
     "pg": "^8.16.3"
