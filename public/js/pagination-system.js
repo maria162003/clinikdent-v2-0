@@ -536,7 +536,7 @@ function renderProveedoresPage(data) {
     tbody.innerHTML = data.map(proveedor => `
         <tr>
             <td>${proveedor.id}</td>
-            <td><strong>${proveedor.empresa}</strong></td>
+            <td><strong>${proveedor.nombre || proveedor.empresa || 'N/A'}</strong></td>
             <td>${proveedor.contacto || 'N/A'}</td>
             <td>${proveedor.telefono || 'N/A'}</td>
             <td>${proveedor.email || 'N/A'}</td>

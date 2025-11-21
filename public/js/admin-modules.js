@@ -4520,7 +4520,7 @@ function cargarProveedores() {
                 tbody.innerHTML = proveedores.map(prov => `
                     <tr>
                         <td><span class="badge bg-primary">${prov.id}</span></td>
-                        <td><strong>${prov.empresa || prov.nombre}</strong></td>
+                        <td><strong>${prov.nombre || prov.empresa || 'N/A'}</strong></td>
                         <td>${prov.contacto || 'N/A'}</td>
                         <td>
                             ${prov.telefono ? 
