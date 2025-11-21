@@ -21,12 +21,15 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
+    "groq-sdk": "^0.36.0",
     "mercadopago": "^2.8.0",
     "mysql": "^2.18.1",
     "mysql2": "^3.14.3",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.6",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "resend": "^6.5.1",
+    "twilio": "^5.10.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

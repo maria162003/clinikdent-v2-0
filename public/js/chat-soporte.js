@@ -390,7 +390,7 @@ class ChatSoporte {
         }
     }
 
-    sendMessage(customMessage = null) {
+    async sendMessage(customMessage = null) {
         const input = document.getElementById('chatInput');
         const message = customMessage || input.value.trim();
         
@@ -407,15 +407,48 @@ class ChatSoporte {
         // Mostrar indicador de escritura
         this.showTyping();
         
-        // Respuesta del bot después de un delay
-        setTimeout(() => {
-            const response = this.getBotResponse(message);
-            this.hideTyping();
-            this.addBotMessage(response);
+        try {
+            // Obtener userId del localStorage si existe
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userId = user.id || null;
             
-            // Solo log local, sin guardar en base de datos
-            console.log('💬 Chat:', { pregunta: message, respuesta: response });
-        }, 1000 + Math.random() * 1000);
+            // Llamar al chatbot inteligente
+            const response = await fetch('/api/chat/intelligent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    userId: userId
+                })
+            });
+            
+            const data = await response.json();
+            
+            this.hideTyping();
+            
+            if (data.success) {
+                this.addBotMessage(data.response);
+                
+                // Si hay datos adicionales, mostrarlos
+                if (data.data) {
+                    console.log('📊 Datos adicionales:', data.data);
+                }
+                
+                console.log('🤖 Intención detectada:', data.intencion);
+            } else {
+                this.addBotMessage('Lo siento, hubo un problema procesando tu mensaje. ¿Podrías intentar de nuevo?');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error en chatbot inteligente:', error);
+            this.hideTyping();
+            
+            // Fallback al sistema anterior
+            const fallbackResponse = this.getBotResponse(message);
+            this.addBotMessage(fallbackResponse);
+        }
     }
 
     addUserMessage(message) {

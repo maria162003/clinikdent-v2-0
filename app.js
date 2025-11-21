@@ -78,6 +78,10 @@ console.log('🔄 Cargando rutas de MercadoPago...');
 const mercadoPagoRoutes = require('./Backend/routes/mercadoPagoRoutes');
 console.log('✅ Rutas de MercadoPago cargadas');
 
+console.log('🔄 Cargando rutas de Chatbot Inteligente...');
+const chatInteligentRoutes = require('./Backend/routes/chatInteligentRoutes');
+console.log('✅ Rutas de Chatbot Inteligente cargadas');
+
 const app = express();
 
 // Middlewares
@@ -304,6 +308,20 @@ console.log('✅ Rutas de seguridad avanzada registradas exitosamente');
 console.log('🔗 Registrando rutas de MercadoPago...');
 app.use('/api/mercadopago', mercadoPagoRoutes);
 console.log('✅ Rutas de MercadoPago registradas exitosamente');
+
+// Agregar rutas de Chatbot Inteligente
+console.log('🔗 Registrando rutas de Chatbot Inteligente...');
+app.use('/api/chat', chatInteligentRoutes);
+console.log('✅ Rutas de Chatbot Inteligente registradas exitosamente');
+
+// WhatsApp Routes
+console.log('🔄 Cargando rutas de WhatsApp...');
+const whatsappRoutes = require('./Backend/routes/whatsappRoutes');
+console.log('✅ Rutas de WhatsApp cargadas');
+
+console.log('🔗 Registrando rutas de WhatsApp...');
+app.use('/api/whatsapp', whatsappRoutes);
+console.log('✅ Rutas de WhatsApp registradas exitosamente');
 
 // Agregar rutas de reportes básicos
 console.log('🔗 Registrando rutas de reportes básicos...');
