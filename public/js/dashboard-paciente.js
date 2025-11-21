@@ -7,6 +7,9 @@ class DashboardPaciente {
         this.perfil = {};
         this.charts = {};
         this.notificaciones = [];
+        this.configuracion = {
+            horasMinCancelacion: 2 // Valor por defecto
+        };
         
         // Pagination configuration
         this.pagination = {
@@ -70,6 +73,7 @@ class DashboardPaciente {
     init() {
         this.setupEventListeners();
         this.loadUserInfo();
+        this.loadConfiguracion();
         this.loadDashboardData();
         this.loadNotifications();
         this.initializeCharts();
@@ -114,6 +118,24 @@ class DashboardPaciente {
         
         // Reemplazar la entrada actual del historial para prevenir regreso
         window.location.replace('/index.html?session=expired');
+    }
+
+    // ==========================================
+    // CARGA DE CONFIGURACION
+    // ==========================================
+    
+    async loadConfiguracion() {
+        try {
+            const response = await this.authFetch('/api/configuracion/sistema');
+            if (response && response.ok) {
+                const config = await response.json();
+                this.configuracion.horasMinCancelacion = config.citas?.anticipacion_minima || 2;
+                console.log(`⚙️ Configuración cargada: ${this.configuracion.horasMinCancelacion} horas mínimas para cancelación`);
+            }
+        } catch (error) {
+            console.error('❌ Error cargando configuración:', error);
+            // Mantener valor por defecto en caso de error
+        }
     }
 
     // ==========================================
@@ -238,6 +260,17 @@ class DashboardPaciente {
         const fechaInput = document.getElementById('citaFecha');
         if (fechaInput) {
             fechaInput.min = minDate;
+            
+            // Add event listener to prevent Sundays
+            fechaInput.addEventListener('change', (e) => {
+                const selectedDate = new Date(e.target.value + 'T00:00:00');
+                const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
+                
+                if (dayOfWeek === 0) {
+                    this.showAlert('❌ No se pueden agendar citas los domingos. La clínica permanece cerrada.', 'warning');
+                    e.target.value = '';
+                }
+            });
         }
     }
 
@@ -1265,6 +1298,16 @@ class DashboardPaciente {
             return;
         }
         
+        // Validar que no sea domingo
+        const fechaSeleccionada = document.getElementById('citaFecha').value;
+        const fecha = new Date(fechaSeleccionada + 'T00:00:00');
+        const dayOfWeek = fecha.getDay();
+        
+        if (dayOfWeek === 0) {
+            this.showAlert('❌ No se pueden agendar citas los domingos. La clínica permanece cerrada.', 'danger');
+            return;
+        }
+        
         // Deshabilitar boton durante el proceso
         const originalText = submitBtn.innerHTML;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Agendando...';
@@ -1585,58 +1628,34 @@ class DashboardPaciente {
         const fechaCita = new Date(`${fechaStr} ${cita.hora}`);
         const diffHoras = (fechaCita - fechaActual) / (1000 * 60 * 60);
         
-        console.log(`Diferencia de horas: ${diffHoras.toFixed(1)}`);
+        console.log(`⏱️ Diferencia de horas: ${diffHoras.toFixed(1)}`);
 
-        let accion = 'cancelar';
-        let mensaje = '';
-        let endpoint = `/api/citas/${citaId}`;
-        let method = 'DELETE';
+        const horasMinimas = this.configuracion.horasMinCancelacion;
 
-        if (diffHoras >= 4) {
-            // Mas de 4 horas: ofrecer eliminar o cancelar
-            const confirmacion = confirm(
-                `¿Que desea hacer con la cita del ${new Date(cita.fecha).toLocaleDateString('es-ES')} a las ${cita.hora}?\n\n` +
-                `Opciones:\n` +
-                `• OK = Eliminar completamente la cita\n` +
-                `• Cancelar = Solo cambiar estado a cancelada\n\n` +
-                `Nota: Faltan ${diffHoras.toFixed(1)} horas para la cita.`
-            );
-            
-            if (confirmacion) {
-                accion = 'eliminar';
-                endpoint = `/api/citas/${citaId}/eliminar`;
-                method = 'DELETE';
-                mensaje = 'eliminada completamente';
-            } else {
-                // Usuario eligio cancelar en lugar de eliminar
-                const confirmarCancelacion = confirm(
-                    `¿Esta seguro de que desea cancelar (no eliminar) la cita del ${new Date(cita.fecha).toLocaleDateString('es-ES')} a las ${cita.hora}?`
-                );
-                if (!confirmarCancelacion) return;
-                
-                accion = 'cancelar';
-                mensaje = 'cancelada exitosamente';
-            }
-        } else if (diffHoras >= 2) {
-            // Entre 2 y 4 horas: solo cancelar
-            const confirmacion = confirm(
-                `¿Esta seguro de que desea cancelar la cita del ${new Date(cita.fecha).toLocaleDateString('es-ES')} a las ${cita.hora}?\n\n` +
-                `Nota: Solo se puede cancelar (no eliminar) porque faltan menos de 4 horas.`
-            );
-            if (!confirmacion) return;
-            
-            accion = 'cancelar';
-            mensaje = 'cancelada exitosamente';
+        if (diffHoras >= horasMinimas) {
+            // Mas de las horas minimas configuradas: permitir eliminar
+            await this.mostrarModalAccionCita({
+                tipo: 'eliminar',
+                fecha: new Date(cita.fecha).toLocaleDateString('es-ES'),
+                hora: cita.hora,
+                diffHoras: diffHoras.toFixed(1)
+            }, async (accionSeleccionada) => {
+                if (accionSeleccionada === 'eliminar') {
+                    await this.ejecutarAccionCita(citaId, 'eliminar', `/api/citas/${citaId}/eliminar`, 'DELETE', 'eliminada completamente');
+                }
+            });
         } else {
-            // Menos de 2 horas: no permitir
+            // Menos de las horas minimas: no permitir
             this.showAlert(
-                `No se puede cancelar la cita con menos de 2 horas de anticipacion. Faltan ${diffHoras.toFixed(1)} horas.`,
+                `No se puede eliminar la cita con menos de ${horasMinimas} horas de anticipación. Faltan ${diffHoras.toFixed(1)} horas.`,
                 'warning'
             );
             return;
         }
+    }
 
-        console.log(` Accion seleccionada: ${accion}`);
+    async ejecutarAccionCita(citaId, accion, endpoint, method, mensaje) {
+        console.log(`🎬 Accion seleccionada: ${accion}`);
 
         try {
             const response = await this.authFetch(endpoint, { 
@@ -1649,15 +1668,86 @@ class DashboardPaciente {
             console.log('📄 Resultado:', result);
             
             if (response.ok) {
-                this.showAlert(` Cita ${mensaje}.`, 'success');
+                this.showAlert(`✅ Cita ${mensaje}.`, 'success');
                 await this.loadCitas();
             } else {
                 throw new Error(result.msg || `Error al ${accion} la cita`);
             }
         } catch (error) {
-            console.error(` Error ${accion}ndo cita:`, error);
-            this.showAlert(` ${error.message || `Error al ${accion} la cita. Intentelo nuevamente.`}`, 'danger');
+            console.error(`❌ Error ${accion}ndo cita:`, error);
+            this.showAlert(`⚠️ ${error.message || `Error al ${accion} la cita. Intentelo nuevamente.`}`, 'danger');
         }
+    }
+
+    mostrarModalAccionCita(config, callback) {
+        return new Promise((resolve) => {
+            const modalElement = document.getElementById('confirmarAccionCitaModal');
+            if (!modalElement) {
+                console.error('❌ Modal confirmarAccionCitaModal no encontrado');
+                resolve(null);
+                return;
+            }
+
+            const modal = new bootstrap.Modal(modalElement);
+            const modalHeader = document.getElementById('modalAccionHeader');
+            const modalTitle = document.getElementById('modalAccionTitle');
+            const modalContent = document.getElementById('modalAccionContent');
+            const modalNota = document.getElementById('modalAccionNota');
+            const modalNotaText = document.getElementById('modalAccionNotaText');
+            const confirmarBtn = document.getElementById('modalAccionConfirmarBtn');
+
+            if (!modalHeader || !modalTitle || !modalContent || !modalNota || !modalNotaText || !confirmarBtn) {
+                console.error('❌ Elementos del modal no encontrados:', {
+                    modalHeader: !!modalHeader,
+                    modalTitle: !!modalTitle,
+                    modalContent: !!modalContent,
+                    modalNota: !!modalNota,
+                    modalNotaText: !!modalNotaText,
+                    confirmarBtn: !!confirmarBtn
+                });
+                resolve(null);
+                return;
+            }
+
+            // Configurar modal para eliminar
+            modalHeader.style.background = '#f8f9fa';
+            modalHeader.style.color = '#212529';
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>Confirmar Eliminación';
+            modalContent.innerHTML = `
+                <div>
+                    <div class="border rounded p-3 mb-3" style="background-color: #f8f9fa;">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="bi bi-calendar3 me-2 text-muted"></i>
+                            <span class="fw-medium">${config.fecha}</span>
+                            <span class="mx-2 text-muted">•</span>
+                            <i class="bi bi-clock me-2 text-muted"></i>
+                            <span class="fw-medium">${config.hora}</span>
+                        </div>
+                    </div>
+                    <p class="mb-0 text-center">¿Está seguro de que desea eliminar completamente esta cita?</p>
+                </div>
+            `;
+            modalNota.style.display = 'flex';
+            modalNota.className = 'alert alert-light d-flex align-items-start mb-0';
+            modalNota.style.border = '1px solid #dee2e6';
+            modalNotaText.innerHTML = `Faltan <strong>${config.diffHoras} horas</strong> para la cita.`;
+            confirmarBtn.style.display = 'inline-block';
+            confirmarBtn.className = 'btn btn-outline-danger';
+            confirmarBtn.innerHTML = '<i class="bi bi-trash me-1"></i> Eliminar Cita';
+
+            confirmarBtn.onclick = () => {
+                modal.hide();
+                callback('eliminar');
+                resolve('eliminar');
+            };
+
+            modal.show();
+
+            // Limpiar cuando se cierra
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                resolve(null);
+            }, { once: true });
+        });
     }
 
     verDetalleCita(citaId) {
