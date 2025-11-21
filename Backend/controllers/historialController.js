@@ -1,17 +1,104 @@
 const db = require('../config/db');
+const supabase = require('../config/supabase');
+
+// Las relaciones FK aún no existen en Supabase, así que enriquecemos manualmente
+const HISTORIAL_BASE_SELECT = `*`;
+
+async function enrichHistorialesWithUsuarios(rawHistoriales) {
+  const isArrayInput = Array.isArray(rawHistoriales);
+  const historialesList = isArrayInput
+    ? rawHistoriales
+    : (rawHistoriales ? [rawHistoriales] : []);
+
+  if (!historialesList.length) {
+    return isArrayInput ? [] : null;
+  }
+
+  const uniqueIds = [...new Set(historialesList
+    .flatMap(hist => [hist?.paciente_id, hist?.odontologo_id])
+    .filter(id => id !== null && id !== undefined))]
+    .map(id => Number(id))
+    .filter(id => !Number.isNaN(id));
+
+  let usuariosMap = new Map();
+
+  if (uniqueIds.length) {
+    try {
+      const { rows } = await db.query(
+        'SELECT id, nombre, apellido, correo, telefono FROM usuarios WHERE id = ANY($1)',
+        [uniqueIds]
+      );
+
+      usuariosMap = new Map(rows.map(row => [Number(row.id), row]));
+    } catch (error) {
+      console.warn('⚠️ No se pudieron enriquecer los historiales con datos de usuarios:', error.message);
+    }
+  }
+
+  const historialesEnriquecidos = historialesList.map(hist => {
+    const paciente = usuariosMap.get(Number(hist?.paciente_id)) || hist?.paciente || null;
+    const odontologo = usuariosMap.get(Number(hist?.odontologo_id)) || hist?.odontologo || null;
+
+    return {
+      ...hist,
+      paciente,
+      odontologo,
+      paciente_nombre: paciente?.nombre ?? hist?.paciente_nombre,
+      paciente_apellido: paciente?.apellido ?? hist?.paciente_apellido,
+      paciente_correo: paciente?.correo ?? hist?.paciente_correo,
+      paciente_telefono: paciente?.telefono ?? hist?.paciente_telefono,
+      odontologo_nombre: odontologo?.nombre ?? hist?.odontologo_nombre,
+      odontologo_apellido: odontologo?.apellido ?? hist?.odontologo_apellido,
+      odontologo_correo: odontologo?.correo ?? hist?.odontologo_correo
+    };
+  });
+
+  return isArrayInput ? historialesEnriquecidos : historialesEnriquecidos[0] || null;
+}
+
+// Obtener todos los historiales (para administradores y odontólogos)
+exports.obtenerTodosHistoriales = async (req, res) => {
+  try {
+    console.log('📋 Obteniendo todos los historiales...');
+    
+    const { data: historiales, error } = await supabase
+      .from('historial_clinico')
+      .select(HISTORIAL_BASE_SELECT)
+      .order('fecha', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Error al obtener historiales:', error);
+      throw error;
+    }
+    
+    const historialesConDetalles = await enrichHistorialesWithUsuarios(historiales);
+    console.log(`✅ Historiales encontrados: ${historialesConDetalles?.length || 0}`);
+    res.json(historialesConDetalles || []);
+  } catch (err) {
+    console.error('❌ Error al obtener todos los historiales:', err);
+    res.status(500).json({ msg: 'Error al obtener historiales.', error: err.message });
+  }
+};
 
 exports.obtenerHistorialPorPaciente = async (req, res) => {
   const { paciente_id } = req.params;
   try {
-    const { rows } = await db.query(
-      'SELECT id, paciente_id, odontologo_id, diagnostico, tratamiento_resumido, fecha, archivo_adjuntos, estado FROM historial_clinico WHERE paciente_id = $1 ORDER BY fecha DESC', 
-      [paciente_id]
-    );
-    console.log(`📋 Historiales encontrados para paciente ${paciente_id}:`, rows.length);
-    if (rows.length > 0) {
-      console.log('📊 Ejemplo de historial con estado:', { id: rows[0].id, estado: rows[0].estado });
+    console.log(`📋 Obteniendo historiales del paciente ${paciente_id}...`);
+    
+    const { data: historiales, error } = await supabase
+      .from('historial_clinico')
+      .select(HISTORIAL_BASE_SELECT)
+      .eq('paciente_id', paciente_id)
+      .order('fecha', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Error al obtener historiales:', error);
+      throw error;
     }
-    res.json(rows);
+    
+    const historialesConDetalles = await enrichHistorialesWithUsuarios(historiales);
+    console.log(`📋 Historiales encontrados para paciente ${paciente_id}:`, historialesConDetalles?.length || 0);
+    res.json(historialesConDetalles || []);
   } catch (err) {
     console.error('❌ Error al obtener historial:', err);
     res.status(500).json({ msg: 'Error al obtener historial.', error: err.message });
@@ -28,20 +115,42 @@ exports.registrarHistorial = async (req, res) => {
     archivo_adjuntos,
     estado
   } = req.body;
-  if (!paciente_id || !odontologo_id || !diagnostico || !fecha) return res.status(400).json({ msg: 'Datos incompletos.' });
+  
+  if (!paciente_id || !odontologo_id || !diagnostico || !fecha) {
+    return res.status(400).json({ msg: 'Datos incompletos.' });
+  }
+  
   const estadoTratamiento = estado || 'en_proceso';
   
   try {
-    const { rows: result } = await db.query(
-      'INSERT INTO historial_clinico (paciente_id, odontologo_id, diagnostico, tratamiento_resumido, fecha, archivo_adjuntos, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, estado', 
-      [paciente_id, odontologo_id, diagnostico, tratamiento_resumido, fecha, archivo_adjuntos, estadoTratamiento]
-    );
+    console.log('📝 Registrando nuevo historial:', { paciente_id, odontologo_id, fecha, estado: estadoTratamiento });
     
-    console.log('✅ Historial registrado con ID:', result[0].id);
+    const { data: historial, error } = await supabase
+      .from('historial_clinico')
+      .insert([{
+        paciente_id,
+        odontologo_id,
+        diagnostico,
+        tratamiento_resumido,
+        fecha,
+        archivo_adjuntos,
+        estado: estadoTratamiento
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ Error al registrar historial:', error);
+      throw error;
+    }
+    
+    const historialConDetalles = await enrichHistorialesWithUsuarios(historial);
+    console.log('✅ Historial registrado con ID:', historialConDetalles?.id || historial.id);
     res.json({ 
       msg: 'Historial registrado exitosamente.',
-      id: result[0].id,
-      estado: result[0].estado
+      id: historialConDetalles?.id || historial.id,
+      estado: historialConDetalles?.estado || historial.estado,
+      historial: historialConDetalles || historial
     });
   } catch (err) {
     console.error('❌ Error al registrar historial:', err);
@@ -52,23 +161,40 @@ exports.registrarHistorial = async (req, res) => {
 exports.obtenerHistorialPorId = async (req, res) => {
   const { id } = req.params;
   try {
-    const { rows } = await db.query(`
-      SELECT h.*, u.nombre as paciente_nombre, u.apellido as paciente_apellido, 
-             od.nombre as odontologo_nombre, od.apellido as odontologo_apellido
-      FROM historial_clinico h
-      LEFT JOIN usuarios u ON h.paciente_id = u.id
-      LEFT JOIN usuarios od ON h.odontologo_id = od.id
-      WHERE h.id = $1
-    `, [id]);
+    console.log(`🔍 Obteniendo historial ID: ${id}...`);
     
-    if (rows.length === 0) {
-      return res.status(404).json({ msg: 'Historial no encontrado.' });
+    const { data: historial, error } = await supabase
+      .from('historial_clinico')
+      .select(HISTORIAL_BASE_SELECT)
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ msg: 'Historial no encontrado.' });
+      }
+      console.error('❌ Error al obtener historial:', error);
+      throw error;
     }
     
-    res.json(rows[0]);
+    // Aplanar la estructura para mantener compatibilidad con el frontend
+    const historialConDetalles = await enrichHistorialesWithUsuarios(historial);
+    const historialFormateado = {
+      ...historialConDetalles,
+      paciente_nombre: historialConDetalles?.paciente?.nombre ?? historialConDetalles?.paciente_nombre,
+      paciente_apellido: historialConDetalles?.paciente?.apellido ?? historialConDetalles?.paciente_apellido,
+      paciente_correo: historialConDetalles?.paciente?.correo ?? historialConDetalles?.paciente_correo,
+      paciente_telefono: historialConDetalles?.paciente?.telefono ?? historialConDetalles?.paciente_telefono,
+      odontologo_nombre: historialConDetalles?.odontologo?.nombre ?? historialConDetalles?.odontologo_nombre,
+      odontologo_apellido: historialConDetalles?.odontologo?.apellido ?? historialConDetalles?.odontologo_apellido,
+      odontologo_correo: historialConDetalles?.odontologo?.correo ?? historialConDetalles?.odontologo_correo
+    };
+    
+    console.log('✅ Historial encontrado:', historialFormateado.id);
+    res.json(historialFormateado);
   } catch (err) {
-    console.error('Error al obtener historial por ID:', err);
-    res.status(500).json({ msg: 'Error al obtener historial.' });
+    console.error('❌ Error al obtener historial por ID:', err);
+    res.status(500).json({ msg: 'Error al obtener historial.', error: err.message });
   }
 };
 
@@ -85,22 +211,39 @@ exports.actualizarHistorial = async (req, res) => {
   }
   
   try {
-    const { rows: result, rowCount } = await db.query(`
-      UPDATE historial_clinico 
-      SET diagnostico = $1, tratamiento_resumido = $2, fecha = $3, archivo_adjuntos = $4, estado = COALESCE($5, estado)
-      WHERE id = $6
-      RETURNING id, estado, diagnostico, tratamiento_resumido, fecha, archivo_adjuntos
-    `, [diagnostico, tratamiento_resumido, fecha, archivo_adjuntos, estado ?? null, id]);
+    const updateData = {
+      diagnostico,
+      tratamiento_resumido,
+      fecha,
+      archivo_adjuntos
+    };
     
-    if (rowCount === 0) {
-      return res.status(404).json({ msg: 'Historial no encontrado.' });
+    // Solo incluir estado si se proporciona
+    if (estado !== undefined && estado !== null) {
+      updateData.estado = estado;
     }
     
+    const { data: historial, error } = await supabase
+      .from('historial_clinico')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ msg: 'Historial no encontrado.' });
+      }
+      console.error('❌ Error al actualizar historial:', error);
+      throw error;
+    }
+    
+    const historialConDetalles = await enrichHistorialesWithUsuarios(historial);
     console.log('✅ Historial actualizado ID:', id);
-    console.log('✅ Nuevo estado guardado:', result[0].estado);
+    console.log('✅ Nuevo estado guardado:', historialConDetalles?.estado || historial.estado);
     res.json({ 
       msg: 'Historial actualizado exitosamente.',
-      historial: result[0]
+      historial: historialConDetalles || historial
     });
   } catch (err) {
     console.error('❌ Error al actualizar historial:', err);
@@ -111,15 +254,53 @@ exports.actualizarHistorial = async (req, res) => {
 exports.eliminarHistorial = async (req, res) => {
   const { id } = req.params;
   try {
-    const { rowCount } = await db.query('DELETE FROM historial_clinico WHERE id = $1', [id]);
+    console.log(`🗑️ Eliminando historial ID: ${id}...`);
     
-    if (rowCount === 0) {
-      return res.status(404).json({ msg: 'Historial no encontrado.' });
+    const { data, error } = await supabase
+      .from('historial_clinico')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ msg: 'Historial no encontrado.' });
+      }
+      console.error('❌ Error al eliminar historial:', error);
+      throw error;
     }
     
+    console.log('✅ Historial eliminado exitosamente:', id);
     res.json({ msg: 'Historial eliminado exitosamente.' });
   } catch (err) {
-    console.error('Error al eliminar historial:', err);
-    res.status(500).json({ msg: 'Error al eliminar historial.' });
+    console.error('❌ Error al eliminar historial:', err);
+    res.status(500).json({ msg: 'Error al eliminar historial.', error: err.message });
+  }
+};
+
+// Obtener historiales por odontólogo
+exports.obtenerHistorialesPorOdontologo = async (req, res) => {
+  const { odontologo_id } = req.params;
+  try {
+    console.log(`🔍 Obteniendo historiales del odontólogo ${odontologo_id}...`);
+    
+    const { data: historiales, error } = await supabase
+      .from('historial_clinico')
+      .select(HISTORIAL_BASE_SELECT)
+      .eq('odontologo_id', odontologo_id)
+      .order('fecha', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Error al obtener historiales por odontólogo:', error);
+      throw error;
+    }
+    
+    const historialesConDetalles = await enrichHistorialesWithUsuarios(historiales);
+    console.log(`✅ Historiales encontrados para odontólogo ${odontologo_id}:`, historialesConDetalles?.length || 0);
+    res.json(historialesConDetalles || []);
+  } catch (err) {
+    console.error('❌ Error al obtener historiales por odontólogo:', err);
+    res.status(500).json({ msg: 'Error al obtener historiales.', error: err.message });
   }
 };

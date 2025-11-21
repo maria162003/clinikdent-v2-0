@@ -13,7 +13,8 @@ const {
   obtenerPacientesOdontologo,
   obtenerEstadisticas,
   obtenerProximasCitas,
-  obtenerOdontologos
+  obtenerOdontologos,
+  reasignarOdontologo
 } = require('../controllers/usuarioController');
 
 // Middleware de debug para todas las rutas
@@ -39,6 +40,7 @@ router.get('/', obtenerUsuarios);
 router.post('/', crearUsuario);
 router.put('/:id', actualizarUsuario);
 router.put('/:id/perfil', actualizarPerfil); // Nueva ruta para actualizar perfil
+router.put('/:paciente_id/reasignar-odontologo', reasignarOdontologo); // Reasignar odontólogo a paciente
 router.delete('/:id', eliminarUsuario);
 
 console.log('📋 Rutas de usuario registradas exitosamente');
