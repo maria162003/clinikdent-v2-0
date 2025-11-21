@@ -477,15 +477,18 @@ exports.obtenerPacientesOdontologo = async (req, res) => {
         u.fecha_nacimiento,
         u.direccion,
         u.created_at,
+        p.odontologo_id,
         CASE WHEN u.activo THEN 'Activo' ELSE 'Inactivo' END as estado,
         COALESCE(COUNT(c.id), 0) as total_citas,
         MAX(c.fecha) as ultima_cita,
         COALESCE(SUM(CASE WHEN c.estado IN ('programada', 'confirmada') THEN 1 ELSE 0 END), 0) as citas_pendientes
-      FROM usuarios u
+      FROM pacientes p
+      JOIN usuarios u ON p.usuario_id = u.id
       LEFT JOIN roles r ON u.rol_id = r.id
       LEFT JOIN citas c ON u.id = c.paciente_id AND c.odontologo_id = $1
-      WHERE r.nombre = 'paciente'
-      GROUP BY u.id, u.nombre, u.apellido, u.correo, u.telefono, u.fecha_nacimiento, u.direccion, u.activo, u.created_at
+      WHERE p.odontologo_id = $1
+        AND (r.nombre = 'paciente' OR r.nombre ILIKE '%paciente%' OR r.id IS NULL)
+      GROUP BY u.id, u.nombre, u.apellido, u.correo, u.telefono, u.fecha_nacimiento, u.direccion, u.activo, u.created_at, p.odontologo_id
       ORDER BY COALESCE(MAX(c.fecha), u.created_at) DESC NULLS LAST
       LIMIT 50
     `;
@@ -502,6 +505,7 @@ exports.obtenerPacientesOdontologo = async (req, res) => {
       fecha_nacimiento: paciente.fecha_nacimiento,
       direccion: paciente.direccion,
       estado: paciente.estado,
+      asignado_a: paciente.odontologo_id,
       total_citas: paciente.total_citas || 0,
       ultima_cita: paciente.ultima_cita ? 
         new Date(paciente.ultima_cita).toLocaleDateString('es-ES') : 
@@ -679,5 +683,93 @@ exports.obtenerEstadisticas = async (req, res) => {
     };
     
     return res.json(estadisticasFallback);
+  }
+};
+
+// Reasignar odontólogo a un paciente
+exports.reasignarOdontologo = async (req, res) => {
+  const { paciente_id } = req.params;
+  const { nuevo_odontologo_id } = req.body;
+  
+  if (!nuevo_odontologo_id) {
+    return res.status(400).json({ msg: 'El ID del nuevo odontólogo es requerido.' });
+  }
+  
+  try {
+    console.log(`🔄 Reasignando odontólogo para paciente ${paciente_id} al odontólogo ${nuevo_odontologo_id}...`);
+    
+    // Verificar que el nuevo odontólogo existe y es realmente un odontólogo
+    const { rows: odontologoCheck } = await db.query(`
+      SELECT u.id, u.nombre, u.apellido, r.nombre as rol
+      FROM usuarios u
+      JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = $1
+    `, [nuevo_odontologo_id]);
+    
+    if (odontologoCheck.length === 0) {
+      return res.status(404).json({ msg: 'El odontólogo especificado no existe.' });
+    }
+    
+    if (odontologoCheck[0].rol !== 'odontologo') {
+      return res.status(400).json({ msg: 'El usuario especificado no es un odontólogo.' });
+    }
+    
+    // Verificar que el paciente existe
+    const { rows: pacienteCheck } = await db.query(`
+      SELECT u.id, u.nombre, u.apellido, r.nombre as rol
+      FROM usuarios u
+      JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = $1
+    `, [paciente_id]);
+    
+    if (pacienteCheck.length === 0) {
+      return res.status(404).json({ msg: 'El paciente especificado no existe.' });
+    }
+    
+    if (pacienteCheck[0].rol !== 'paciente') {
+      return res.status(400).json({ msg: 'El usuario especificado no es un paciente.' });
+    }
+    
+    // Actualizar la tabla pacientes para reasignar el odontólogo
+    const { rowCount } = await db.query(`
+      UPDATE pacientes 
+      SET odontologo_id = $1 
+      WHERE usuario_id = $2
+    `, [nuevo_odontologo_id, paciente_id]);
+    
+    if (rowCount === 0) {
+      // Si no existe el registro en pacientes, crearlo
+      await db.query(`
+        INSERT INTO pacientes (usuario_id, odontologo_id)
+        VALUES ($1, $2)
+        ON CONFLICT (usuario_id) DO UPDATE SET odontologo_id = $2
+      `, [paciente_id, nuevo_odontologo_id]);
+    }
+    
+    // Transferir historiales clínicos previos al nuevo odontólogo para mantener trazabilidad
+    const { rowCount: historialesActualizados } = await db.query(`
+      UPDATE historial_clinico
+      SET odontologo_id = $1
+      WHERE paciente_id = $2
+    `, [nuevo_odontologo_id, paciente_id]);
+    console.log(`📋 Historiales reassigned: ${historialesActualizados}`);
+    
+    console.log(`✅ Odontólogo reasignado exitosamente. Paciente ${paciente_id} ahora asignado a odontólogo ${nuevo_odontologo_id}`);
+    
+    res.json({ 
+      msg: 'Odontólogo reasignado exitosamente.',
+      historiales_transferidos: historialesActualizados,
+      paciente: {
+        id: pacienteCheck[0].id,
+        nombre: `${pacienteCheck[0].nombre} ${pacienteCheck[0].apellido}`
+      },
+      nuevo_odontologo: {
+        id: odontologoCheck[0].id,
+        nombre: `Dr./Dra. ${odontologoCheck[0].nombre} ${odontologoCheck[0].apellido}`
+      }
+    });
+  } catch (err) {
+    console.error('❌ Error al reasignar odontólogo:', err);
+    res.status(500).json({ msg: 'Error al reasignar odontólogo.', error: err.message });
   }
 };

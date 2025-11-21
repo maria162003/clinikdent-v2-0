@@ -865,32 +865,6 @@ function getDatosPruebaUsuarios() {
     ];
 }
 
-function getDatosPruebaCitas() {
-    return [
-        {id: 1, paciente_nombre: 'Juan Pérez', fecha: '2024-02-01', hora: '09:00', odontologo_nombre: 'Dr. García', tratamiento: 'Limpieza dental', estado: 'programada'},
-        {id: 2, paciente_nombre: 'María González', fecha: '2024-02-01', hora: '10:30', odontologo_nombre: 'Dra. López', tratamiento: 'Consulta general', estado: 'completada'},
-        {id: 3, paciente_nombre: 'Carlos Rodríguez', fecha: '2024-02-02', hora: '14:00', odontologo_nombre: 'Dr. Martínez', tratamiento: 'Empaste', estado: 'en_proceso'},
-        {id: 4, paciente_nombre: 'Ana Martínez', fecha: '2024-02-02', hora: '15:30', odontologo_nombre: 'Dra. Sánchez', tratamiento: 'Extracción', estado: 'programada'},
-        {id: 5, paciente_nombre: 'Luis Hernández', fecha: '2024-02-03', hora: '08:30', odontologo_nombre: 'Dr. García', tratamiento: 'Ortodoncia', estado: 'cancelada'},
-        {id: 6, paciente_nombre: 'Carmen López', fecha: '2024-02-03', hora: '11:00', odontologo_nombre: 'Dra. López', tratamiento: 'Blanqueamiento', estado: 'programada'},
-        {id: 7, paciente_nombre: 'Pedro Sánchez', fecha: '2024-02-04', hora: '16:00', odontologo_nombre: 'Dr. Martínez', tratamiento: 'Consulta general', estado: 'programada'},
-        {id: 8, paciente_nombre: 'Laura Díaz', fecha: '2024-02-04', hora: '17:30', odontologo_nombre: 'Dra. Sánchez', tratamiento: 'Limpieza dental', estado: 'completada'},
-        {id: 9, paciente_nombre: 'Miguel Torres', fecha: '2024-02-05', hora: '09:30', odontologo_nombre: 'Dr. García', tratamiento: 'Endodoncia', estado: 'programada'},
-        {id: 10, paciente_nombre: 'Isabel Ramírez', fecha: '2024-02-05', hora: '13:00', odontologo_nombre: 'Dra. López', tratamiento: 'Consulta general', estado: 'programada'},
-        {id: 11, paciente_nombre: 'Fernando Rayo', fecha: '2024-02-06', hora: '08:00', odontologo_nombre: 'Dr. García', tratamiento: 'Revisión', estado: 'programada'},
-        {id: 12, paciente_nombre: 'Isabella Rayo', fecha: '2024-02-06', hora: '09:30', odontologo_nombre: 'Dra. López', tratamiento: 'Limpieza', estado: 'completada'},
-        {id: 13, paciente_nombre: 'Jacobo Rayo', fecha: '2024-02-06', hora: '11:00', odontologo_nombre: 'Dr. Martínez', tratamiento: 'Consulta', estado: 'en_proceso'},
-        {id: 14, paciente_nombre: 'Tatiana Rayo', fecha: '2024-02-07', hora: '14:30', odontologo_nombre: 'Dra. Sánchez', tratamiento: 'Empaste', estado: 'programada'},
-        {id: 15, paciente_nombre: 'Alejandro Morales', fecha: '2024-02-07', hora: '16:00', odontologo_nombre: 'Dr. García', tratamiento: 'Extracción', estado: 'programada'},
-        {id: 16, paciente_nombre: 'Beatriz Castro', fecha: '2024-02-08', hora: '08:30', odontologo_nombre: 'Dra. López', tratamiento: 'Ortodoncia', estado: 'programada'},
-        {id: 17, paciente_nombre: 'Diego Vargas', fecha: '2024-02-08', hora: '10:00', odontologo_nombre: 'Dr. Martínez', tratamiento: 'Blanqueamiento', estado: 'completada'},
-        {id: 18, paciente_nombre: 'Elena Jiménez', fecha: '2024-02-08', hora: '15:30', odontologo_nombre: 'Dra. Sánchez', tratamiento: 'Consulta general', estado: 'cancelada'},
-        {id: 19, paciente_nombre: 'Francisco Medina', fecha: '2024-02-09', hora: '09:00', odontologo_nombre: 'Dr. García', tratamiento: 'Endodoncia', estado: 'programada'},
-        {id: 20, paciente_nombre: 'Gloria Ruiz', fecha: '2024-02-09', hora: '11:30', odontologo_nombre: 'Dra. López', tratamiento: 'Limpieza dental', estado: 'programada'},
-        {id: 21, paciente_nombre: 'Héctor Soto', fecha: '2024-02-10', hora: '14:00', odontologo_nombre: 'Dr. Martínez', tratamiento: 'Revisión', estado: 'programada'},
-        {id: 22, paciente_nombre: 'Irene Vega', fecha: '2024-02-10', hora: '16:30', odontologo_nombre: 'Dra. Sánchez', tratamiento: 'Consulta', estado: 'completada'}
-    ];
-}
 
 function getDatosPruebaEvaluaciones() {
     return [
@@ -982,14 +956,6 @@ window.cargarUsuariosConPaginacion = function() {
     }, 100);
 };
 
-window.cargarCitasConPaginacion = function() {
-    console.log('📅 Cargando citas con paginación...');
-    setTimeout(() => {
-        const citas = getDatosPruebaCitas();
-        initializePagination('citas', citas);
-    }, 100);
-};
-
 window.cargarEvaluacionesConPaginacion = function() {
     console.log('⭐ Cargando evaluaciones con paginación...');
     setTimeout(() => {
@@ -1068,6 +1034,14 @@ function renderUsuariosPage(data) {
                             style="background-color: #6c757d; border-color: #6c757d; color: white;">
                         <i class="bi bi-eye" style="color: white;"></i>
                     </button>
+                    ${usuario.rol === 'paciente' ? `
+                    <button class="btn btn-sm" 
+                            onclick="abrirModalReasignarOdontologo(${usuario.id}, '${usuario.nombre} ${usuario.apellido || ''}')"
+                            title="Reasignar Odontólogo"
+                            style="background-color: #28a745; border-color: #28a745; color: white;">
+                        <i class="bi bi-person-badge" style="color: white;"></i>
+                    </button>
+                    ` : ''}
                     <button class="btn btn-sm" 
                             onclick="eliminarUsuario(${usuario.id})"
                             title="Eliminar"
@@ -1409,7 +1383,7 @@ function initializePaginationAdmin(section) {
     console.log(`🔄 Inicializando paginación para: ${section}`);
     
     // ⚠️ DESHABILITADO: No usar datos de prueba para secciones que ya tienen datos reales
-    if (['citas', 'pagos', 'faqs', 'evaluaciones', 'inventario'].includes(section)) {
+    if (['usuarios', 'citas', 'pagos', 'faqs', 'evaluaciones', 'inventario'].includes(section)) {
         console.log(`⚠️ Datos de prueba para ${section} deshabilitados - usando solo datos reales de la API`);
         return;
     }
