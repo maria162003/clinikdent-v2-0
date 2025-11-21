@@ -283,14 +283,14 @@ exports.obtenerInventario = async (req, res) => {
           i.nombre,
           i.descripcion,
           i.categoria_id,
-          COALESCE(i.cantidad, 0) as cantidad,
-          COALESCE(i.stock_minimo, 0) as stock_minimo,
-          COALESCE(i.precio, 0) as precio_unitario,
+          COALESCE(i.cantidad_actual, 0) as cantidad,
+          COALESCE(i.cantidad_minima, 0) as stock_minimo,
+          COALESCE(i.precio_unitario, 0) as precio_unitario,
           i.sede_id,
           i.ubicacion,
           COALESCE(i.estado, 'disponible') as estado,
           i.created_at as fecha_registro,
-          i.updated_at as fecha_actualizacion,
+          NULL as fecha_actualizacion,
           s.nombre as sede_nombre,
           s.ciudad as sede_ciudad,
           'inventario' as origen,
@@ -867,7 +867,7 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
     const valorTotalResult = await db.query(`
       SELECT COALESCE(SUM(valor), 0) as valor_total_stock
       FROM (
-        SELECT (COALESCE(cantidad, 0) * COALESCE(precio, 0)) as valor FROM inventario
+        SELECT (COALESCE(cantidad_actual, 0) * COALESCE(precio_unitario, 0)) as valor FROM inventario
         UNION ALL
         SELECT (COALESCE(ie.cantidad, 0) * COALESCE(e.precio, 0)) as valor 
         FROM inventario_equipos ie 
@@ -882,7 +882,7 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
         COUNT(*) as cantidad,
         SUM(valor) as valor_categoria
       FROM (
-        SELECT categoria_id, (COALESCE(cantidad, 0) * COALESCE(precio, 0)) as valor FROM inventario
+        SELECT categoria_id, (COALESCE(cantidad_actual, 0) * COALESCE(precio_unitario, 0)) as valor FROM inventario
         UNION ALL
         SELECT e.categoria_id, (COALESCE(ie.cantidad, 0) * COALESCE(e.precio, 0)) as valor 
         FROM inventario_equipos ie 
@@ -897,14 +897,14 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
     const stockBajoCount = await db.query(`
       SELECT COUNT(*) as productos_stock_bajo
       FROM inventario
-      WHERE cantidad > 0 AND stock_minimo > 0 AND cantidad < stock_minimo
+      WHERE cantidad_actual > 0 AND cantidad_minima > 0 AND cantidad_actual < cantidad_minima
     `);
     
     // Productos agotados: cantidad = 0
     const productosAgotadosCount = await db.query(`
       SELECT COUNT(*) as productos_agotados
       FROM (
-        SELECT cantidad FROM inventario WHERE cantidad = 0
+        SELECT cantidad_actual as cantidad FROM inventario WHERE cantidad_actual = 0
         UNION ALL
         SELECT cantidad FROM inventario_equipos WHERE cantidad = 0
       ) AS productos_sin_stock
@@ -966,28 +966,28 @@ exports.obtenerAlertas = async (req, res) => {
         i.nombre as producto,
         COALESCE(s.nombre, 'Sin sede') as sede,
         CAST(i.categoria_id AS VARCHAR) as categoria,
-        COALESCE(i.cantidad, 0) as "stockActual",
-        COALESCE(i.stock_minimo, 0) as "stockMinimo",
-        COALESCE(i.precio, 0) as precio,
+        COALESCE(i.cantidad_actual, 0) as "stockActual",
+        COALESCE(i.cantidad_minima, 0) as "stockMinimo",
+        COALESCE(i.precio_unitario, 0) as precio,
         CASE 
-          WHEN i.cantidad = 0 THEN 'agotado'
-          WHEN i.stock_minimo > 0 AND i.cantidad < i.stock_minimo THEN 'bajo'
+          WHEN i.cantidad_actual = 0 THEN 'agotado'
+          WHEN i.cantidad_minima > 0 AND i.cantidad_actual < i.cantidad_minima THEN 'bajo'
           ELSE 'normal'
         END as estado,
         CASE 
-          WHEN i.cantidad = 0 THEN 'stock_agotado'
-          WHEN i.stock_minimo > 0 AND i.cantidad < i.stock_minimo THEN 'stock_bajo'
+          WHEN i.cantidad_actual = 0 THEN 'stock_agotado'
+          WHEN i.cantidad_minima > 0 AND i.cantidad_actual < i.cantidad_minima THEN 'stock_bajo'
           ELSE 'normal'
         END as "tipoAlerta",
         CASE 
-          WHEN i.cantidad = 0 THEN 3
-          WHEN i.stock_minimo > 0 AND i.cantidad < (i.stock_minimo / 2) THEN 2
+          WHEN i.cantidad_actual = 0 THEN 3
+          WHEN i.cantidad_minima > 0 AND i.cantidad_actual < (i.cantidad_minima / 2) THEN 2
           ELSE 1
         END as prioridad
       FROM inventario i
       LEFT JOIN sedes s ON i.sede_id = s.id
-      WHERE i.cantidad = 0 OR (i.stock_minimo > 0 AND i.cantidad <= i.stock_minimo)
-      ORDER BY prioridad DESC, i.cantidad ASC
+      WHERE i.cantidad_actual = 0 OR (i.cantidad_minima > 0 AND i.cantidad_actual <= i.cantidad_minima)
+      ORDER BY prioridad DESC, i.cantidad_actual ASC
       LIMIT 50
     `);
     
