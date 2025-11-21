@@ -5881,9 +5881,10 @@ document.addEventListener('DOMContentLoaded', () => {
             switch (targetId) {
                 case '#equipos-inventario':
                     console.log('🔧 Cargando equipos...');
-                    if (typeof cargarInventario === 'function') {
+                    // Deshabilitado - loadInventario() en loadSectionData ya carga los datos
+                    /* if (typeof cargarInventario === 'function') {
                         cargarInventario();
-                    }
+                    } */
                     // Inicializar paginación para inventario
                     setTimeout(() => {
                         if (typeof initializePaginationAdmin === 'function') {
@@ -5938,7 +5939,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Cargar proveedores por defecto al ir a la sección de inventario
-    setTimeout(() => {
+    // NOTA: Deshabilitado para evitar carga duplicada - loadInventario() ya carga los datos
+    /* setTimeout(() => {
         const inventarioSection = document.getElementById('inventario-section');
         if (inventarioSection && !inventarioSection.classList.contains('d-none')) {
             console.log('📦 Cargando datos iniciales de inventario...');
@@ -5946,7 +5948,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cargarInventario();
             }
         }
-    }, 1000);
+    }, 1000); */
 });
 
 } // Cierre del check de dashboardAdmin

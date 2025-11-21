@@ -3336,7 +3336,7 @@ async function cargarDatosInventario() {
         showLoading('Cargando datos del inventario...');
         
         await Promise.all([
-            cargarInventarioOLD(),
+            // cargarInventarioOLD(), // Deshabilitado - dashboard loadInventario() maneja la carga
             cargarSedes(),
             cargarCategorias(),
             cargarProveedores(),
