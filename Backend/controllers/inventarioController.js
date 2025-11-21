@@ -255,6 +255,18 @@ exports.obtenerInventario = async (req, res) => {
   console.log('📦 [inventarioController] Obteniendo inventario completo');
   
   try {
+    // Verificar si la tabla inventario existe y tiene datos
+    const checkQuery = 'SELECT COUNT(*) as total FROM inventario';
+    const checkResult = await db.query(checkQuery);
+    const totalEnInventario = parseInt(checkResult.rows[0].total) || 0;
+    
+    console.log(`📊 Total registros en tabla inventario: ${totalEnInventario}`);
+    
+    if (totalEnInventario === 0) {
+      console.log('⚠️ Tabla inventario vacía, retornando array vacío');
+      return res.json([]);
+    }
+    
     // Consulta simplificada - solo tabla inventario
     const query = `
       SELECT 
@@ -295,7 +307,16 @@ exports.obtenerInventario = async (req, res) => {
     return res.json(inventario);
   } catch (err) {
     console.error('❌ Error en obtenerInventario:', err);
-    return res.status(500).json({ msg: 'Error al obtener inventario.', error: err.message });
+    console.error('📝 Detalles del error:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
+    return res.status(500).json({ 
+      msg: 'Error al obtener inventario.', 
+      error: err.message,
+      details: err.code 
+    });
   }
 };
 
