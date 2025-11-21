@@ -1668,3 +1668,236 @@ exports.eliminarCategoria = async (req, res) => {
     return res.status(500).json({ msg: 'Error al eliminar categoría.', error: err.message });
   }
 };
+
+/**
+ * POST /api/inventario/import
+ * Procesa importación masiva de inventario desde Excel
+ * Valida datos, verifica existencia por código, inserta o actualiza productos
+ */
+const importarInventario = async (req, res) => {
+  try {
+    console.log('📥 [inventarioController] Procesando importación de inventario');
+    const { productos } = req.body;
+
+    if (!Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ 
+        msg: 'Se requiere un array de productos válido',
+        success: false 
+      });
+    }
+
+    const resultados = {
+      total: productos.length,
+      insertados: 0,
+      actualizados: 0,
+      errores: [],
+      advertencias: []
+    };
+
+    // Validar columnas requeridas
+    const columnasRequeridas = ['Producto', 'Categoría'];
+    for (let i = 0; i < productos.length; i++) {
+      const producto = productos[i];
+      for (const columna of columnasRequeridas) {
+        if (!producto[columna] || producto[columna].toString().trim() === '') {
+          resultados.errores.push({
+            fila: i + 2, // +2 porque Excel empieza en 1 y tiene header
+            mensaje: `Falta columna requerida: ${columna}`,
+            producto: producto.Producto || `Fila ${i + 2}`
+          });
+        }
+      }
+    }
+
+    // Si hay errores de validación, retornar sin procesar
+    if (resultados.errores.length > 0) {
+      console.log(`❌ Validación fallida: ${resultados.errores.length} errores encontrados`);
+      return res.status(400).json({ 
+        msg: 'Errores de validación encontrados',
+        success: false,
+        ...resultados 
+      });
+    }
+
+    // Obtener categorías existentes para mapeo
+    const categoriasQuery = 'SELECT id, nombre FROM equipos GROUP BY categoria, id, nombre';
+    const categoriasResult = await db.query(categoriasQuery);
+    const categoriasMap = new Map();
+    categoriasResult.rows.forEach(cat => {
+      categoriasMap.set(cat.nombre.toLowerCase(), cat.id);
+    });
+
+    // Obtener sedes existentes para mapeo
+    const sedesQuery = 'SELECT id, nombre FROM sedes';
+    const sedesResult = await db.query(sedesQuery);
+    const sedesMap = new Map();
+    sedesResult.rows.forEach(sede => {
+      sedesMap.set(sede.nombre.toLowerCase(), sede.id);
+    });
+
+    // Obtener proveedores existentes para mapeo
+    const proveedoresQuery = 'SELECT id, nombre FROM proveedores';
+    const proveedoresResult = await db.query(proveedoresQuery);
+    const proveedoresMap = new Map();
+    proveedoresResult.rows.forEach(prov => {
+      proveedoresMap.set(prov.nombre.toLowerCase(), prov.id);
+    });
+
+    // Procesar cada producto
+    for (let i = 0; i < productos.length; i++) {
+      const producto = productos[i];
+      const fila = i + 2;
+
+      try {
+        // Parsear y validar datos
+        const codigo = producto.Código || producto.Codigo || `AUTO-${Date.now()}-${i}`;
+        const nombre = producto.Producto.toString().trim();
+        const categoria = producto.Categoría || producto.Categoria;
+        const stockActual = parseInt(producto['Stock Actual'] || producto.stock_actual || 0);
+        const stockMinimo = parseInt(producto['Stock Mínimo'] || producto.stock_minimo || 0);
+        const precioUnitario = parseFloat(producto['Precio Unitario'] || producto.precio_unitario || 0);
+        const proveedor = producto.Proveedor || null;
+        const sede = producto.Sede || null;
+        const estado = producto.Estado || 'disponible';
+
+        // Validar números
+        if (isNaN(stockActual) || isNaN(stockMinimo) || isNaN(precioUnitario)) {
+          resultados.errores.push({
+            fila,
+            mensaje: 'Valores numéricos inválidos en Stock Actual, Stock Mínimo o Precio Unitario',
+            producto: nombre
+          });
+          continue;
+        }
+
+        // Mapear categoría a ID (si existe)
+        let categoriaId = null;
+        if (categoria) {
+          categoriaId = categoriasMap.get(categoria.toLowerCase());
+          if (!categoriaId) {
+            resultados.advertencias.push({
+              fila,
+              mensaje: `Categoría "${categoria}" no encontrada, se creará automáticamente`,
+              producto: nombre
+            });
+          }
+        }
+
+        // Mapear sede a ID
+        let sedeId = null;
+        if (sede) {
+          sedeId = sedesMap.get(sede.toLowerCase());
+          if (!sedeId) {
+            resultados.advertencias.push({
+              fila,
+              mensaje: `Sede "${sede}" no encontrada, se usará sede por defecto`,
+              producto: nombre
+            });
+          }
+        }
+
+        // Mapear proveedor a ID
+        let proveedorId = null;
+        if (proveedor) {
+          proveedorId = proveedoresMap.get(proveedor.toLowerCase());
+          if (!proveedorId) {
+            resultados.advertencias.push({
+              fila,
+              mensaje: `Proveedor "${proveedor}" no encontrado, se creará o se omitirá`,
+              producto: nombre
+            });
+          }
+        }
+
+        // Verificar si el producto ya existe por código
+        const checkQuery = 'SELECT id FROM inventario WHERE codigo = $1 LIMIT 1';
+        const checkResult = await db.query(checkQuery, [codigo]);
+
+        if (checkResult.rows.length > 0) {
+          // ACTUALIZAR producto existente
+          const productoId = checkResult.rows[0].id;
+          const updateQuery = `
+            UPDATE inventario 
+            SET nombre = $1,
+                categoria_id = $2,
+                cantidad_actual = $3,
+                cantidad_minima = $4,
+                precio_unitario = $5,
+                proveedor_id = $6,
+                sede_id = $7,
+                estado = $8,
+                fecha_actualizacion = NOW()
+            WHERE id = $9
+          `;
+          await db.query(updateQuery, [
+            nombre,
+            categoriaId,
+            stockActual,
+            stockMinimo,
+            precioUnitario,
+            proveedorId,
+            sedeId,
+            estado,
+            productoId
+          ]);
+          resultados.actualizados++;
+          console.log(`✅ Producto actualizado: ${nombre} (ID: ${productoId})`);
+        } else {
+          // INSERTAR nuevo producto
+          const insertQuery = `
+            INSERT INTO inventario (
+              codigo, nombre, categoria_id, cantidad_actual, cantidad_minima,
+              precio_unitario, proveedor_id, sede_id, estado, 
+              fecha_creacion, fecha_actualizacion
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            RETURNING id
+          `;
+          const insertResult = await db.query(insertQuery, [
+            codigo,
+            nombre,
+            categoriaId,
+            stockActual,
+            stockMinimo,
+            precioUnitario,
+            proveedorId,
+            sedeId,
+            estado
+          ]);
+          resultados.insertados++;
+          console.log(`✅ Producto insertado: ${nombre} (ID: ${insertResult.rows[0].id})`);
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando fila ${fila}:`, error);
+        resultados.errores.push({
+          fila,
+          mensaje: error.message,
+          producto: producto.Producto || `Fila ${fila}`
+        });
+      }
+    }
+
+    // Resumen final
+    const exitoso = resultados.insertados + resultados.actualizados;
+    console.log(`📊 Importación completada: ${exitoso}/${resultados.total} exitosos`);
+    console.log(`   - Insertados: ${resultados.insertados}`);
+    console.log(`   - Actualizados: ${resultados.actualizados}`);
+    console.log(`   - Errores: ${resultados.errores.length}`);
+    console.log(`   - Advertencias: ${resultados.advertencias.length}`);
+
+    res.json({
+      msg: `Importación completada: ${exitoso} productos procesados exitosamente`,
+      success: true,
+      ...resultados
+    });
+  } catch (err) {
+    console.error('❌ Error en importación de inventario:', err);
+    res.status(500).json({ 
+      msg: 'Error al procesar importación de inventario',
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Exportar función de importación
+exports.importarInventario = importarInventario;

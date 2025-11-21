@@ -4060,27 +4060,102 @@ async function procesarImportacion() {
             throw new Error('No hay datos para importar');
         }
         
-        // Aquí se procesarían los datos y se enviarían al servidor
-        // Por ahora solo mostraremos un mensaje de éxito
+        // Enviar datos al backend para procesar
+        const response = await fetch('/api/inventario/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'user-id': localStorage.getItem('userId') || '1'
+            },
+            body: JSON.stringify({ productos: datos })
+        });
         
-        setTimeout(() => {
-            hideLoading();
-            showToast(`✅ ${datos.length} productos importados exitosamente`, 'success');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.msg || 'Error al procesar importación');
+        }
+        
+        const resultado = await response.json();
+        
+        hideLoading();
+        
+        // Mostrar resultados detallados
+        if (resultado.success) {
+            let mensaje = `✅ Importación completada:\n`;
+            mensaje += `- ${resultado.insertados} productos insertados\n`;
+            mensaje += `- ${resultado.actualizados} productos actualizados\n`;
             
-            // Recargar tabla de inventario
-            if (typeof cargarInventario === 'function') {
-                cargarInventario();
+            if (resultado.errores.length > 0) {
+                mensaje += `\n⚠️ ${resultado.errores.length} errores encontrados`;
             }
             
-            // Limpiar datos temporales
-            delete window.datosImportacionTemp;
-        }, 2000);
+            if (resultado.advertencias.length > 0) {
+                mensaje += `\n📋 ${resultado.advertencias.length} advertencias`;
+            }
+            
+            showToast(mensaje, resultado.errores.length > 0 ? 'warning' : 'success');
+            
+            // Mostrar modal con detalles si hay errores o advertencias
+            if (resultado.errores.length > 0 || resultado.advertencias.length > 0) {
+                mostrarDetallesImportacion(resultado);
+            }
+        } else {
+            throw new Error(resultado.msg || 'Error desconocido en importación');
+        }
+        
+        // Recargar tabla de inventario
+        if (typeof cargarInventario === 'function') {
+            cargarInventario();
+        }
+        
+        // Limpiar datos temporales
+        delete window.datosImportacionTemp;
         
     } catch (error) {
         console.error('❌ Error procesando importación:', error);
         hideLoading();
         showToast(`Error: ${error.message}`, 'error');
     }
+}
+
+// Mostrar detalles de importación (errores y advertencias)
+function mostrarDetallesImportacion(resultado) {
+    let html = '<div class="import-details">';
+    
+    if (resultado.errores.length > 0) {
+        html += '<h6 class="text-danger mb-3">❌ Errores:</h6>';
+        html += '<ul class="list-unstyled">';
+        resultado.errores.forEach(error => {
+            html += `<li class="text-danger mb-2">
+                <strong>Fila ${error.fila}:</strong> ${error.mensaje}
+                ${error.producto ? `(${error.producto})` : ''}
+            </li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (resultado.advertencias.length > 0) {
+        html += '<h6 class="text-warning mb-3 mt-3">⚠️ Advertencias:</h6>';
+        html += '<ul class="list-unstyled">';
+        resultado.advertencias.forEach(adv => {
+            html += `<li class="text-warning mb-2">
+                <strong>Fila ${adv.fila}:</strong> ${adv.mensaje}
+                ${adv.producto ? `(${adv.producto})` : ''}
+            </li>`;
+        });
+        html += '</ul>';
+    }
+    
+    html += '</div>';
+    
+    // Mostrar en modal o alert
+    Swal.fire({
+        title: 'Detalles de Importación',
+        html: html,
+        icon: resultado.errores.length > 0 ? 'warning' : 'info',
+        confirmButtonText: 'Entendido',
+        width: '600px'
+    });
 }
 
 // Placeholder functions para funciones específicas
