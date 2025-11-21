@@ -3097,14 +3097,8 @@ class DashboardAdmin {
 
         // Renderizar citas de la página actual
         currentPageCitas.forEach(cita => {
-            // Calcular si se puede editar la cita
-            const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
-            const ahora = new Date();
-            const diffMs = fechaCita - ahora;
-            const diffHoras = diffMs / (1000 * 60 * 60);
-            const puedeEditar = cita.estado !== 'completada' && 
-                               cita.estado !== 'cancelada' && 
-                               diffHoras >= 24;
+            // Solo deshabilitar edición para citas completadas
+            const puedeEditar = cita.estado !== 'completada';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -3131,7 +3125,7 @@ class DashboardAdmin {
                         <button class="btn btn-sm btn-success" 
                                 onclick="dashboardAdmin.editarCita(${cita.id})" 
                                 ${!puedeEditar ? 'disabled' : ''}
-                                title="${puedeEditar ? 'Editar cita' : 'No se puede editar (completada, cancelada, pasada o menos de 24h)'}" 
+                                title="${puedeEditar ? 'Editar cita' : 'No se puede editar (cita completada)'}" 
                                 style="background: #198754 !important; background-image: none !important; border-color: #198754 !important;">
                             <i class="bi bi-pencil"></i>
                         </button>

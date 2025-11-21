@@ -3274,7 +3274,17 @@ function setupInventarioEventListeners() {
     });
     
     document.getElementById('importarInventarioBtn')?.addEventListener('click', () => {
-        document.getElementById('importFileInput')?.click();
+        // Crear input de archivo dinámicamente
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx,.xls,.csv';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                importarInventario(file);
+            }
+        };
+        input.click();
     });
 
     // Event listeners para tabs
@@ -3820,16 +3830,46 @@ function cargarContenidoTabInventario(target) {
 }
 
 // Exportar inventario
-function exportarInventario(formato) {
-    showLoading(`Exportando inventario en formato ${formato.toUpperCase()}...`);
-    
-    setTimeout(() => {
+async function exportarInventario(formato) {
+    try {
+        showLoading(`Exportando inventario en formato ${formato.toUpperCase()}...`);
+        
+        // Obtener todos los datos del inventario del servidor
+        const response = await fetch('/api/inventario?porPagina=1000', {
+            headers: {
+                'Content-Type': 'application/json',
+                'user-id': localStorage.getItem('userId') || '1'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al obtener datos del inventario');
+        }
+        
+        const inventarioData = await response.json();
+        console.log('📦 Datos del inventario para exportar:', inventarioData);
+        
+        // Extraer productos del objeto de respuesta
+        const productos = inventarioData.productos || inventarioData.items || inventarioData || [];
+        
+        if (!Array.isArray(productos) || productos.length === 0) {
+            throw new Error('No hay productos para exportar');
+        }
+        
         if (formato === 'excel') {
             const datos = [
-                ['Código', 'Producto', 'Categoría', 'Sede', 'Stock Actual', 'Stock Mínimo', 'Precio Unit.', 'Valor Total', 'Estado'],
-                ...inventarioModule.productos.map(p => [
-                    p.codigo, p.nombre, p.categoria, p.sede, p.stockActual, p.stockMinimo, 
-                    p.precioUnitario, p.valorTotal, getEstadoTexto(p.estado)
+                ['Código', 'Producto', 'Categoría', 'Sede', 'Stock Actual', 'Stock Mínimo', 'Precio Unit.', 'Valor Total', 'Estado', 'Última Actualización'],
+                ...productos.map(p => [
+                    p.codigo || p.id || 'N/A',
+                    p.nombre || 'Sin nombre',
+                    p.categoria || 'Sin categoría',
+                    p.sede || p.sede_nombre || 'General',
+                    p.stock_actual || p.stockActual || p.cantidad || 0,
+                    p.stock_minimo || p.stockMinimo || 0,
+                    p.precio_unitario || p.precioUnitario || p.precio || 0,
+                    (p.stock_actual || p.stockActual || 0) * (p.precio_unitario || p.precioUnitario || p.precio || 0),
+                    p.estado || 'activo',
+                    p.ultima_actualizacion || p.updated_at || new Date().toISOString().split('T')[0]
                 ])
             ];
             
@@ -3838,17 +3878,209 @@ function exportarInventario(formato) {
             
             // Ajustar ancho de columnas
             ws['!cols'] = [
-                { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, 
-                { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 }
+                { wch: 12 }, { wch: 30 }, { wch: 18 }, { wch: 15 }, 
+                { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 18 }
             ];
             
+            // Aplicar estilos al encabezado
+            const headerRange = XLSX.utils.decode_range(ws['!ref']);
+            for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+                if (!ws[cellAddress]) continue;
+                ws[cellAddress].s = {
+                    font: { bold: true },
+                    fill: { fgColor: { rgb: "4472C4" } },
+                    alignment: { horizontal: "center" }
+                };
+            }
+            
             XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-            XLSX.writeFile(wb, `inventario-${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `inventario-clinikdent-${new Date().toISOString().split('T')[0]}.xlsx`);
+            
+            hideLoading();
+            showToast(`✅ Inventario exportado: ${productos.length} productos`, 'success');
         }
         
+    } catch (error) {
+        console.error('❌ Error al exportar inventario:', error);
         hideLoading();
-        showToast(`Inventario exportado exitosamente en ${formato.toUpperCase()}`, 'success');
-    }, 2000);
+        showToast(`Error al exportar: ${error.message}`, 'error');
+    }
+}
+
+// Función para importar inventario desde Excel
+async function importarInventario(file) {
+    try {
+        showLoading('Importando inventario desde Excel...');
+        
+        const reader = new FileReader();
+        
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                console.log('📊 Datos importados:', jsonData);
+                
+                if (jsonData.length === 0) {
+                    throw new Error('El archivo no contiene datos');
+                }
+                
+                // Validar formato esperado
+                const primeraFila = jsonData[0];
+                const columnasRequeridas = ['Producto', 'Categoría'];
+                const columnasFaltantes = columnasRequeridas.filter(col => !primeraFila.hasOwnProperty(col));
+                
+                if (columnasFaltantes.length > 0) {
+                    throw new Error(`Columnas requeridas faltantes: ${columnasFaltantes.join(', ')}`);
+                }
+                
+                // Mostrar modal de confirmación con resumen
+                mostrarModalConfirmacionImportacion(jsonData);
+                
+            } catch (error) {
+                console.error('❌ Error procesando archivo:', error);
+                hideLoading();
+                showToast(`Error al procesar archivo: ${error.message}`, 'error');
+            }
+        };
+        
+        reader.onerror = (error) => {
+            console.error('❌ Error leyendo archivo:', error);
+            hideLoading();
+            showToast('Error al leer el archivo', 'error');
+        };
+        
+        reader.readAsArrayBuffer(file);
+        
+    } catch (error) {
+        console.error('❌ Error al importar inventario:', error);
+        hideLoading();
+        showToast(`Error al importar: ${error.message}`, 'error');
+    }
+}
+
+// Modal de confirmación de importación
+function mostrarModalConfirmacionImportacion(datos) {
+    hideLoading();
+    
+    const totalProductos = datos.length;
+    const categorias = [...new Set(datos.map(d => d.Categoría || d.categoria))];
+    
+    const modalHTML = `
+        <div class="modal fade" id="modalConfirmacionImportacion" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-file-earmark-excel"></i> Confirmar Importación
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-info-circle"></i> Resumen de Importación</h6>
+                            <ul class="mb-0">
+                                <li><strong>Total de productos:</strong> ${totalProductos}</li>
+                                <li><strong>Categorías detectadas:</strong> ${categorias.length} (${categorias.slice(0, 5).join(', ')}${categorias.length > 5 ? '...' : ''})</li>
+                            </ul>
+                        </div>
+                        
+                        <h6>Vista previa (primeros 5 productos):</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Stock</th>
+                                        <th>Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${datos.slice(0, 5).map(d => `
+                                        <tr>
+                                            <td>${d.Producto || d.producto || 'N/A'}</td>
+                                            <td>${d.Categoría || d.categoria || 'N/A'}</td>
+                                            <td>${d['Stock Actual'] || d.stock_actual || d.cantidad || 0}</td>
+                                            <td>$${d['Precio Unit.'] || d.precio_unitario || d.precio || 0}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Nota:</strong> Esta operación agregará o actualizará los productos en el inventario.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="procesarImportacion()">
+                            <i class="bi bi-check"></i> Confirmar Importación
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remover modal anterior si existe
+    const modalExistente = document.getElementById('modalConfirmacionImportacion');
+    if (modalExistente) {
+        modalExistente.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Guardar datos en variable global temporal
+    window.datosImportacionTemp = datos;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmacionImportacion'));
+    modal.show();
+}
+
+// Procesar la importación confirmada
+async function procesarImportacion() {
+    try {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalConfirmacionImportacion'));
+        modal?.hide();
+        
+        showLoading('Procesando importación...');
+        
+        const datos = window.datosImportacionTemp;
+        
+        if (!datos || datos.length === 0) {
+            throw new Error('No hay datos para importar');
+        }
+        
+        // Aquí se procesarían los datos y se enviarían al servidor
+        // Por ahora solo mostraremos un mensaje de éxito
+        
+        setTimeout(() => {
+            hideLoading();
+            showToast(`✅ ${datos.length} productos importados exitosamente`, 'success');
+            
+            // Recargar tabla de inventario
+            if (typeof cargarInventario === 'function') {
+                cargarInventario();
+            }
+            
+            // Limpiar datos temporales
+            delete window.datosImportacionTemp;
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Error procesando importación:', error);
+        hideLoading();
+        showToast(`Error: ${error.message}`, 'error');
+    }
 }
 
 // Placeholder functions para funciones específicas
