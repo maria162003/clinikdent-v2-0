@@ -255,85 +255,42 @@ exports.obtenerInventario = async (req, res) => {
   console.log('📦 [inventarioController] Obteniendo inventario completo');
   
   try {
-    // Consulta que combina las tres fuentes de datos de inventario
+    // Consulta simplificada - solo tabla inventario
     const query = `
       SELECT 
-        -- Datos básicos del item
-        COALESCE(i.id, ie.id, e.id) as id,
-        COALESCE(i.nombre, e.nombre) as nombre,
-        COALESCE(i.descripcion, ie.descripcion, e.descripcion) as descripcion,
-        COALESCE(i.codigo, CONCAT('EQ-', e.id)) as codigo,
-        COALESCE(CAST(i.categoria_id AS VARCHAR), e.categoria) as categoria,
-        
-        -- Información de cantidades y stock
-    COALESCE(i.cantidad_actual, ie.cantidad, 0) as cantidad,
-    COALESCE(i.cantidad_minima, 1) as stock_minimo,
-    COALESCE(i.precio_unitario, e.precio, 0) as precio_unitario,
-    COALESCE(ie.equipo_id, e.id) as equipo_id,
-        
-        -- Información de ubicación
-        COALESCE(i.sede_id, ie.sede_id) as sede_id,
-        COALESCE(s.nombre, 'Sin asignar') as sede_nombre,
-        COALESCE(s.ciudad, '') as sede_ciudad,
-        COALESCE(i.ubicacion, 'No especificada') as ubicacion,
-        
-        -- Información adicional
-        COALESCE(i.proveedor, 'Sin especificar') as proveedor,
-        COALESCE(i.estado, 'activo') as estado,
-        COALESCE(i.created_at, e.fecha_alta, NOW()) as fecha_registro,
-        
-        -- Campo para identificar la fuente
-        CASE 
-          WHEN i.id IS NOT NULL THEN 'inventario'
-          WHEN ie.id IS NOT NULL THEN 'inventario_equipos'
-          ELSE 'equipos'
-        END as fuente_datos
-        
-      FROM equipos e
-      LEFT JOIN inventario_equipos ie ON e.id = ie.equipo_id
-      LEFT JOIN inventario i ON (i.nombre = e.nombre OR i.codigo LIKE CONCAT('%', e.id, '%'))
-      LEFT JOIN sedes s ON COALESCE(i.sede_id, ie.sede_id) = s.id
-      
-      UNION ALL
-      
-      -- Items que están solo en la tabla inventario (sin equipos)
-      SELECT 
         i.id,
+        i.codigo,
         i.nombre,
         i.descripcion,
-        i.codigo,
-    CAST(i.categoria_id AS VARCHAR) as categoria,
-    i.cantidad_actual as cantidad,
-    i.cantidad_minima as stock_minimo,
-    i.precio_unitario,
-    NULL as equipo_id,
+        i.categoria_id,
+        i.cantidad_actual as cantidad,
+        i.cantidad_minima as stock_minimo,
+        i.precio_unitario,
+        i.unidad_medida,
+        i.proveedor_id,
         i.sede_id,
-        COALESCE(s.nombre, 'Sin asignar') as sede_nombre,
-        COALESCE(s.ciudad, '') as sede_ciudad,
         i.ubicacion,
-        i.proveedor,
         i.estado,
+        i.alerta_stock_bajo,
+        i.alerta_vencimiento,
+        i.fecha_vencimiento,
+        i.lote,
         i.created_at as fecha_registro,
-        'inventario' as fuente_datos
+        i.updated_at as fecha_actualizacion,
+        s.nombre as sede_nombre,
+        s.ciudad as sede_ciudad,
+        p.nombre as proveedor_nombre
       FROM inventario i
       LEFT JOIN sedes s ON i.sede_id = s.id
-      WHERE NOT EXISTS (
-        SELECT 1 FROM equipos e 
-        WHERE e.nombre = i.nombre OR i.codigo LIKE CONCAT('%', e.id, '%')
-      )
-      
-      ORDER BY categoria, nombre
+      LEFT JOIN proveedores p ON i.proveedor_id = p.id
+      ORDER BY i.nombre ASC
     `;
     
-    console.log('🔍 Ejecutando consulta combinada de inventario...');
+    console.log('🔍 Ejecutando consulta de inventario...');
     const result = await db.query(query);
     const inventario = result.rows;
     
-    console.log(`✅ Inventario obtenido: ${inventario.length} items total`);
-    console.log('📊 Fuentes de datos:', inventario.reduce((acc, item) => {
-      acc[item.fuente_datos] = (acc[item.fuente_datos] || 0) + 1;
-      return acc;
-    }, {}));
+    console.log(`✅ Inventario obtenido: ${inventario.length} items desde tabla inventario`);
     
     return res.json(inventario);
   } catch (err) {
@@ -819,59 +776,60 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
   console.log('📊 [inventarioController] Obteniendo estadísticas REALES del inventario');
   
   try {
-    // Total productos = equipos + items en inventario
-    const totalEquiposResult = await db.query(`
+    // Total productos desde tabla inventario
+    const totalProductosResult = await db.query(`
       SELECT COUNT(*) as total_productos
-      FROM equipos
+      FROM inventario
     `);
     
-    // Valor total = suma de precios de equipos
+    // Valor total del stock
     const valorTotalResult = await db.query(`
-      SELECT COALESCE(SUM(precio), 0) as valor_total_stock
-      FROM equipos
+      SELECT COALESCE(SUM(cantidad_actual * precio_unitario), 0) as valor_total_stock
+      FROM inventario
     `);
     
-    const equiposPorCategoriaResult = await db.query(`
+    // Productos por categoría
+    const productosPorCategoriaResult = await db.query(`
       SELECT 
-        categoria,
+        CAST(categoria_id AS VARCHAR) as categoria,
         COUNT(*) as cantidad,
-        SUM(precio) as valor_categoria
-      FROM equipos
-      WHERE categoria IS NOT NULL
-      GROUP BY categoria
-      ORDER BY categoria
+        SUM(cantidad_actual * precio_unitario) as valor_categoria
+      FROM inventario
+      WHERE categoria_id IS NOT NULL
+      GROUP BY categoria_id
+      ORDER BY categoria_id
     `);
     
-    // Stock bajo: buscar en inventario_equipos (que sí tiene cantidad)
+    // Stock bajo: productos donde cantidad actual < cantidad mínima
     const stockBajoCount = await db.query(`
       SELECT COUNT(*) as productos_stock_bajo
-      FROM inventario_equipos ie
-      WHERE ie.cantidad > 0 AND ie.cantidad < 5
+      FROM inventario
+      WHERE cantidad_actual > 0 AND cantidad_actual < cantidad_minima
     `);
     
-    // Productos agotados: cantidad = 0 en inventario_equipos
+    // Productos agotados: cantidad = 0
     const productosAgotadosCount = await db.query(`
       SELECT COUNT(*) as productos_agotados
-      FROM inventario_equipos ie
-      WHERE ie.cantidad = 0
+      FROM inventario
+      WHERE cantidad_actual = 0
     `);
 
     const estadisticas = {
-      totalProductos: parseInt(totalEquiposResult.rows[0].total_productos) || 0,
+      totalProductos: parseInt(totalProductosResult.rows[0].total_productos) || 0,
       valorTotalStock: parseFloat(valorTotalResult.rows[0].valor_total_stock) || 0,
       productosStockBajo: parseInt(stockBajoCount.rows[0].productos_stock_bajo) || 0,
       productosAgotados: parseInt(productosAgotadosCount.rows[0].productos_agotados) || 0,
-      equiposPorCategoria: equiposPorCategoriaResult.rows || [],
+      productosPorCategoria: productosPorCategoriaResult.rows || [],
       // Datos adicionales para el dashboard
       estadisticasDetalladas: {
         totalPorSede: [
           { 
-            sede: 'Sede Principal', 
-            total_items: parseInt(totalEquiposResult.rows[0].total_productos) || 0, 
-            total_cantidad: parseInt(totalEquiposResult.rows[0].total_productos) || 0 
+            sede: 'Todas las sedes', 
+            total_items: parseInt(totalProductosResult.rows[0].total_productos) || 0, 
+            total_cantidad: parseInt(totalProductosResult.rows[0].total_productos) || 0 
           }
         ],
-        totalPorCategoria: equiposPorCategoriaResult.rows.map(cat => ({
+        totalPorCategoria: productosPorCategoriaResult.rows.map(cat => ({
           categoria: cat.categoria,
           total_items: parseInt(cat.cantidad) || 0,
           total_cantidad: parseInt(cat.cantidad) || 0
@@ -902,36 +860,36 @@ exports.obtenerAlertas = async (req, res) => {
   console.log('🚨 [inventarioController] Obteniendo alertas REALES de stock');
   
   try {
-    // Obtener alertas desde inventario_equipos (que sí tiene cantidad)
+    // Obtener alertas desde tabla inventario
     const alertasResult = await db.query(`
       SELECT 
-        e.id,
-        e.nombre as producto,
-        COALESCE(s.nombre, 'Sede Principal') as sede,
-        e.categoria,
-        ie.cantidad as "stockActual",
-        5 as "stockMinimo",
-        e.precio,
+        i.id,
+        i.codigo,
+        i.nombre as producto,
+        COALESCE(s.nombre, 'Sin sede') as sede,
+        CAST(i.categoria_id AS VARCHAR) as categoria,
+        i.cantidad_actual as "stockActual",
+        i.cantidad_minima as "stockMinimo",
+        i.precio_unitario as precio,
         CASE 
-          WHEN ie.cantidad = 0 THEN 'agotado'
-          WHEN ie.cantidad < 5 THEN 'bajo'
+          WHEN i.cantidad_actual = 0 THEN 'agotado'
+          WHEN i.cantidad_actual < i.cantidad_minima THEN 'bajo'
           ELSE 'normal'
         END as estado,
         CASE 
-          WHEN ie.cantidad = 0 THEN 'stock_agotado'
-          WHEN ie.cantidad < 5 THEN 'stock_bajo'
+          WHEN i.cantidad_actual = 0 THEN 'stock_agotado'
+          WHEN i.cantidad_actual < i.cantidad_minima THEN 'stock_bajo'
           ELSE 'normal'
         END as "tipoAlerta",
         CASE 
-          WHEN ie.cantidad = 0 THEN 3
-          WHEN ie.cantidad < 2 THEN 2
+          WHEN i.cantidad_actual = 0 THEN 3
+          WHEN i.cantidad_actual < (i.cantidad_minima / 2) THEN 2
           ELSE 1
         END as prioridad
-      FROM inventario_equipos ie
-      LEFT JOIN equipos e ON ie.equipo_id = e.id
-      LEFT JOIN sedes s ON ie.sede_id = s.id
-      WHERE ie.cantidad <= 5
-      ORDER BY prioridad DESC, ie.cantidad ASC
+      FROM inventario i
+      LEFT JOIN sedes s ON i.sede_id = s.id
+      WHERE i.cantidad_actual <= i.cantidad_minima OR i.alerta_stock_bajo = true
+      ORDER BY prioridad DESC, i.cantidad_actual ASC
       LIMIT 50
     `);
     
