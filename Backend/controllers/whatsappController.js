@@ -14,12 +14,18 @@ const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER; // formato: whatsapp:
 
 let twilioClient = null;
 
-// Inicializar cliente de Twilio solo si hay credenciales
-if (accountSid && authToken) {
-    twilioClient = twilio(accountSid, authToken);
-    console.log('✅ Cliente de Twilio WhatsApp inicializado');
+// Inicializar cliente de Twilio solo si hay credenciales válidas
+if (accountSid && authToken && accountSid.startsWith('AC')) {
+    try {
+        twilioClient = twilio(accountSid, authToken);
+        console.log('✅ Cliente de Twilio WhatsApp inicializado');
+    } catch (error) {
+        console.log('⚠️ Error inicializando Twilio:', error.message);
+        twilioClient = null;
+    }
 } else {
-    console.log('⚠️ Twilio no configurado (faltan credenciales en .env)');
+    console.log('⚠️ Twilio no configurado (faltan credenciales válidas en .env)');
+    console.log('💡 Para habilitar WhatsApp, configura TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_WHATSAPP_NUMBER');
 }
 
 // Importar el chatbot inteligente
