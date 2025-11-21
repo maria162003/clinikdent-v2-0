@@ -22,6 +22,10 @@ class DashboardAdmin {
         this.charts = {};
         this.calendarioFechaActual = new Date();
         this.vistaActual = 'tabla'; // 'tabla' o 'calendario'
+    this.sedeOptions = [];
+    this.proveedorOptions = [];
+    this.inventarioLookupsLoaded = false;
+    this.loadingInventarioLookups = null;
         
         // ✅ NUEVO: Propiedades para paginación de usuarios reales
         this.usersPagination = {
@@ -48,22 +52,6 @@ class DashboardAdmin {
         console.log('🔧 DASHBOARD ADMIN - Estableciendo nombre de usuario...');
         
         let storedUser = localStorage.getItem('user');
-        
-        // Si no hay usuario en localStorage, crear uno por defecto con Camila Perez
-        if (!storedUser) {
-            console.log('⚠️ No hay usuario en localStorage, creando usuario por defecto');
-            const defaultUser = {
-                id: 5,
-                nombre: 'Camila',
-                apellido: 'Perez',
-                rol: 'administrador',
-                email: 'admin@clinikdent.com'
-            };
-            localStorage.setItem('user', JSON.stringify(defaultUser));
-            localStorage.setItem('userId', '5');
-            localStorage.setItem('userRole', 'administrador');
-            storedUser = JSON.stringify(defaultUser);
-        }
         
         if (storedUser) {
             try {
@@ -94,7 +82,7 @@ class DashboardAdmin {
                 console.error('❌ DASHBOARD ADMIN - Error parseando usuario:', error);
             }
         } else {
-            console.log('⚠️ DASHBOARD ADMIN - No hay datos de usuario en localStorage');
+            console.warn('⚠️ DASHBOARD ADMIN - No hay datos de usuario en localStorage');
         }
         return null;
     }
@@ -112,11 +100,11 @@ class DashboardAdmin {
                 const currentText = userNameElement.textContent;
                 
                 // Si el texto es incorrecto o es el hardcodeado, corregirlo
-                if (currentText === 'Admin Sistema' || 
-                    currentText === 'Administrador' || 
-                    currentText === 'Cargando...' ||
-                    currentText === 'Usuario' ||
-                    currentText === 'Camila Perez') { // También actualizar el hardcodeado
+            if (currentText === 'Admin Sistema' || 
+                currentText === 'Administrador' || 
+                currentText === 'Cargando...' ||
+                currentText === 'Usuario' ||
+                currentText === 'Camila Perez') { // Mantener compatibilidad con datos antiguos
                     
                     console.log('🔧 DASHBOARD ADMIN - Texto detectado:', currentText);
                     const correctName = this.setUserNameFromStorage();
@@ -292,14 +280,6 @@ class DashboardAdmin {
         document.getElementById('addUserBtn').addEventListener('click', () => {
             this.openUserModal();
         });
-
-        // Save inventario button
-        const saveInventarioBtn = document.getElementById('saveInventarioBtn');
-        if (saveInventarioBtn) {
-            saveInventarioBtn.addEventListener('click', () => {
-                this.saveInventario();
-            });
-        }
 
         // Save user button - No agregamos listener aquí ya que se asigna dinámicamente en openUserModal
     }
@@ -587,6 +567,19 @@ class DashboardAdmin {
                 console.log('🔧 Establecido nombre por defecto: Usuario Admin');
             }
         }
+        
+        // Actualizar el rol del usuario en la interfaz
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userRoleElement = document.getElementById('userRole');
+        
+        if (userRoleElement && user.rol) {
+            // Capitalizar primera letra del rol
+            const rolCapitalizado = user.rol.charAt(0).toUpperCase() + user.rol.slice(1);
+            userRoleElement.textContent = rolCapitalizado;
+            console.log('✅ Rol de usuario actualizado:', rolCapitalizado);
+        } else {
+            console.log('⚠️ No se pudo actualizar el rol del usuario');
+        }
     }
 
     async loadDashboardData() {
@@ -609,12 +602,17 @@ class DashboardAdmin {
                 document.getElementById('citasHoy').textContent = stats.citasHoy || 0;
                 document.getElementById('ingresosMes').textContent = `$${(stats.ingresosMes || 0).toLocaleString()}`;
                 document.getElementById('odontologosActivos').textContent = stats.odontologosActivos || 0;
+                this.updateTotalCitasCard({
+                    totalCitas: stats.totalCitas,
+                    citasCompletadas: stats.citasCompletadas
+                });
             } else {
                 // Datos de respaldo si la API falla
                 document.getElementById('totalPacientes').textContent = '156';
                 document.getElementById('citasHoy').textContent = '12';
                 document.getElementById('ingresosMes').textContent = '$45,230';
                 document.getElementById('odontologosActivos').textContent = '8';
+                this.updateTotalCitasCard({ totalCitas: 245, citasCompletadas: 67 });
             }
             
             // Cargar próximas citas
@@ -631,6 +629,7 @@ class DashboardAdmin {
             document.getElementById('citasHoy').textContent = '12';
             document.getElementById('ingresosMes').textContent = '$45,230';
             document.getElementById('odontologosActivos').textContent = '8';
+            this.updateTotalCitasCard({ totalCitas: 245, citasCompletadas: 67 });
             
             // Cargar usuarios incluso si hay error en estadísticas
             try {
@@ -700,6 +699,53 @@ class DashboardAdmin {
                 <span class="badge bg-primary">${cita.hora}</span>
             </div>
         `).join('');
+    }
+
+    updateTotalCitasCard(metrics = {}) {
+        const totalCitasElement = document.getElementById('totalCitas');
+        if (!totalCitasElement) {
+            return;
+        }
+
+        const parseNumber = (value) => {
+            const numericValue = Number(value);
+            return Number.isFinite(numericValue) ? numericValue : null;
+        };
+
+        const formatNumber = (value) => {
+            const numericValue = Number(value);
+            return Number.isFinite(numericValue) ? numericValue.toLocaleString() : '0';
+        };
+
+        let totalCitas = parseNumber(metrics.totalCitas ?? metrics.total);
+        if (totalCitas === null) {
+            totalCitas = Array.isArray(this.citas) ? this.citas.length : 0;
+        }
+
+        let citasCompletadas = parseNumber(metrics.citasCompletadas ?? metrics.completadas);
+        if (citasCompletadas === null && Array.isArray(this.citas)) {
+            citasCompletadas = this.citas.filter(cita => cita?.estado === 'completada').length;
+        }
+
+        const displayValue = (citasCompletadas !== null && citasCompletadas > 0)
+            ? citasCompletadas
+            : totalCitas;
+
+        totalCitasElement.textContent = formatNumber(displayValue);
+
+        if (citasCompletadas !== null) {
+            totalCitasElement.setAttribute(
+                'title',
+                `Completadas: ${formatNumber(citasCompletadas)} | Totales: ${formatNumber(totalCitas)}`
+            );
+            totalCitasElement.setAttribute(
+                'aria-label',
+                `Citas completadas ${formatNumber(citasCompletadas)} de un total de ${formatNumber(totalCitas)}`
+            );
+        } else {
+            totalCitasElement.setAttribute('title', `Totales: ${formatNumber(totalCitas)}`);
+            totalCitasElement.setAttribute('aria-label', `Total de citas ${formatNumber(totalCitas)}`);
+        }
     }
 
     // Funciones para manejar el perfil de usuario
@@ -2119,16 +2165,31 @@ class DashboardAdmin {
     // Cargar datos para el modal
     async loadModalData() {
         try {
-            // Cargar usuarios (pacientes y odontólogos)
-            const usersRes = await this.authFetch('/api/usuarios');
-            const usersData = await usersRes.json();
-            const usuarios = usersData.usuarios || usersData || [];
-            
-            console.log('👥 Usuarios cargados para modal:', usuarios);
-            
-            // Separar por roles
-            this.modalPacientes = usuarios.filter(u => u.rol === 'paciente' || u.tipo_usuario === 'paciente');
-            this.modalOdontologos = usuarios.filter(u => u.rol === 'odontologo' || u.tipo_usuario === 'odontologo');
+            // Cargar usuarios (pacientes y odontólogos) con filtros específicos
+            const [pacientesRes, odontologosRes] = await Promise.all([
+                this.authFetch('/api/usuarios?rol=paciente&activo=true'),
+                this.authFetch('/api/usuarios?rol=odontologo&activo=true')
+            ]);
+
+            if (!pacientesRes?.ok) {
+                throw new Error(`Error cargando pacientes (${pacientesRes?.status || 'sin respuesta'})`);
+            }
+
+            if (!odontologosRes?.ok) {
+                throw new Error(`Error cargando odontólogos (${odontologosRes?.status || 'sin respuesta'})`);
+            }
+
+            const pacientesData = await pacientesRes.json();
+            const odontologosData = await odontologosRes.json();
+
+            const pacientesListado = pacientesData.usuarios || pacientesData || [];
+            const odontologosListado = odontologosData.usuarios || odontologosData || [];
+
+            console.log('👥 Pacientes cargados para modal:', pacientesListado.length);
+            console.log('👨‍⚕️ Odontólogos cargados para modal:', odontologosListado.length);
+
+            this.modalPacientes = pacientesListado;
+            this.modalOdontologos = odontologosListado;
             
             console.log('🦷 Pacientes:', this.modalPacientes);
             console.log('👨‍⚕️ Odontólogos:', this.modalOdontologos);
@@ -2161,11 +2222,13 @@ class DashboardAdmin {
             
             if (type === 'paciente') {
                 this.modalPacientes.forEach(paciente => {
-                    personSelect.innerHTML += `<option value="${paciente.id}">${paciente.nombre || paciente.email}</option>`;
+                    const displayName = `${(paciente.nombre || '').trim()} ${(paciente.apellido || '').trim()}`.trim() || paciente.correo || paciente.email;
+                    personSelect.innerHTML += `<option value="${paciente.id}">${displayName}</option>`;
                 });
             } else if (type === 'odontologo') {
                 this.modalOdontologos.forEach(odontologo => {
-                    personSelect.innerHTML += `<option value="${odontologo.id}">${odontologo.nombre || odontologo.email}</option>`;
+                    const displayName = `${(odontologo.nombre || '').trim()} ${(odontologo.apellido || '').trim()}`.trim() || odontologo.correo || odontologo.email;
+                    personSelect.innerHTML += `<option value="${odontologo.id}">${displayName}</option>`;
                 });
             }
         });
@@ -2951,6 +3014,7 @@ class DashboardAdmin {
             const citasArray = Array.isArray(citas) ? citas : [];
             
             this.citas = citasArray;
+            this.updateTotalCitasCard();
             console.log(`📋 Citas almacenadas: ${this.citas.length}`);
             
             this.renderCitasTable();
@@ -3854,6 +3918,9 @@ class DashboardAdmin {
             
             console.log(`✅ Inventario cargado desde BD: ${inventario.length} items`);
             
+            // Cargar estadísticas del inventario
+            await this.loadEstadisticasInventario();
+            
             // Usar el sistema de paginación integrada
             this.setupInventarioIntegrated();
             
@@ -3865,6 +3932,187 @@ class DashboardAdmin {
                 tbody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Error al cargar inventario</td></tr>';
             }
         }
+    }
+
+    async loadEstadisticasInventario() {
+        try {
+            console.log('📊 Cargando estadísticas del inventario...');
+            const res = await this.authFetch('/api/inventario/estadisticas');
+            if (!res.ok) {
+                throw new Error(`Error ${res.status}: ${res.statusText}`);
+            }
+            const estadisticas = await res.json();
+            
+            console.log('✅ Estadísticas cargadas:', estadisticas);
+            
+            // Actualizar tarjetas con datos reales
+            const totalProductosEl = document.getElementById('totalProductos');
+            const valorTotalStockEl = document.getElementById('valorTotalStock');
+            const productosStockBajoEl = document.getElementById('productosStockBajo');
+            const productosAgotadosEl = document.getElementById('productosAgotados');
+            
+            if (totalProductosEl) {
+                totalProductosEl.textContent = estadisticas.totalProductos || 0;
+            }
+            if (valorTotalStockEl) {
+                valorTotalStockEl.textContent = `$${(estadisticas.valorTotalStock || 0).toLocaleString('es-CO')}`;
+            }
+            if (productosStockBajoEl) {
+                productosStockBajoEl.textContent = estadisticas.productosStockBajo || 0;
+            }
+            if (productosAgotadosEl) {
+                productosAgotadosEl.textContent = estadisticas.productosAgotados || 0;
+            }
+            
+            console.log('✅ Tarjetas de estadísticas actualizadas');
+            
+            // Cargar y mostrar alertas de inventario
+            await this.loadAlertasInventario();
+            
+        } catch (err) {
+            console.error('❌ Error al cargar estadísticas del inventario:', err);
+            // Mostrar 0 en caso de error
+            const totalProductosEl = document.getElementById('totalProductos');
+            const valorTotalStockEl = document.getElementById('valorTotalStock');
+            const productosStockBajoEl = document.getElementById('productosStockBajo');
+            const productosAgotadosEl = document.getElementById('productosAgotados');
+            
+            if (totalProductosEl) totalProductosEl.textContent = '0';
+            if (valorTotalStockEl) valorTotalStockEl.textContent = '$0';
+            if (productosStockBajoEl) productosStockBajoEl.textContent = '0';
+            if (productosAgotadosEl) productosAgotadosEl.textContent = '0';
+        }
+    }
+
+    async loadAlertasInventario() {
+        try {
+            console.log('🚨 Cargando alertas de inventario...');
+            const res = await this.authFetch('/api/inventario/alertas');
+            if (!res.ok) {
+                throw new Error(`Error ${res.status}: ${res.statusText}`);
+            }
+            const alertas = await res.json();
+            
+            console.log('✅ Alertas cargadas:', alertas.length);
+            
+            const contadorAlertasEl = document.getElementById('contadorAlertas');
+            const alertasInventarioEl = document.getElementById('alertasInventario');
+            
+            if (contadorAlertasEl) {
+                const totalAlertas = alertas.length;
+                contadorAlertasEl.textContent = totalAlertas;
+                
+                // Mostrar u ocultar el contenedor de alertas
+                if (alertasInventarioEl) {
+                    if (totalAlertas > 0) {
+                        alertasInventarioEl.style.display = 'block';
+                        
+                        // Actualizar texto con desglose
+                        const agotados = alertas.filter(a => a.estado === 'agotado').length;
+                        const bajos = alertas.filter(a => a.estado === 'bajo').length;
+                        
+                        let mensaje = `${totalAlertas} producto${totalAlertas > 1 ? 's' : ''} con stock `;
+                        if (agotados > 0 && bajos > 0) {
+                            mensaje += `(${agotados} agotado${agotados > 1 ? 's' : ''}, ${bajos} bajo${bajos > 1 ? 's' : ''})`;
+                        } else if (agotados > 0) {
+                            mensaje += `agotado${agotados > 1 ? 's' : ''}`;
+                        } else {
+                            mensaje += `bajo${bajos > 1 ? 's' : ''}`;
+                        }
+                        
+                        contadorAlertasEl.parentElement.innerHTML = `
+                            <strong>Alertas de Inventario:</strong> <span id="contadorAlertas">${totalAlertas}</span> ${mensaje.replace(totalAlertas, '')}
+                            <button class="btn btn-sm btn-outline-warning ms-2" id="verAlertasBtn">Ver Detalles</button>
+                        `;
+                        
+                        // Agregar event listener al botón
+                        setTimeout(() => {
+                            const verAlertasBtn = document.getElementById('verAlertasBtn');
+                            if (verAlertasBtn) {
+                                verAlertasBtn.addEventListener('click', () => this.mostrarModalAlertas(alertas));
+                            }
+                        }, 100);
+                    } else {
+                        alertasInventarioEl.style.display = 'none';
+                    }
+                }
+            }
+            
+        } catch (err) {
+            console.error('❌ Error al cargar alertas de inventario:', err);
+        }
+    }
+
+    mostrarModalAlertas(alertas) {
+        // Crear modal con Bootstrap para mostrar las alertas
+        let modalHtml = `
+            <div class="modal fade" id="alertasModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning text-dark">
+                            <h5 class="modal-title">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Alertas de Inventario
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Categoría</th>
+                                            <th>Sede</th>
+                                            <th>Stock Actual</th>
+                                            <th>Stock Mínimo</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+        `;
+        
+        alertas.forEach(alerta => {
+            const badgeClass = alerta.estado === 'agotado' ? 'bg-danger' : 'bg-warning text-dark';
+            const estadoTexto = alerta.estado === 'agotado' ? 'AGOTADO' : 'STOCK BAJO';
+            
+            modalHtml += `
+                <tr>
+                    <td><strong>${alerta.producto}</strong></td>
+                    <td>${alerta.categoria || 'Sin categoría'}</td>
+                    <td>${alerta.sede || 'Sin sede'}</td>
+                    <td class="text-center">${alerta.stockActual}</td>
+                    <td class="text-center">${alerta.stockMinimo}</td>
+                    <td><span class="badge ${badgeClass}">${estadoTexto}</span></td>
+                </tr>
+            `;
+        });
+        
+        modalHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Eliminar modal anterior si existe
+        const modalAnterior = document.getElementById('alertasModal');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+        
+        // Insertar el modal en el DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('alertasModal'));
+        modal.show();
     }
     
     // Función para renderizar tabla de inventario (faltaba esta función global)
@@ -3906,10 +4154,10 @@ class DashboardAdmin {
                 <td><span class="badge bg-${(item.estado || 'activo') === 'activo' ? 'success' : 'secondary'}">${(item.estado || 'activo').toUpperCase()}</span></td>
                 <td>${new Date(item.fecha_actualizacion || item.created_at || Date.now()).toLocaleDateString()}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="dashboardAdmin.openInventarioModal('${item.codigo || item.id}')">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="dashboardAdmin.openInventarioModal('${item.id || item.codigo}')">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="dashboardAdmin.deleteInventario('${item.codigo || item.id}')">
+                    <button class="btn btn-sm btn-outline-danger" onclick="dashboardAdmin.deleteInventario('${item.id || item.codigo}')">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -3990,10 +4238,10 @@ class DashboardAdmin {
                 <td><span class="badge bg-${(item.estado || 'activo') === 'activo' ? 'success' : 'secondary'}">${(item.estado || 'activo').toUpperCase()}</span></td>
                 <td>${new Date(item.fecha_actualizacion || item.created_at || Date.now()).toLocaleDateString()}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="dashboardAdmin.openInventarioModal('${item.codigo || item.id}')" title="Editar">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="dashboardAdmin.openInventarioModal('${item.id || item.codigo}')" title="Editar">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="dashboardAdmin.deleteInventario('${item.codigo || item.id}')" title="Eliminar">
+                    <button class="btn btn-sm btn-outline-danger" onclick="dashboardAdmin.deleteInventario('${item.id || item.codigo}')" title="Eliminar">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -4002,86 +4250,404 @@ class DashboardAdmin {
         });
     }
 
-    openInventarioModal(codigo = null) {
-        const modal = new bootstrap.Modal(document.getElementById('inventarioModal'));
-        document.getElementById('inventarioForm').reset();
-        if (codigo) {
-            const item = this.inventario.find(i => i.codigo === codigo);
-            if (!item) {
-                console.error('Item no encontrado:', codigo);
-                return;
-            }
-            document.getElementById('inventarioModalTitle').textContent = 'Editar Item';
-            const invCodigoEl = document.getElementById('invCodigo');
-            const invNombreEl = document.getElementById('invNombre');
-            const invCategoriaEl = document.getElementById('invCategoria');
-            const invCantidadEl = document.getElementById('invCantidad');
-            
-            if (invCodigoEl) invCodigoEl.value = item.codigo;
-            if (invNombreEl) invNombreEl.value = item.producto || item.nombre || '';
-            if (invCategoriaEl) invCategoriaEl.value = item.categoria || '';
-            if (invCantidadEl) invCantidadEl.value = item.stock || item.cantidad || '';
-            
-            if (invCodigoEl) invCodigoEl.readOnly = true;
-        } else {
-            document.getElementById('inventarioModalTitle').textContent = 'Nuevo Item';
-            const invCodigoEl = document.getElementById('invCodigo');
-            if (invCodigoEl) invCodigoEl.readOnly = false;
-        }
-        modal.show();
-    }
-
-    async saveInventario(codigo = null) {
-        const invCodigoEl = document.getElementById('invCodigo');
-        const invNombreEl = document.getElementById('invNombre');
-        const invCategoriaEl = document.getElementById('invCategoria');
-        const invCantidadEl = document.getElementById('invCantidad');
-        const invPrecioEl = document.getElementById('invPrecio');
-        
-        if (!invCodigoEl?.value || !invNombreEl?.value) {
-            alert('Campos requeridos: Código y Nombre');
+    async openInventarioModal(identifier = null) {
+        const modalElement = document.getElementById('inventarioModal');
+        const form = document.getElementById('inventarioForm');
+        if (!modalElement || !form) {
+            console.error('❌ No se encontró el formulario de inventario para abrir el modal');
             return;
         }
 
-        const payload = {
-            codigo: invCodigoEl.value,
-            producto: invNombreEl.value,
-            categoria: invCategoriaEl?.value || '',
-            stock: invCantidadEl?.value || 0,
-            precio: invPrecioEl?.value || 0
-        };
-        
+        form.reset();
+        form.dataset.mode = identifier ? 'edit' : 'create';
+        form.dataset.itemIdentifier = identifier ? String(identifier) : '';
+        form.dataset.itemId = '';
+        form.dataset.fuenteDatos = '';
+        form.dataset.equipoId = '';
+
+        const codigoInput = document.getElementById('invCodigo');
+        if (codigoInput) {
+            codigoInput.readOnly = false;
+        }
+
+        // Asegurar catálogos de sedes y proveedores antes de mostrar el modal
         try {
-            const method = codigo ? 'PUT' : 'POST';
-            const url = codigo ? `/api/inventario/${codigo}` : '/api/inventario';
-            
-            const response = await fetch(url, {
-                method: method,
+            await this.ensureInventarioLookups();
+        } catch (lookupError) {
+            console.warn('⚠️ No se pudieron cargar los catálogos de inventario antes de abrir el modal:', lookupError);
+        }
+
+    this.populateInventarioSelectOptions();
+    this.ensureInventarioSelectDefaults();
+
+        if (identifier) {
+            const item = this.findInventarioItem(identifier);
+            if (!item) {
+                this.showAlert('danger', 'No se encontró la información del producto seleccionado.');
+                return;
+            }
+
+            document.getElementById('inventarioModalTitle').innerHTML = '<i class="bi bi-pencil"></i> Editar Producto de Inventario';
+            this.populateInventarioForm(item);
+
+            form.dataset.itemId = item.id ? String(item.id) : '';
+            form.dataset.fuenteDatos = item.fuente_datos || '';
+            if (item.equipo_id) {
+                form.dataset.equipoId = String(item.equipo_id);
+            }
+        } else {
+            document.getElementById('inventarioModalTitle').innerHTML = '<i class="bi bi-box-seam"></i> Nuevo Producto de Inventario';
+            this.ensureInventarioSelectDefaults();
+        }
+
+        const saveBtn = document.getElementById('saveInventarioBtn');
+        if (saveBtn) {
+            saveBtn.onclick = () => this.saveInventario();
+        }
+
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+
+    async saveInventario() {
+        const form = document.getElementById('inventarioForm');
+        if (!form) {
+            this.showAlert('danger', 'No se encontró el formulario de inventario.');
+            return;
+        }
+
+        const mode = form.dataset.mode || 'create';
+        const identifier = form.dataset.itemIdentifier || form.dataset.itemId || '';
+        const item = identifier ? this.findInventarioItem(identifier) : null;
+        const itemId = form.dataset.itemId || (item && item.id ? String(item.id) : identifier);
+
+        const sedeSelect = document.getElementById('invSede');
+        const proveedorSelect = document.getElementById('invProveedor');
+
+        const payload = {
+            codigo: document.getElementById('invCodigo')?.value?.trim() || (item?.codigo ?? ''),
+            nombre: document.getElementById('invNombre')?.value?.trim() || item?.nombre || item?.producto || '',
+            categoria: document.getElementById('invCategoria')?.value || item?.categoria || null,
+            sede_id: sedeSelect && sedeSelect.value ? parseInt(sedeSelect.value, 10) : (item?.sede_id ?? null),
+            cantidad: parseInt(document.getElementById('invCantidad')?.value, 10),
+            stock_minimo: parseInt(document.getElementById('invStockMinimo')?.value, 10),
+            stock_maximo: parseInt(document.getElementById('invStockMaximo')?.value, 10),
+            precio_unitario: parseFloat(document.getElementById('invPrecio')?.value),
+            unidad_medida: document.getElementById('invUnidadMedida')?.value || item?.unidad_medida || 'unidad',
+            proveedor_id: proveedorSelect && proveedorSelect.value ? parseInt(proveedorSelect.value, 10) : null,
+            fecha_vencimiento: document.getElementById('invFechaVencimiento')?.value || null,
+            ubicacion: document.getElementById('invUbicacion')?.value?.trim() || null,
+            descripcion: document.getElementById('invDescripcion')?.value?.trim() || null,
+            alerta_stock_bajo: document.getElementById('invAlertaStockBajo')?.checked ?? true,
+            alerta_vencimiento: document.getElementById('invAlertaVencimiento')?.checked ?? false,
+            requiere_receta: document.getElementById('invRequiereReceta')?.checked ?? false,
+            fuente_datos: form.dataset.fuenteDatos || item?.fuente_datos || null,
+            equipo_id: form.dataset.equipoId ? parseInt(form.dataset.equipoId, 10) : (item?.equipo_id ? parseInt(item.equipo_id, 10) : null)
+        };
+
+        if (Number.isNaN(payload.cantidad)) payload.cantidad = item?.cantidad ?? 0;
+        if (Number.isNaN(payload.stock_minimo)) payload.stock_minimo = item?.stock_minimo ?? 0;
+        if (Number.isNaN(payload.stock_maximo)) payload.stock_maximo = null;
+        if (Number.isNaN(payload.precio_unitario)) payload.precio_unitario = item?.precio_unitario ?? 0;
+        if (Number.isNaN(payload.proveedor_id)) payload.proveedor_id = null;
+
+        if (!payload.nombre) {
+            this.showAlert('warning', 'El nombre del producto es obligatorio.');
+            return;
+        }
+
+        if (!payload.categoria) {
+            this.showAlert('warning', 'Selecciona una categoría para el producto.');
+            return;
+        }
+
+        if (mode === 'create' && !payload.codigo) {
+            this.showAlert('warning', 'El código del producto es obligatorio.');
+            return;
+        }
+
+        if ((payload.fuente_datos === 'inventario_equipos' || payload.fuente_datos === 'equipos') && (!payload.equipo_id || !payload.sede_id)) {
+            this.showAlert('warning', 'Debes seleccionar una sede y un equipo válidos para este producto.');
+            return;
+        }
+
+        try {
+            const url = mode === 'edit' && itemId ? `/api/inventario/${itemId}` : '/api/inventario';
+            const method = mode === 'edit' ? 'PUT' : 'POST';
+
+            const response = await this.authFetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
-            if (response.ok) {
-                const modalEl = document.getElementById('inventarioModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-                await this.loadInventario();
-            } else {
-                alert('Error al guardar item');
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ Error al guardar item de inventario:', errorData);
+                this.showAlert('danger', errorData.msg || 'No se pudo guardar el producto de inventario.');
+                return;
             }
-        } catch (err) {
-            console.error('Error en saveInventario:', err);
-            alert('Error al guardar item: ' + err.message);
+
+            const successMessage = mode === 'edit' ? 'Producto actualizado correctamente.' : 'Producto creado correctamente.';
+            this.showAlert('success', successMessage);
+
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('inventarioModal'));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            await this.loadInventario();
+        } catch (error) {
+            console.error('❌ Error inesperado al guardar inventario:', error);
+            this.showAlert('danger', 'Ocurrió un error guardando el producto.');
         }
     }
 
-    async deleteInventario(codigo) {
+    ensureInventarioSelectDefaults() {
+        const sedeSelect = document.getElementById('invSede');
+        if (sedeSelect && !Array.from(sedeSelect.options).some(opt => opt.value === '')) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Seleccionar sede';
+            sedeSelect.insertBefore(option, sedeSelect.firstChild);
+        }
+
+        const proveedorSelect = document.getElementById('invProveedor');
+        if (proveedorSelect && !Array.from(proveedorSelect.options).some(opt => opt.value === '')) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Sin proveedor';
+            proveedorSelect.insertBefore(option, proveedorSelect.firstChild);
+        }
+    }
+
+    async ensureInventarioLookups(forceReload = false) {
+        if (!forceReload && this.inventarioLookupsLoaded && this.sedeOptions.length > 0) {
+            return;
+        }
+
+        if (this.loadingInventarioLookups) {
+            await this.loadingInventarioLookups;
+            return;
+        }
+
+        this.loadingInventarioLookups = (async () => {
+            let hadError = false;
+
+            try {
+                const [sedesResponse, proveedoresResponse] = await Promise.all([
+                    this.authFetch('/api/sedes'),
+                    this.authFetch('/api/inventario/proveedores')
+                ]);
+
+                if (sedesResponse && sedesResponse.ok) {
+                    this.sedeOptions = await sedesResponse.json().catch(() => []);
+                } else {
+                    hadError = true;
+                    this.sedeOptions = [];
+                    console.warn('⚠️ No se pudieron obtener las sedes para el inventario');
+                }
+
+                if (proveedoresResponse && proveedoresResponse.ok) {
+                    this.proveedorOptions = await proveedoresResponse.json().catch(() => []);
+                } else {
+                    hadError = true;
+                    this.proveedorOptions = [];
+                    console.warn('⚠️ No se pudieron obtener los proveedores para el inventario');
+                }
+
+                if (!hadError) {
+                    this.inventarioLookupsLoaded = true;
+                } else {
+                    this.inventarioLookupsLoaded = false;
+                    this.showAlert('warning', 'No se pudieron cargar todas las sedes o proveedores. Intenta nuevamente.');
+                }
+            } catch (error) {
+                hadError = true;
+                this.inventarioLookupsLoaded = false;
+                console.error('❌ Error cargando catálogos de inventario:', error);
+                this.showAlert('warning', 'Ocurrió un problema cargando las sedes y proveedores. Verifica tu conexión e intenta de nuevo.');
+            } finally {
+                this.loadingInventarioLookups = null;
+            }
+        })();
+
+        await this.loadingInventarioLookups;
+    }
+
+    populateInventarioSelectOptions() {
+        const hasSedeOptions = Array.isArray(this.sedeOptions) && this.sedeOptions.length > 0;
+        if (hasSedeOptions) {
+            this.populateOptionsForSelect('invSede', this.sedeOptions, {
+                placeholder: 'Seleccionar sede',
+                valueKey: 'id',
+                labelFn: (sede) => {
+                    const ciudad = sede?.ciudad ? ` (${sede.ciudad})` : '';
+                    return `${sede?.nombre || 'Sede'}${ciudad}`;
+                }
+            });
+        }
+
+        const hasProveedorOptions = Array.isArray(this.proveedorOptions) && this.proveedorOptions.length > 0;
+        if (hasProveedorOptions) {
+            this.populateOptionsForSelect('invProveedor', this.proveedorOptions, {
+                placeholder: 'Sin proveedor',
+                valueKey: 'id',
+                labelFn: (proveedor) => proveedor?.nombre || proveedor?.contacto || proveedor?.codigo || `Proveedor ${proveedor?.id}`
+            });
+        }
+    }
+
+    populateOptionsForSelect(selectId, options, config = {}) {
+        const select = document.getElementById(selectId);
+        if (!select) {
+            return;
+        }
+
+        const {
+            placeholder = '',
+            valueKey = 'id',
+            labelKey = 'nombre',
+            labelFn,
+            selectedValue
+        } = config;
+
+        if (!Array.isArray(options) || options.length === 0) {
+            return;
+        }
+
+        const previousValue = selectedValue !== undefined ? selectedValue : select.value;
+        const normalizedPrevious = previousValue === null || previousValue === undefined
+            ? ''
+            : String(previousValue);
+
+        select.innerHTML = '';
+
+        if (placeholder !== null) {
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = placeholder || 'Seleccionar';
+            select.appendChild(placeholderOption);
+        }
+
+        if (Array.isArray(options)) {
+            options.forEach(item => {
+                if (!item || item[valueKey] === undefined || item[valueKey] === null) {
+                    return;
+                }
+
+                const option = document.createElement('option');
+                option.value = String(item[valueKey]);
+                if (typeof labelFn === 'function') {
+                    option.textContent = labelFn(item);
+                } else if (item[labelKey]) {
+                    option.textContent = item[labelKey];
+                } else {
+                    option.textContent = option.value;
+                }
+                select.appendChild(option);
+            });
+        }
+
+        if (normalizedPrevious && Array.from(select.options).some(opt => opt.value === normalizedPrevious)) {
+            select.value = normalizedPrevious;
+        } else {
+            select.value = '';
+        }
+    }
+
+    findInventarioItem(identifier) {
+        if (!identifier || !this.inventario) return null;
+        return this.inventario.find(item => String(item.id) === String(identifier) || String(item.codigo) === String(identifier));
+    }
+
+    populateInventarioForm(item) {
+        const setValue = (id, value) => {
+            const element = document.getElementById(id);
+            if (!element) return;
+            element.value = value === null || value === undefined ? '' : value;
+        };
+
+        setValue('invCodigo', item.codigo || item.id || '');
+        setValue('invNombre', item.nombre || item.producto || '');
+        this.setSelectValue('invCategoria', item.categoria || '', item.categoria || '');
+        this.setSelectValue('invSede', item.sede_id ?? '', item.sede_nombre || 'Sin asignar');
+
+        const cantidadValue = item.cantidad ?? item.stock ?? '';
+        const stockMinValue = item.stock_minimo ?? '';
+        const stockMaxValue = item.stock_maximo ?? '';
+        const precioValue = item.precio_unitario ?? item.precio ?? item.equipo_precio ?? '';
+
+        setValue('invCantidad', cantidadValue);
+        setValue('invStockMinimo', stockMinValue);
+        setValue('invStockMaximo', stockMaxValue);
+        setValue('invPrecio', precioValue);
+
+        this.setSelectValue('invUnidadMedida', item.unidad_medida || item.unidad || 'unidad', item.unidad_medida || item.unidad || 'Unidad');
+        this.setSelectValue('invProveedor', item.proveedor_id ?? '', item.proveedor || 'Sin proveedor');
+
+        setValue('invFechaVencimiento', this.formatDateForInput(item.fecha_vencimiento));
+        setValue('invUbicacion', item.ubicacion || '');
+        setValue('invDescripcion', item.descripcion || '');
+
+        const alertaStockCheckbox = document.getElementById('invAlertaStockBajo');
+        if (alertaStockCheckbox) {
+            alertaStockCheckbox.checked = item.alerta_stock_bajo !== false;
+        }
+
+        const alertaVencCheckbox = document.getElementById('invAlertaVencimiento');
+        if (alertaVencCheckbox) {
+            alertaVencCheckbox.checked = item.alerta_vencimiento === true;
+        }
+
+        const requiereRecetaCheckbox = document.getElementById('invRequiereReceta');
+        if (requiereRecetaCheckbox) {
+            requiereRecetaCheckbox.checked = item.requiere_receta === true;
+        }
+    }
+
+    setSelectValue(selectId, value, label) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        if (value === null || value === undefined || value === '') {
+            select.value = '';
+            return;
+        }
+
+        this.ensureSelectOption(select, value, label);
+        select.value = String(value);
+    }
+
+    ensureSelectOption(select, value, label) {
+        if (!select) return;
+        const valueString = String(value);
+        const exists = Array.from(select.options).some(option => option.value === valueString);
+        if (!exists) {
+            const option = document.createElement('option');
+            option.value = valueString;
+            option.textContent = label || valueString;
+            select.appendChild(option);
+        }
+    }
+
+    formatDateForInput(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+    }
+
+    async deleteInventario(identifier) {
+        const item = this.findInventarioItem(identifier);
+        const itemId = item?.id ?? identifier;
+        const codigo = item?.codigo || identifier;
         // Usar confirmación personalizada mejorada
         const confirmed = await this.showCustomConfirm({
             type: 'delete',
             title: '¿Eliminar producto?',
             message: `¿Está seguro de que desea eliminar este producto del inventario?`,
-            details: `<strong>Código:</strong> ${codigo}`,
+            details: `<strong>Código:</strong> ${codigo}${item?.nombre ? `<br><strong>Nombre:</strong> ${item.nombre}` : ''}`,
             warning: 'Esta acción no se puede deshacer.',
             confirmText: 'Eliminar',
             cancelText: 'Cancelar'
@@ -4089,10 +4655,19 @@ class DashboardAdmin {
         
         if (!confirmed) return;
         try {
-            await fetch(`/api/inventario/${codigo}`, { method: 'DELETE' });
+            const response = await this.authFetch(`/api/inventario/${itemId}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ Error al eliminar item del inventario:', errorData);
+                this.showAlert('danger', errorData.msg || 'No se pudo eliminar el producto.');
+                return;
+            }
+
+            this.showAlert('success', 'Producto eliminado correctamente.');
             await this.loadInventario();
         } catch (err) {
-            alert('Error al eliminar item');
+            console.error('❌ Error inesperado al eliminar item del inventario:', err);
+            this.showAlert('danger', 'Error al eliminar el producto del inventario.');
         }
     }
 

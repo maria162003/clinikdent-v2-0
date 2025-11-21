@@ -807,43 +807,68 @@ function initSystemSettings() {
             // Verificar autenticación usando la información del usuario
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             
+            console.log('🔍 [CONFIG] Verificando acceso - Usuario completo:', user);
+            console.log('🔍 [CONFIG] Rol detectado:', user.rol);
+            console.log('🔍 [CONFIG] Tipo de rol:', typeof user.rol);
+            
             // Verificar si hay usuario logueado
             if (!user.id || !user.rol) {
                 console.log('❌ Error: No hay sesión de usuario válida');
+                alert('No hay sesión de usuario válida. Por favor inicia sesión nuevamente.');
                 window.location.href = '/index.html';
                 return;
             }
             
-            // Verificar que sea administrador
-            if (user.rol !== 'administrador') {
-                console.log('❌ Error: Usuario no es administrador');
-                alert('No tienes permisos para acceder a la configuración del sistema');
+            // Verificar que sea administrador (normalizar rol para evitar problemas de mayúsculas/espacios)
+            const rolNormalizado = user.rol.toString().toLowerCase().trim();
+            console.log('🔍 [CONFIG] Rol normalizado:', rolNormalizado);
+            
+            if (rolNormalizado !== 'administrador') {
+                console.log('❌ Error: Usuario no es administrador. Rol actual:', user.rol);
+                alert(`Solo administradores pueden acceder a esta configuración.\nTu rol actual es: ${user.rol}`);
                 return;
             }
             
             console.log('✅ Usuario autorizado para configuración:', user);
             
-            // Usar datos de demostración para desarrollo (ya que no hay backend real para configuración)
+            // Cargar configuración desde la API
+            console.log('📡 Cargando configuración desde el servidor...');
+            const response = await fetch('/api/configuracion', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Error al cargar configuración del servidor');
+            }
+            
+            const result = await response.json();
+            console.log('📦 Configuración recibida:', result);
+            
+            // Transformar configuración plana a formato esperado por el formulario
+            const config = result.configuracion || {};
             const mockConfig = {
                 horariosClinica: {
-                    apertura: '08:00',
-                    cierre: '18:00',
-                    diasHabiles: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie']
+                    apertura: config.horario_apertura || '08:00',
+                    cierre: config.horario_cierre || '18:00',
+                    diasHabiles: config.dias_atencion || ['Lun', 'Mar', 'Mie', 'Jue', 'Vie']
                 },
                 recordatorios: {
-                    sms: true,
-                    email: true,
-                    horasAnticipacion: 24
+                    sms: config.notif_sms_enabled !== undefined ? config.notif_sms_enabled : true,
+                    email: config.notif_email_enabled !== undefined ? config.notif_email_enabled : true,
+                    horasAnticipacion: config.notif_horas_anticipacion || 24
                 },
                 cancelacion: {
-                    permite: true,
-                    horasMin: 12,
-                    penalizacion: 0
+                    permite: config.cancelacion_permitida !== undefined ? config.cancelacion_permitida : true,
+                    horasMin: config.cancelacion_horas_min || 2,
+                    penalizacion: config.cancelacion_penalizacion || 0
                 },
                 branding: {
-                    nombreClinica: 'Clinik Dent',
-                    logoUrl: '',
-                    colorPrimario: '#0ea5e9'
+                    nombreClinica: config.clinica_nombre || 'ClinikDent',
+                    logoUrl: config.clinica_logo_url || '',
+                    colorPrimario: config.clinica_color_primario || '#0ea5e9'
                 }
             };
             
@@ -1023,25 +1048,58 @@ function initSystemSettings() {
             
             console.log('✅ Usuario autenticado para config:', user.nombre);
             
-            // Simular guardado exitoso usando localStorage (modo desarrollo)
-            console.log('💾 Guardando configuración en modo desarrollo...');
-            setTimeout(() => {
-                // Actualizar estado local con los mismos datos del formulario
-                adminModules.config.data = configData;
-                
-                // Aplicar cambios de branding de inmediato
-                applyBrandingChanges(configData.branding);
-                
-                // Cerrar modal y mostrar mensaje
-                const configModal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
-                configModal.hide();
-                
-                showToast('Configuración actualizada con éxito', 'success');
-                
-                adminModules.config.loading = false;
-                updateConfigUI();
-            }, 800); // Simulación de retardo de red
-            return;
+            // Transformar datos del formulario al formato de la API (claves planas)
+            const configuraciones = {
+                horario_apertura: configData.horariosClinica.apertura,
+                horario_cierre: configData.horariosClinica.cierre,
+                dias_atencion: configData.horariosClinica.diasHabiles,
+                notif_sms_enabled: configData.recordatorios.sms,
+                notif_email_enabled: configData.recordatorios.email,
+                notif_horas_anticipacion: configData.recordatorios.horasAnticipacion,
+                cancelacion_permitida: configData.cancelacion.permite,
+                cancelacion_horas_min: configData.cancelacion.horasMin,
+                cancelacion_penalizacion: configData.cancelacion.penalizacion,
+                clinica_nombre: configData.branding.nombreClinica,
+                clinica_logo_url: configData.branding.logoUrl,
+                clinica_color_primario: configData.branding.colorPrimario
+            };
+            
+            console.log('💾 Guardando configuración en el servidor...');
+            
+            // Enviar a la API
+            const response = await fetch('/api/configuracion', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    configuraciones: configuraciones,
+                    usuario_id: user.id
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.msg || 'Error al guardar configuración');
+            }
+            
+            const result = await response.json();
+            console.log('✅ Configuración guardada:', result);
+            
+            // Actualizar estado local
+            adminModules.config.data = configData;
+            
+            // Aplicar cambios de branding de inmediato
+            applyBrandingChanges(configData.branding);
+            
+            // Cerrar modal y mostrar mensaje
+            const configModal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
+            configModal.hide();
+            
+            showToast('Configuración actualizada exitosamente', 'success');
+            
+            adminModules.config.loading = false;
+            updateConfigUI();
             
             /* 
             // CÓDIGO ORIGINAL COMENTADO - CAUSABA LOGOUT
