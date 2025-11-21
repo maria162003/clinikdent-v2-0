@@ -303,18 +303,18 @@ exports.obtenerInventario = async (req, res) => {
         -- Tabla inventario_equipos
         SELECT 
           ie.id,
-          COALESCE(e.codigo, 'EQU-' || ie.id::text) as codigo,
+          'EQU-' || ie.id::text as codigo,
           e.nombre,
           ie.descripcion,
-          e.categoria_id,
+          NULL as categoria_id,
           COALESCE(ie.cantidad, 0) as cantidad,
           0 as stock_minimo,
           COALESCE(e.precio, 0) as precio_unitario,
           ie.sede_id,
           NULL as ubicacion,
-          COALESCE(ie.estado, 'disponible') as estado,
-          ie.created_at as fecha_registro,
-          ie.updated_at as fecha_actualizacion,
+          'disponible' as estado,
+          NULL as fecha_registro,
+          NULL as fecha_actualizacion,
           s.nombre as sede_nombre,
           s.ciudad as sede_ciudad,
           'inventario_equipos' as origen,
@@ -328,18 +328,18 @@ exports.obtenerInventario = async (req, res) => {
         -- Tabla equipos (equipos sin asignar a inventario)
         SELECT 
           e.id,
-          COALESCE(e.codigo, 'EQ-' || e.id::text) as codigo,
+          'EQ-' || e.id::text as codigo,
           e.nombre,
           e.descripcion,
-          e.categoria_id,
+          NULL as categoria_id,
           0 as cantidad,
           0 as stock_minimo,
           COALESCE(e.precio, 0) as precio_unitario,
           NULL as sede_id,
           NULL as ubicacion,
-          COALESCE(e.estado, 'disponible') as estado,
-          e.created_at as fecha_registro,
-          e.updated_at as fecha_actualizacion,
+          'disponible' as estado,
+          e.fecha_alta as fecha_registro,
+          NULL as fecha_actualizacion,
           NULL as sede_nombre,
           NULL as sede_ciudad,
           'equipos' as origen,
@@ -882,11 +882,8 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
         COUNT(*) as cantidad,
         SUM(valor) as valor_categoria
       FROM (
-        SELECT categoria_id, (COALESCE(cantidad_actual, 0) * COALESCE(precio_unitario, 0)) as valor FROM inventario
-        UNION ALL
-        SELECT e.categoria_id, (COALESCE(ie.cantidad, 0) * COALESCE(e.precio, 0)) as valor 
-        FROM inventario_equipos ie 
-        LEFT JOIN equipos e ON ie.equipo_id = e.id
+        SELECT categoria_id, (COALESCE(cantidad_actual, 0) * COALESCE(precio_unitario, 0)) as valor 
+        FROM inventario
       ) AS productos_categoria
       WHERE categoria_id IS NOT NULL
       GROUP BY categoria_id
