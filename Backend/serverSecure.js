@@ -230,8 +230,8 @@ app.get('/api/evaluaciones', authenticateToken, evaluacionesController.obtenerTo
 app.post('/api/evaluaciones', authenticateToken, evaluacionesController.crearEvaluacion);
 
 // 📋 Historial médico - Solo usuarios autenticados
-app.get('/api/historial/:pacienteId', authenticateToken, historialController.obtenerHistorial);
-app.post('/api/historial', authenticateToken, authorizeRole('admin', 'odontologo'), historialController.crearHistorial);
+app.get('/api/historial/:pacienteId', authenticateToken, historialController.obtenerHistorialPorPaciente);
+app.post('/api/historial', authenticateToken, authorizeRole('admin', 'odontologo'), historialController.registrarHistorial);
 
 // 📄 RUTAS DE PÁGINAS (CON AUTH OPCIONAL)
 // ============================================
