@@ -15,12 +15,21 @@ const reportesState = {
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
   console.log('📊 Inicializando sistema de reportes...');
+  console.log('🔍 Verificando elementos del DOM...');
+  
+  // Verificar que existan los elementos clave
+  const tabs = document.querySelectorAll('.tab-button');
+  const contents = document.querySelectorAll('.tab-content');
+  console.log(`✅ Tabs encontrados: ${tabs.length}`);
+  console.log(`✅ Tab contents encontrados: ${contents.length}`);
   
   setupTabs();
   setupFieldValidation();
   cargarOdontologos();
   cargarUsuarios();
   setDefaultDates();
+  
+  console.log('✅ Sistema de reportes inicializado correctamente');
 });
 
 // ==========================================
@@ -212,18 +221,26 @@ async function cargarUsuarios() {
 // ==========================================
 
 async function generarReporte(tipo) {
+  console.log(`🔄 Generando reporte tipo: ${tipo}`);
+  
   if (!validateFields(tipo)) {
+    console.warn('⚠️ Validación de campos falló');
     alert('⚠️ Por favor complete todos los campos requeridos');
     return;
   }
   
   const resultadosDiv = document.getElementById(`resultados-${tipo}`);
+  console.log(`📍 Elemento resultados encontrado:`, resultadosDiv ? 'Sí' : 'NO');
+  
   resultadosDiv.innerHTML = '<div class="loading">Generando reporte</div>';
   resultadosDiv.classList.add('visible');
   
   try {
     const filtros = getFiltros(tipo);
     const endpoint = getEndpoint(tipo);
+    
+    console.log(`📡 Llamando a: ${endpoint}`);
+    console.log(`📦 Con filtros:`, filtros);
     
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -233,18 +250,26 @@ async function generarReporte(tipo) {
       body: JSON.stringify(filtros)
     });
     
+    console.log(`📊 Respuesta recibida: ${response.status} ${response.statusText}`);
+    
     if (response.ok) {
       const data = await response.json();
+      console.log(`✅ Datos recibidos:`, data);
+      console.log(`📋 Total registros: ${data.detalles ? data.detalles.length : 0}`);
+      
       reportesState[tipo].data = data;
       mostrarResultados(tipo, data);
       updateDownloadButton(tipo, true);
     } else {
-      throw new Error('Error al generar el reporte');
+      const errorText = await response.text();
+      console.error(`❌ Error del servidor: ${errorText}`);
+      throw new Error(`Error ${response.status}: ${errorText}`);
     }
   } catch (error) {
-    console.error('Error generando reporte:', error);
+    console.error('❌ Error generando reporte:', error);
     resultadosDiv.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">
-      ❌ Error al generar el reporte. Por favor intente nuevamente.
+      ❌ Error al generar el reporte: ${error.message}<br>
+      Por favor intente nuevamente o revise la consola para más detalles.
     </div>`;
   }
 }
