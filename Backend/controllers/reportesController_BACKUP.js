@@ -77,6 +77,7 @@ exports.obtenerReporteFinanciero = async (req, res) => {
   }
 };
 
+// Función auxiliar para generar datos de ejemplo
 function generarDatosEjemploFinanciero(fechaInicio, fechaFin) {
   const tratamientos = ['Limpieza Dental', 'Ortodoncia', 'Endodoncia', 'Implante Dental', 'Blanqueamiento'];
   const pacientes = ['Juan Pérez', 'María González', 'Carlos Rodríguez', 'Ana Martínez', 'Luis Fernández'];
@@ -87,7 +88,7 @@ function generarDatosEjemploFinanciero(fechaInicio, fechaFin) {
   const inicio = new Date(fechaInicio);
   const fin = new Date(fechaFin);
   const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
-  const numRegistros = Math.min(dias * 2, 20);
+  const numRegistros = Math.min(dias * 2, 20); // Máximo 20 registros de ejemplo
   
   for (let i = 0; i < numRegistros; i++) {
     const dia = Math.floor(Math.random() * dias);
@@ -219,35 +220,30 @@ exports.obtenerReporteCancelaciones = async (req, res) => {
     
     let query = `
       SELECT 
-        c.fecha::date as "fechaCita",
-        COALESCE(c.fecha_cancelacion, c.updated_at)::date as "fechaCancelacion",
-        CONCAT(p.nombre, ' ', COALESCE(p.apellido, '')) as paciente,
-        COALESCE(c.motivo, 'No especificado') as tratamiento,
-        COALESCE(c.motivo_cancelacion, 'Por paciente') as motivo,
+        c.fecha as fechaCita,
+        c.fecha_cancelacion as fechaCancelacion,
+        CONCAT(p.nombre, ' ', p.apellido) as paciente,
+        c.motivo as tratamiento,
+        c.motivo_cancelacion as motivo,
         c.observaciones
       FROM citas c
       INNER JOIN pacientes p ON c.paciente_id = p.id
       WHERE c.estado = 'cancelada'
-        AND c.fecha::date BETWEEN $1 AND $2
+        AND c.fecha BETWEEN ? AND ?
     `;
     
     const params = [fechaInicio, fechaFin];
     
     if (motivo) {
-      query += ` AND COALESCE(c.motivo_cancelacion, '') ILIKE $${params.length + 1}`;
+      query += ` AND c.motivo_cancelacion LIKE ?`;
       params.push(`%${motivo}%`);
     }
     
-    query += ` ORDER BY c.fecha_cancelacion DESC NULLS LAST`;
+    query += ` ORDER BY c.fecha_cancelacion DESC`;
     
-    const result = await db.query(query, params);
-    let detalles = result.rows || [];
+    const [detalles] = await db.query(query, params);
     
-    if (detalles.length === 0) {
-      console.log('⚠️ No hay cancelaciones, generando datos de ejemplo...');
-      detalles = generarDatosEjemploCancelaciones(fechaInicio, fechaFin);
-    }
-    
+    // Calcular resumen
     const total = detalles.length;
     const porPaciente = detalles.filter(c => 
       c.motivo && c.motivo.toLowerCase().includes('paciente')
@@ -257,57 +253,25 @@ exports.obtenerReporteCancelaciones = async (req, res) => {
     ).length;
     
     const resultado = {
-      resumen: { total, porPaciente, porClinica },
+      resumen: {
+        total: total,
+        porPaciente: porPaciente,
+        porClinica: porClinica
+      },
       detalles: detalles
     };
     
-    console.log(`✅ Reporte de cancelaciones generado: ${total} cancelaciones`);
+    console.log('✅ Reporte de cancelaciones generado');
     return res.json(resultado);
   } catch (err) {
     console.error('❌ Error generando reporte de cancelaciones:', err);
-    const detalles = generarDatosEjemploCancelaciones(req.body.fechaInicio, req.body.fechaFin);
-    return res.json({
-      resumen: {
-        total: detalles.length,
-        porPaciente: detalles.filter(c => c.motivo.includes('Paciente')).length,
-        porClinica: detalles.filter(c => c.motivo.includes('Clínica')).length
-      },
-      detalles: detalles
+    return res.status(500).json({ 
+      success: false,
+      msg: 'Error al generar reporte de cancelaciones',
+      error: err.message 
     });
   }
 };
-
-function generarDatosEjemploCancelaciones(fechaInicio, fechaFin) {
-  const pacientes = ['Juan Pérez', 'María González', 'Carlos Rodríguez'];
-  const tratamientos = ['Limpieza', 'Revisión', 'Ortodoncia'];
-  const motivos = ['Por Paciente - Enfermedad', 'Por Paciente - Viaje', 'Por Clínica - Emergencia', 'Por Paciente - Personal'];
-  const observaciones = ['Reagendar', 'No reagendar', 'Esperar confirmación'];
-  
-  const datos = [];
-  const inicio = new Date(fechaInicio);
-  const fin = new Date(fechaFin);
-  const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
-  const numRegistros = Math.min(Math.floor(dias / 2), 10);
-  
-  for (let i = 0; i < numRegistros; i++) {
-    const dia = Math.floor(Math.random() * dias);
-    const fecha = new Date(inicio);
-    fecha.setDate(fecha.getDate() + dia);
-    const fechaCancel = new Date(fecha);
-    fechaCancel.setDate(fechaCancel.getDate() - Math.floor(Math.random() * 3));
-    
-    datos.push({
-      fechaCita: fecha.toISOString().split('T')[0],
-      fechaCancelacion: fechaCancel.toISOString().split('T')[0],
-      paciente: pacientes[Math.floor(Math.random() * pacientes.length)],
-      tratamiento: tratamientos[Math.floor(Math.random() * tratamientos.length)],
-      motivo: motivos[Math.floor(Math.random() * motivos.length)],
-      observaciones: observaciones[Math.floor(Math.random() * observaciones.length)]
-    });
-  }
-  
-  return datos.sort((a, b) => new Date(b.fechaCancelacion) - new Date(a.fechaCancelacion));
-}
 
 // ==========================================
 // REPORTE ACTIVIDAD USUARIOS
@@ -318,9 +282,36 @@ exports.obtenerReporteActividadUsuarios = async (req, res) => {
     console.log('👥 Generando reporte de actividad de usuarios...');
     const { fechaInicio, fechaFin, usuarioId, tipoAccion } = req.body;
     
-    // Generar datos de ejemplo siempre (tabla registro_actividad puede no existir)
-    const detalles = generarDatosEjemploActividad(fechaInicio, fechaFin);
+    let query = `
+      SELECT 
+        a.fecha_hora as fecha,
+        CONCAT(u.nombre, ' ', u.apellido) as usuario,
+        u.rol,
+        a.accion,
+        a.modulo,
+        a.detalles
+      FROM registro_actividad a
+      INNER JOIN usuarios u ON a.usuario_id = u.id
+      WHERE DATE(a.fecha_hora) BETWEEN ? AND ?
+    `;
     
+    const params = [fechaInicio, fechaFin];
+    
+    if (usuarioId) {
+      query += ` AND a.usuario_id = ?`;
+      params.push(usuarioId);
+    }
+    
+    if (tipoAccion) {
+      query += ` AND a.accion = ?`;
+      params.push(tipoAccion);
+    }
+    
+    query += ` ORDER BY a.fecha_hora DESC`;
+    
+    const [detalles] = await db.query(query, params);
+    
+    // Calcular resumen
     const total = detalles.length;
     const usuariosUnicos = [...new Set(detalles.map(d => d.usuario))].length;
     const dias = Math.ceil((new Date(fechaFin) - new Date(fechaInicio)) / (1000 * 60 * 60 * 24)) + 1;
@@ -335,60 +326,17 @@ exports.obtenerReporteActividadUsuarios = async (req, res) => {
       detalles: detalles
     };
     
-    console.log(`✅ Reporte de actividad generado: ${total} acciones`);
+    console.log('✅ Reporte de actividad generado');
     return res.json(resultado);
   } catch (err) {
     console.error('❌ Error generando reporte de actividad:', err);
-    const detalles = generarDatosEjemploActividad(req.body.fechaInicio, req.body.fechaFin);
-    const total = detalles.length;
-    const dias = Math.ceil((new Date(req.body.fechaFin) - new Date(req.body.fechaInicio)) / (1000 * 60 * 60 * 24)) + 1;
-    
-    return res.json({
-      resumen: {
-        total: total,
-        usuariosActivos: [...new Set(detalles.map(d => d.usuario))].length,
-        promedioDiario: Math.round(total / dias)
-      },
-      detalles: detalles
+    return res.status(500).json({ 
+      success: false,
+      msg: 'Error al generar reporte de actividad',
+      error: err.message 
     });
   }
 };
-
-function generarDatosEjemploActividad(fechaInicio, fechaFin) {
-  const usuarios = ['Admin Principal', 'Dr. García', 'Dra. López', 'Recepcionista María'];
-  const roles = ['administrador', 'odontologo', 'odontologo', 'recepcionista'];
-  const acciones = ['login', 'crear', 'editar', 'eliminar', 'ver'];
-  const modulos = ['citas', 'pacientes', 'tratamientos', 'inventario', 'reportes'];
-  
-  const datos = [];
-  const inicio = new Date(fechaInicio);
-  const fin = new Date(fechaFin);
-  const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
-  const numRegistros = Math.min(dias * 5, 30);
-  
-  for (let i = 0; i < numRegistros; i++) {
-    const dia = Math.floor(Math.random() * dias);
-    const fecha = new Date(inicio);
-    fecha.setDate(fecha.getDate() + dia);
-    fecha.setHours(Math.floor(Math.random() * 12) + 8);
-    fecha.setMinutes(Math.floor(Math.random() * 60));
-    
-    const usuarioIndex = Math.floor(Math.random() * usuarios.length);
-    const accion = acciones[Math.floor(Math.random() * acciones.length)];
-    const modulo = modulos[Math.floor(Math.random() * modulos.length)];
-    
-    datos.push({
-      fecha: fecha.toISOString(),
-      usuario: usuarios[usuarioIndex],
-      rol: roles[usuarioIndex],
-      accion: accion,
-      modulo: modulo,
-      detalles: `${accion} registro en ${modulo}`
-    });
-  }
-  
-  return datos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-}
 
 // ==========================================
 // REPORTE SEGUIMIENTO TRATAMIENTOS
@@ -399,9 +347,38 @@ exports.obtenerReporteSeguimientoTratamientos = async (req, res) => {
     console.log('🦷 Generando reporte de seguimiento de tratamientos...');
     const { fechaInicio, fechaFin, estado, tipo } = req.body;
     
-    // Generar datos de ejemplo
-    const detalles = generarDatosEjemploTratamientos(fechaInicio, fechaFin);
+    let query = `
+      SELECT 
+        CONCAT(p.nombre, ' ', p.apellido) as paciente,
+        t.nombre as tipoTratamiento,
+        t.fecha_inicio as fechaInicio,
+        t.fecha_estimada_fin as fechaEstimadaFin,
+        t.progreso,
+        t.estado,
+        CONCAT(u.nombre, ' ', u.apellido) as odontologo
+      FROM tratamientos t
+      INNER JOIN pacientes p ON t.paciente_id = p.id
+      LEFT JOIN usuarios u ON t.odontologo_id = u.id
+      WHERE t.fecha_inicio BETWEEN ? AND ?
+    `;
     
+    const params = [fechaInicio, fechaFin];
+    
+    if (estado) {
+      query += ` AND t.estado = ?`;
+      params.push(estado);
+    }
+    
+    if (tipo) {
+      query += ` AND t.nombre LIKE ?`;
+      params.push(`%${tipo}%`);
+    }
+    
+    query += ` ORDER BY t.fecha_inicio DESC`;
+    
+    const [detalles] = await db.query(query, params);
+    
+    // Calcular resumen
     const total = detalles.length;
     const completados = detalles.filter(t => t.estado === 'completado').length;
     const enProgreso = detalles.filter(t => t.estado === 'en_progreso').length;
@@ -417,62 +394,17 @@ exports.obtenerReporteSeguimientoTratamientos = async (req, res) => {
       detalles: detalles
     };
     
-    console.log(`✅ Reporte de tratamientos generado: ${total} tratamientos`);
+    console.log('✅ Reporte de tratamientos generado');
     return res.json(resultado);
   } catch (err) {
     console.error('❌ Error generando reporte de tratamientos:', err);
-    const detalles = generarDatosEjemploTratamientos(req.body.fechaInicio, req.body.fechaFin);
-    const total = detalles.length;
-    const completados = detalles.filter(t => t.estado === 'completado').length;
-    
-    return res.json({
-      resumen: {
-        total: total,
-        completados: completados,
-        enProgreso: detalles.filter(t => t.estado === 'en_progreso').length,
-        tasaExito: total > 0 ? Math.round((completados / total) * 100) : 0
-      },
-      detalles: detalles
+    return res.status(500).json({ 
+      success: false,
+      msg: 'Error al generar reporte de tratamientos',
+      error: err.message 
     });
   }
 };
-
-function generarDatosEjemploTratamientos(fechaInicio, fechaFin) {
-  const pacientes = ['Juan Pérez', 'María González', 'Carlos Rodríguez', 'Ana Martínez', 'Luis Fernández'];
-  const tiposTratamiento = ['Limpieza Dental', 'Ortodoncia', 'Endodoncia', 'Implantes', 'Blanqueamiento'];
-  const odontologos = ['Dr. García', 'Dra. López', 'Dr. Martínez'];
-  const estados = ['en_progreso', 'completado', 'pausado'];
-  
-  const datos = [];
-  const inicio = new Date(fechaInicio);
-  const fin = new Date(fechaFin);
-  const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
-  const numRegistros = Math.min(dias, 15);
-  
-  for (let i = 0; i < numRegistros; i++) {
-    const dia = Math.floor(Math.random() * dias);
-    const fechaInicio = new Date(inicio);
-    fechaInicio.setDate(fechaInicio.getDate() + dia);
-    
-    const fechaFin = new Date(fechaInicio);
-    fechaFin.setMonth(fechaFin.getMonth() + Math.floor(Math.random() * 3) + 1);
-    
-    const estado = estados[Math.floor(Math.random() * estados.length)];
-    const progreso = estado === 'completado' ? 100 : Math.floor(Math.random() * 80) + 20;
-    
-    datos.push({
-      paciente: pacientes[Math.floor(Math.random() * pacientes.length)],
-      tipoTratamiento: tiposTratamiento[Math.floor(Math.random() * tiposTratamiento.length)],
-      fechaInicio: fechaInicio.toISOString().split('T')[0],
-      fechaEstimadaFin: fechaFin.toISOString().split('T')[0],
-      progreso: progreso,
-      estado: estado,
-      odontologo: odontologos[Math.floor(Math.random() * odontologos.length)]
-    });
-  }
-  
-  return datos.sort((a, b) => new Date(b.fechaInicio) - new Date(a.fechaInicio));
-}
 
 // ==========================================
 // EXPORTAR A EXCEL
