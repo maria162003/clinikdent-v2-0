@@ -15,14 +15,15 @@ exports.obtenerReporteFinanciero = async (req, res) => {
       SELECT 
         c.fecha::date as fecha,
         COALESCE(c.motivo, 'Consulta Odontológica') as concepto,
-        CONCAT(p.nombre, ' ', COALESCE(p.apellido, '')) as paciente,
+        CONCAT(u.nombre, ' ', COALESCE(u.apellido, '')) as paciente,
         COALESCE(c.metodo_pago, 'efectivo') as "metodoPago",
         COALESCE(c.costo, 150000)::numeric as monto,
         COALESCE(c.estado, 'completada') as estado
       FROM citas c
-      INNER JOIN pacientes p ON c.paciente_id = p.id
+      INNER JOIN usuarios u ON c.paciente_id = u.id
       WHERE c.fecha::date BETWEEN $1 AND $2
         AND c.estado IN ('completada', 'confirmada')
+        AND u.rol = 'paciente'
     `;
     
     const params = [fechaInicio, fechaFin];
@@ -120,14 +121,15 @@ exports.obtenerReporteCitasAgendadas = async (req, res) => {
       SELECT 
         c.fecha::date as fecha,
         COALESCE(c.hora, '10:00')::text as hora,
-        CONCAT(p.nombre, ' ', COALESCE(p.apellido, '')) as paciente,
-        CONCAT(u.nombre, ' ', COALESCE(u.apellido, 'Sin asignar')) as odontologo,
+        CONCAT(pac.nombre, ' ', COALESCE(pac.apellido, '')) as paciente,
+        CONCAT(odo.nombre, ' ', COALESCE(odo.apellido, 'Sin asignar')) as odontologo,
         COALESCE(c.motivo, 'Consulta General') as tratamiento,
         c.estado
       FROM citas c
-      INNER JOIN pacientes p ON c.paciente_id = p.id
-      LEFT JOIN usuarios u ON c.odontologo_id = u.id
+      INNER JOIN usuarios pac ON c.paciente_id = pac.id
+      LEFT JOIN usuarios odo ON c.odontologo_id = odo.id
       WHERE c.fecha::date BETWEEN $1 AND $2
+        AND pac.rol = 'paciente'
     `;
     
     const params = [fechaInicio, fechaFin];
@@ -221,13 +223,14 @@ exports.obtenerReporteCancelaciones = async (req, res) => {
       SELECT 
         c.fecha::date as "fechaCita",
         COALESCE(c.fecha_cancelacion, c.updated_at)::date as "fechaCancelacion",
-        CONCAT(p.nombre, ' ', COALESCE(p.apellido, '')) as paciente,
+        CONCAT(u.nombre, ' ', COALESCE(u.apellido, '')) as paciente,
         COALESCE(c.motivo, 'No especificado') as tratamiento,
         COALESCE(c.motivo_cancelacion, 'Por paciente') as motivo,
         c.observaciones
       FROM citas c
-      INNER JOIN pacientes p ON c.paciente_id = p.id
+      INNER JOIN usuarios u ON c.paciente_id = u.id
       WHERE c.estado = 'cancelada'
+        AND u.rol = 'paciente'
         AND c.fecha::date BETWEEN $1 AND $2
     `;
     
