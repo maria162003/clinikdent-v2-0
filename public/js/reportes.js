@@ -13,13 +13,19 @@ const reportesState = {
 };
 
 // Inicialización
-document.addEventListener('DOMContentLoaded', function() {
+function initReportesSystem() {
   console.log('📊 Inicializando sistema de reportes...');
   console.log('🔍 Verificando elementos del DOM...');
   
-  // Verificar que existan los elementos clave
-  const tabs = document.querySelectorAll('.tab-button');
-  const contents = document.querySelectorAll('.tab-content');
+  // Verificar que existan los elementos clave dentro del container de reportes
+  const reportesContainer = document.querySelector('.reportes-container');
+  if (!reportesContainer) {
+    console.log('⚠️ Container de reportes no encontrado, esperando...');
+    return;
+  }
+  
+  const tabs = reportesContainer.querySelectorAll('.tab-button');
+  const contents = reportesContainer.querySelectorAll('.tab-content');
   console.log(`✅ Tabs encontrados: ${tabs.length}`);
   console.log(`✅ Tab contents encontrados: ${contents.length}`);
   
@@ -30,28 +36,42 @@ document.addEventListener('DOMContentLoaded', function() {
   setDefaultDates();
   
   console.log('✅ Sistema de reportes inicializado correctamente');
-});
+}
+
+// Ejecutar cuando el DOM esté listo o inmediatamente si ya está listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initReportesSystem);
+} else {
+  // DOM ya está listo, ejecutar inmediatamente
+  setTimeout(initReportesSystem, 500);
+}
 
 // ==========================================
 // MANEJO DE PESTAÑAS
 // ==========================================
 
 function setupTabs() {
-  const tabButtons = document.querySelectorAll('.tab-button');
+  const reportesContainer = document.querySelector('.reportes-container');
+  if (!reportesContainer) return;
+  
+  const tabButtons = reportesContainer.querySelectorAll('.tab-button');
   
   tabButtons.forEach(button => {
     button.addEventListener('click', () => {
       const tabName = button.getAttribute('data-tab');
       
-      // Actualizar botones
+      // Actualizar botones solo dentro del container de reportes
       tabButtons.forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
       
-      // Actualizar contenido
-      document.querySelectorAll('.tab-content').forEach(content => {
+      // Actualizar contenido solo dentro del container de reportes
+      reportesContainer.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
       });
-      document.getElementById(`tab-${tabName}`).classList.add('active');
+      const targetTab = reportesContainer.querySelector(`#tab-${tabName}`);
+      if (targetTab) {
+        targetTab.classList.add('active');
+      }
     });
   });
 }
