@@ -90,7 +90,7 @@ app.use(sanitizeInput);
 
 // 📁 ARCHIVOS ESTÁTICOS SEGUROS
 // ============================================
-app.use(express.static(path.join(__dirname, '../Frontend'), {
+app.use(express.static(path.join(__dirname, '../public'), {
   maxAge: process.env.NODE_ENV === 'production' ? 86400000 : 0, // 1 día en prod
   setHeaders: (res, filePath) => {
     // Headers adicionales para archivos estáticos
@@ -238,27 +238,27 @@ app.post('/api/historial', authenticateToken, authorizeRole('admin', 'odontologo
 
 // Página principal
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/index.html'));
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Login page
 app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/login.html'));
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Registro page
 app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/register.html'));
+  res.sendFile(path.join(__dirname, '../public/registro.html'));
 });
 
 // Dashboard - requiere autenticación
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/dashboard.html'));
+  res.sendFile(path.join(__dirname, '../public/dashboard-paciente.html'));
 });
 
 // Admin panel - solo admins
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/admin.html'));
+  res.sendFile(path.join(__dirname, '../public/dashboard-admin.html'));
 });
 
 // 🚫 MANEJO DE ERRORES GLOBAL
