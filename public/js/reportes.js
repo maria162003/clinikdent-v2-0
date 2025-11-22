@@ -24,8 +24,8 @@ function initReportesSystem() {
     return;
   }
   
-  const tabs = reportesContainer.querySelectorAll('.tab-button');
-  const contents = reportesContainer.querySelectorAll('.tab-content');
+  const tabs = reportesContainer.querySelectorAll('.reporte-tab-button');
+  const contents = reportesContainer.querySelectorAll('.reporte-tab-content');
   console.log(`✅ Tabs encontrados: ${tabs.length}`);
   console.log(`✅ Tab contents encontrados: ${contents.length}`);
   
@@ -46,6 +46,17 @@ if (document.readyState === 'loading') {
   setTimeout(initReportesSystem, 500);
 }
 
+// También inicializar cuando se active el tab de "Reportes Detallados"
+document.addEventListener('DOMContentLoaded', function() {
+  const detalladoTab = document.getElementById('detallado-tab');
+  if (detalladoTab) {
+    detalladoTab.addEventListener('shown.bs.tab', function (event) {
+      console.log('🔄 Tab de Reportes Detallados activado, inicializando sistema...');
+      initReportesSystem();
+    });
+  }
+});
+
 // ==========================================
 // MANEJO DE PESTAÑAS
 // ==========================================
@@ -54,7 +65,7 @@ function setupTabs() {
   const reportesContainer = document.querySelector('.reportes-container');
   if (!reportesContainer) return;
   
-  const tabButtons = reportesContainer.querySelectorAll('.tab-button');
+  const tabButtons = reportesContainer.querySelectorAll('.reporte-tab-button');
   
   tabButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -65,7 +76,7 @@ function setupTabs() {
       button.classList.add('active');
       
       // Actualizar contenido solo dentro del container de reportes
-      reportesContainer.querySelectorAll('.tab-content').forEach(content => {
+      reportesContainer.querySelectorAll('.reporte-tab-content').forEach(content => {
         content.classList.remove('active');
       });
       const targetTab = reportesContainer.querySelector(`#tab-${tabName}`);

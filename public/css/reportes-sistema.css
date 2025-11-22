@@ -12,7 +12,7 @@
   flex-wrap: wrap;
 }
 
-.tab-button {
+.reporte-tab-button {
   padding: 12px 24px;
   background: none;
   border: none;
@@ -23,23 +23,23 @@
   transition: all 0.3s;
 }
 
-.tab-button:hover {
+.reporte-tab-button:hover {
   color: #333;
   background: #f5f5f5;
 }
 
-.tab-button.active {
+.reporte-tab-button.active {
   color: #007bff;
   border-bottom-color: #007bff;
   font-weight: bold;
 }
 
-.tab-content {
+.reporte-tab-content {
   display: none;
   animation: fadeIn 0.3s;
 }
 
-.tab-content.active {
+.reporte-tab-content.active {
   display: block;
 }
 
