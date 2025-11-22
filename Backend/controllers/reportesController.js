@@ -129,7 +129,6 @@ exports.obtenerReporteCitasAgendadas = async (req, res) => {
       INNER JOIN usuarios pac ON c.paciente_id = pac.id
       LEFT JOIN usuarios odo ON c.odontologo_id = odo.id
       WHERE c.fecha::date BETWEEN $1 AND $2
-        AND pac.rol = 'paciente'
     `;
     
     const params = [fechaInicio, fechaFin];
@@ -737,6 +736,260 @@ function formatDateTimeForExcel(dateString) {
   const date = new Date(dateString);
   return date.toLocaleString('es-CO');
 }
+
+// ==========================================
+// EXPORTAR PDF
+// ==========================================
+
+exports.exportarReportePDF = async (req, res) => {
+  try {
+    console.log('📄 Generando PDF...');
+    const PDFDocument = require('pdfkit');
+    const { tipo } = req.params;
+    const datos = req.body;
+    
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    
+    const filename = `reporte_${tipo}_${new Date().toISOString().split('T')[0]}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    doc.pipe(res);
+    
+    // Encabezado
+    doc.fontSize(18).text(obtenerTitulo(tipo), { align: 'center' });
+    doc.fontSize(10).text(`Generado: ${new Date().toLocaleString('es-CO')}`, { align: 'center' });
+    doc.moveDown(2);
+    
+    // Resumen
+    if (datos.resumen) {
+      doc.fontSize(14).text('Resumen', { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(11);
+      
+      Object.entries(datos.resumen).forEach(([key, value]) => {
+        const label = formatLabel(key);
+        const formatted = typeof value === 'number' && key.includes('total') 
+          ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value)
+          : value;
+        doc.text(`${label}: ${formatted}`);
+      });
+      
+      doc.moveDown(1);
+    }
+    
+    // Tabla de detalles
+    if (datos.detalles && datos.detalles.length > 0) {
+      doc.fontSize(14).text('Detalles', { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(9);
+      
+      const headers = Object.keys(datos.detalles[0]);
+      const columnWidth = (doc.page.width - 100) / headers.length;
+      let y = doc.y;
+      
+      // Encabezados
+      doc.font('Helvetica-Bold');
+      headers.forEach((header, i) => {
+        doc.text(formatLabel(header), 50 + (i * columnWidth), y, { width: columnWidth, align: 'left' });
+      });
+      
+      doc.moveDown(0.5);
+      doc.font('Helvetica');
+      
+      // Datos (máximo 30 filas para no exceder página)
+      datos.detalles.slice(0, 30).forEach((row, rowIndex) => {
+        if (doc.y > doc.page.height - 100) {
+          doc.addPage();
+          y = 50;
+        } else {
+          y = doc.y;
+        }
+        
+        headers.forEach((header, i) => {
+          const value = row[header] || '-';
+          doc.text(String(value).substring(0, 25), 50 + (i * columnWidth), y, { width: columnWidth, align: 'left' });
+        });
+        
+        doc.moveDown(0.3);
+      });
+      
+      if (datos.detalles.length > 30) {
+        doc.moveDown(1);
+        doc.fontSize(10).text(`... y ${datos.detalles.length - 30} registros más`, { align: 'center', italics: true });
+      }
+    }
+    
+    doc.end();
+    console.log('✅ PDF generado');
+    
+  } catch (error) {
+    console.error('❌ Error generando PDF:', error);
+    res.status(500).json({ success: false, msg: 'Error al generar PDF', error: error.message });
+  }
+};
+
+function formatLabel(key) {
+  const labels = {
+    total: 'Total',
+    totalTransacciones: 'Total Transacciones',
+    ticketPromedio: 'Ticket Promedio',
+    completadas: 'Completadas',
+    programadas: 'Programadas',
+    fecha: 'Fecha',
+    concepto: 'Concepto',
+    paciente: 'Paciente',
+    metodoPago: 'Método',
+    monto: 'Monto',
+    estado: 'Estado',
+    hora: 'Hora',
+    odontologo: 'Odontólogo',
+    tratamiento: 'Tratamiento'
+  };
+  return labels[key] || key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+// ==========================================
+// EXPORTAR DOCX
+// ==========================================
+
+exports.exportarReporteDOCX = async (req, res) => {
+  try {
+    console.log('📝 Generando DOCX...');
+    const { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, AlignmentType } = require('docx');
+    const { tipo } = req.params;
+    const datos = req.body;
+    
+    const sections = [];
+    const children = [];
+    
+    // Título
+    children.push(
+      new Paragraph({
+        text: obtenerTitulo(tipo),
+        heading: 'Heading1',
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 }
+      })
+    );
+    
+    // Fecha
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `Generado: ${new Date().toLocaleString('es-CO')}`,
+            size: 20
+          })
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 }
+      })
+    );
+    
+    // Resumen
+    if (datos.resumen) {
+      children.push(
+        new Paragraph({
+          text: 'Resumen',
+          heading: 'Heading2',
+          spacing: { before: 200, after: 200 }
+        })
+      );
+      
+      Object.entries(datos.resumen).forEach(([key, value]) => {
+        const label = formatLabel(key);
+        const formatted = typeof value === 'number' && key.includes('total')
+          ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value)
+          : value;
+        
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${label}: `, bold: true }),
+              new TextRun({ text: String(formatted) })
+            ],
+            spacing: { after: 100 }
+          })
+        );
+      });
+    }
+    
+    // Tabla de detalles
+    if (datos.detalles && datos.detalles.length > 0) {
+      children.push(
+        new Paragraph({
+          text: 'Detalles',
+          heading: 'Heading2',
+          spacing: { before: 400, after: 200 }
+        })
+      );
+      
+      const headers = Object.keys(datos.detalles[0]);
+      const tableRows = [];
+      
+      // Encabezados
+      tableRows.push(
+        new TableRow({
+          children: headers.map(header => 
+            new TableCell({
+              children: [new Paragraph({ text: formatLabel(header), bold: true })],
+              width: { size: 100 / headers.length, type: WidthType.PERCENTAGE }
+            })
+          )
+        })
+      );
+      
+      // Datos (máximo 50 filas)
+      datos.detalles.slice(0, 50).forEach(row => {
+        tableRows.push(
+          new TableRow({
+            children: headers.map(header => 
+              new TableCell({
+                children: [new Paragraph(String(row[header] || '-'))],
+                width: { size: 100 / headers.length, type: WidthType.PERCENTAGE }
+              })
+            )
+          })
+        );
+      });
+      
+      children.push(
+        new Table({
+          rows: tableRows,
+          width: { size: 100, type: WidthType.PERCENTAGE }
+        })
+      );
+      
+      if (datos.detalles.length > 50) {
+        children.push(
+          new Paragraph({
+            text: `... y ${datos.detalles.length - 50} registros más`,
+            italics: true,
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200 }
+          })
+        );
+      }
+    }
+    
+    sections.push({ children });
+    
+    const doc = new Document({ sections });
+    const buffer = await Packer.toBuffer(doc);
+    
+    const filename = `reporte_${tipo}_${new Date().toISOString().split('T')[0]}.docx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+    
+    console.log('✅ DOCX generado');
+    
+  } catch (error) {
+    console.error('❌ Error generando DOCX:', error);
+    res.status(500).json({ success: false, msg: 'Error al generar DOCX', error: error.message });
+  }
+};
 
 // Mantener compatibilidad con endpoints anteriores
 exports.obtenerResumenGeneral = async (req, res) => {

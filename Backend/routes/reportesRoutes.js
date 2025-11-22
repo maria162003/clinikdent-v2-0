@@ -17,4 +17,8 @@ router.post('/seguimiento-tratamientos', reportesController.obtenerReporteSeguim
 // Ruta de exportación a Excel
 router.post('/exportar-excel/:tipo', reportesController.exportarReporteExcel);
 
+// Rutas de exportación a PDF y DOCX
+router.post('/exportar-pdf/:tipo', reportesController.exportarReportePDF);
+router.post('/exportar-docx/:tipo', reportesController.exportarReporteDOCX);
+
 module.exports = router;
