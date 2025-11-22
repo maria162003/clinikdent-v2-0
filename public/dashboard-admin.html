@@ -572,11 +572,6 @@
                             Operativo
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="detallado-tab" data-bs-toggle="tab" data-bs-target="#detallado-reportes" type="button" role="tab" aria-controls="detallado-reportes" aria-selected="false">
-                            Reportes Detallados
-                        </button>
-                    </li>
                 </ul>
 
                 <!-- Contenido de los tabs -->
@@ -736,28 +731,78 @@
                             </div>
                         </div>
 
+                        <!-- Filtros y Exportación -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Filtros de Reporte</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label>Fecha Inicio *</label>
+                                        <input type="date" class="form-control" id="fin-fecha-inicio" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Fecha Fin *</label>
+                                        <input type="date" class="form-control" id="fin-fecha-fin" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Método de Pago</label>
+                                        <select class="form-control" id="fin-metodo-pago">
+                                            <option value="">Todos</option>
+                                            <option value="efectivo">Efectivo</option>
+                                            <option value="tarjeta">Tarjeta</option>
+                                            <option value="transferencia">Transferencia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-primary btn-block" onclick="generarReporte('financiero')">
+                                            <i class="bi bi-search"></i> Generar Reporte
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-success" id="btn-excel-financiero" onclick="descargarExcel('financiero')" disabled>
+                                                <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="btn-pdf-financiero" onclick="descargarPDF('financiero')" disabled>
+                                                <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+                                            </button>
+                                            <button type="button" class="btn btn-info" id="btn-docx-financiero" onclick="descargarDOCX('financiero')" disabled>
+                                                <i class="bi bi-file-earmark-word"></i> Descargar Word
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Tabla de ingresos detallados -->
                         <div class="card shadow">
                             <div class="card-header">
                                 <h6 class="m-0 font-weight-bold text-primary">Detalle de Ingresos</h6>
                             </div>
                             <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover" id="ingresosDetalleTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Fecha</th>
-                                                <th>Concepto</th>
-                                                <th>Paciente</th>
-                                                <th>Método de Pago</th>
-                                                <th>Monto</th>
-                                                <th>Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="ingresosDetalleTableBody">
-                                            <!-- Se carga dinámicamente -->
-                                        </tbody>
-                                    </table>
+                                <div id="resultados-financiero">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover" id="ingresosDetalleTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Concepto</th>
+                                                    <th>Paciente</th>
+                                                    <th>Método de Pago</th>
+                                                    <th>Monto</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="ingresosDetalleTableBody">
+                                                <!-- Se carga dinámicamente -->
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -765,6 +810,62 @@
 
                     <!-- Operativo Tab -->
                     <div class="tab-pane fade" id="operativo-reportes" role="tabpanel" aria-labelledby="operativo-tab">
+                        <!-- Filtros y Exportación -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Filtros de Reporte</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label>Fecha Inicio *</label>
+                                        <input type="date" class="form-control" id="op-fecha-inicio" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label>Fecha Fin *</label>
+                                        <input type="date" class="form-control" id="op-fecha-fin" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label>Estado</label>
+                                        <select class="form-control" id="op-estado">
+                                            <option value="">Todos</option>
+                                            <option value="programada">Programada</option>
+                                            <option value="completada">Completada</option>
+                                            <option value="confirmada">Confirmada</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Odontólogo</label>
+                                        <select class="form-control" id="op-odontologo">
+                                            <option value="">Todos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-primary btn-block" onclick="generarReporte('operativo')">
+                                            <i class="bi bi-search"></i> Generar Reporte
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-success" id="btn-excel-operativo" onclick="descargarExcel('operativo')" disabled>
+                                                <i class="bi bi-file-earmark-excel"></i> Excel
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="btn-pdf-operativo" onclick="descargarPDF('operativo')" disabled>
+                                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                                            </button>
+                                            <button type="button" class="btn btn-info" id="btn-docx-operativo" onclick="descargarDOCX('operativo')" disabled>
+                                                <i class="bi bi-file-earmark-word"></i> Word
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="resultados-operativo"></div>
+                        
                         <div class="row mb-4">
                             <div class="col-lg-6">
                                 <div class="card shadow">
