@@ -116,6 +116,34 @@ exports.obtenerOdontologos = async (req, res) => {
   }
 };
 
+// Obtener usuario por ID
+exports.obtenerUsuarioPorId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Obteniendo usuario ID: ${id}`);
+    
+    const { rows } = await db.query(`
+      SELECT u.id, u.nombre, u.apellido, u.correo, u.telefono, u.direccion,
+             r.nombre as rol, u.fecha_nacimiento, u.tipo_documento,
+             u.numero_documento, u.activo as estado, u.created_at as fecha_registro
+      FROM usuarios u
+      LEFT JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = $1
+    `, [id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ msg: 'Usuario no encontrado.' });
+    }
+    
+    console.log(`✅ Usuario encontrado: ${rows[0].nombre} ${rows[0].apellido}`);
+    res.json(rows[0]);
+    
+  } catch (err) {
+    console.error('❌ Error al obtener usuario:', err);
+    res.status(500).json({ msg: 'Error al obtener usuario de la base de datos.' });
+  }
+};
+
 // Crear un nuevo usuario
 exports.crearUsuario = async (req, res) => {
     console.log('🔍 Datos recibidos en crearUsuario:', req.body);
