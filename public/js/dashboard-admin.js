@@ -4,6 +4,7 @@ if (window.dashboardAdminInitialized) {
 } else {
     window.dashboardAdminInitialized = true;
     console.log('✅ Inicializando Dashboard Admin por primera vez');
+    console.log('🆕 dashboard-admin.js build 2025-11-19-01');
 
 // DEBUG: Verificar datos de localStorage
 console.log('🔍 DEBUG - Estado inicial de localStorage:');
@@ -2351,55 +2352,10 @@ class DashboardAdmin {
             
             console.log('✅ Usuarios obtenidos desde API:', usuarios.length);
             
-            // Si no hay usuarios de la API, usar datos de ejemplo
+            // Usar solo datos reales de la API
             if (!usuarios || usuarios.length === 0) {
-                console.log('⚠️ No hay usuarios, usando datos de ejemplo');
-                this.users = [
-                    {
-                        id: 1,
-                        nombre: 'Admin',
-                        apellido: 'Principal',
-                        correo: 'admin@clinikdent.com',
-                        telefono: '3001234567',
-                        rol: 'administrador',
-                        estado: 'activo'
-                    },
-                    {
-                        id: 2,
-                        nombre: 'Dr. Carlos',
-                        apellido: 'Rodriguez',
-                        correo: 'carlos@clinikdent.com',
-                        telefono: '3001234568',
-                        rol: 'odontologo',
-                        estado: 'activo'
-                    },
-                    {
-                        id: 3,
-
-                        correo: 'maria@clinikdent.com',
-                        telefono: '3001234569',
-                        rol: 'paciente',
-                        estado: 'activo'
-                    },
-                    {
-                        id: 4,
-                        nombre: 'Juan',
-                        apellido: 'Pérez',
-                        correo: 'juan@clinikdent.com',
-                        telefono: '3001234570',
-                        rol: 'paciente',
-                        estado: 'activo'
-                    },
-                    {
-                        id: 5,
-                        nombre: 'Camila',
-                        apellido: 'Perez',
-                        correo: 'camila@clinikdent.com',
-                        telefono: '3001234571',
-                        rol: 'administrador',
-                        estado: 'activo'
-                    }
-                ];
+                console.warn('⚠️ La API no devolvió usuarios, tabla quedará vacía');
+                this.users = [];
             } else {
                 this.users = usuarios;
             }
@@ -2416,55 +2372,8 @@ class DashboardAdmin {
         } catch (err) {
             console.error('❌ Error al cargar usuarios:', err);
             
-            // Fallback con datos de ejemplo en caso de error
-            console.log('🆘 Usando datos de fallback');
-            this.users = [
-                {
-                    id: 1,
-                    nombre: 'Admin',
-                    apellido: 'Principal',
-                    correo: 'admin@clinikdent.com',
-                    telefono: '3001234567',
-                    rol: 'administrador',
-                    estado: 'activo'
-                },
-                {
-                    id: 2,
-                    nombre: 'Dr. Carlos',
-                    apellido: 'Rodriguez',
-                    correo: 'carlos@clinikdent.com',
-                    telefono: '3001234568',
-                    rol: 'odontologo',
-                    estado: 'activo'
-                },
-                {
-                    id: 3,
-
-                    correo: 'maria@clinikdent.com',
-                    telefono: '3001234569',
-                    rol: 'paciente',
-                    estado: 'activo'
-                },
-                {
-                    id: 4,
-                    nombre: 'Juan',
-                    apellido: 'Pérez',
-                    correo: 'juan@clinikdent.com',
-                    telefono: '3001234570',
-                    rol: 'paciente',
-                    estado: 'activo'
-                },
-                {
-                    id: 5,
-                    nombre: 'Camila',
-                    apellido: 'Perez',
-                    correo: 'camila@clinikdent.com',
-                    telefono: '3001234571',
-                    rol: 'administrador',
-                    estado: 'activo'
-                }
-            ];
-            
+            // No cargar datos de ejemplo para evitar sobrecarga
+            this.users = [];
             this.renderUsuariosTable();
         }
     }
@@ -2485,9 +2394,12 @@ class DashboardAdmin {
         
         this.users.forEach(user => {
             const tr = document.createElement('tr');
+            const nombreCompleto = `${user.nombre || ''} ${user.apellido || ''}`.trim();
+            const nombreSeguro = nombreCompleto.replace(/'/g, "\\'");
+            const esPaciente = (user.rol || '').toLowerCase() === 'paciente';
             tr.innerHTML = `
                 <td>${user.id}</td>
-                <td>${user.nombre} ${user.apellido}</td>
+                <td>${nombreCompleto}</td>
                 <td>${user.correo}</td>
                 <td>
                     <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
@@ -2496,12 +2408,19 @@ class DashboardAdmin {
                     <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-warning me-1" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-warning" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        ${esPaciente ? `
+                        <button class="btn btn-sm btn-success" onclick="abrirModalReasignarOdontologo(${user.id}, '${nombreSeguro}')" title="Reasignar odontólogo">
+                            <i class="bi bi-person-badge"></i>
+                        </button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -2539,9 +2458,12 @@ class DashboardAdmin {
         
         filteredUsers.forEach(user => {
             const tr = document.createElement('tr');
+            const nombreCompleto = `${user.nombre || ''} ${user.apellido || ''}`.trim();
+            const nombreSeguro = nombreCompleto.replace(/'/g, "\\'");
+            const esPaciente = (user.rol || '').toLowerCase() === 'paciente';
             tr.innerHTML = `
                 <td>${user.id}</td>
-                <td>${user.nombre} ${user.apellido}</td>
+                <td>${nombreCompleto}</td>
                 <td>${user.correo}</td>
                 <td>
                     <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
@@ -2550,12 +2472,19 @@ class DashboardAdmin {
                     <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-warning me-1" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-warning" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        ${esPaciente ? `
+                        <button class="btn btn-sm btn-success" onclick="abrirModalReasignarOdontologo(${user.id}, '${nombreSeguro}')" title="Reasignar odontólogo">
+                            <i class="bi bi-person-badge"></i>
+                        </button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -2597,9 +2526,12 @@ class DashboardAdmin {
         
         pageUsers.forEach(user => {
             const tr = document.createElement('tr');
+            const nombreCompleto = `${user.nombre || ''} ${user.apellido || ''}`.trim();
+            const nombreSeguro = nombreCompleto.replace(/'/g, "\\'");
+            const esPaciente = (user.rol || '').toLowerCase() === 'paciente';
             tr.innerHTML = `
                 <td>${user.id}</td>
-                <td>${user.nombre} ${user.apellido}</td>
+                <td>${nombreCompleto}</td>
                 <td>${user.correo}</td>
                 <td>
                     <span class="badge bg-${this.getRolBadgeClass(user.rol)}">${user.rol}</span>
@@ -2608,12 +2540,19 @@ class DashboardAdmin {
                     <span class="badge bg-${user.estado === 'activo' ? 'success' : 'secondary'}">${user.estado || 'activo'}</span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-warning me-1" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-warning" onclick="dashboardAdmin.openUserModal(${user.id})" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        ${esPaciente ? `
+                        <button class="btn btn-sm btn-success" onclick="abrirModalReasignarOdontologo(${user.id}, '${nombreSeguro}')" title="Reasignar odontólogo">
+                            <i class="bi bi-person-badge"></i>
+                        </button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="dashboardAdmin.deleteUser(${user.id})" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -3158,14 +3097,8 @@ class DashboardAdmin {
 
         // Renderizar citas de la página actual
         currentPageCitas.forEach(cita => {
-            // Calcular si se puede editar la cita
-            const fechaCita = new Date(cita.fecha + 'T' + cita.hora);
-            const ahora = new Date();
-            const diffMs = fechaCita - ahora;
-            const diffHoras = diffMs / (1000 * 60 * 60);
-            const puedeEditar = cita.estado !== 'completada' && 
-                               cita.estado !== 'cancelada' && 
-                               diffHoras >= 24;
+            // Solo deshabilitar edición para citas completadas
+            const puedeEditar = cita.estado !== 'completada';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -3192,7 +3125,7 @@ class DashboardAdmin {
                         <button class="btn btn-sm btn-success" 
                                 onclick="dashboardAdmin.editarCita(${cita.id})" 
                                 ${!puedeEditar ? 'disabled' : ''}
-                                title="${puedeEditar ? 'Editar cita' : 'No se puede editar (completada, cancelada, pasada o menos de 24h)'}" 
+                                title="${puedeEditar ? 'Editar cita' : 'No se puede editar (cita completada)'}" 
                                 style="background: #198754 !important; background-image: none !important; border-color: #198754 !important;">
                             <i class="bi bi-pencil"></i>
                         </button>
@@ -5948,9 +5881,10 @@ document.addEventListener('DOMContentLoaded', () => {
             switch (targetId) {
                 case '#equipos-inventario':
                     console.log('🔧 Cargando equipos...');
-                    if (typeof cargarInventario === 'function') {
+                    // Deshabilitado - loadInventario() en loadSectionData ya carga los datos
+                    /* if (typeof cargarInventario === 'function') {
                         cargarInventario();
-                    }
+                    } */
                     // Inicializar paginación para inventario
                     setTimeout(() => {
                         if (typeof initializePaginationAdmin === 'function') {
@@ -6005,7 +5939,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Cargar proveedores por defecto al ir a la sección de inventario
-    setTimeout(() => {
+    // NOTA: Deshabilitado para evitar carga duplicada - loadInventario() ya carga los datos
+    /* setTimeout(() => {
         const inventarioSection = document.getElementById('inventario-section');
         if (inventarioSection && !inventarioSection.classList.contains('d-none')) {
             console.log('📦 Cargando datos iniciales de inventario...');
@@ -6013,7 +5948,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cargarInventario();
             }
         }
-    }, 1000);
+    }, 1000); */
 });
 
 } // Cierre del check de dashboardAdmin

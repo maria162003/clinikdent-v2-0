@@ -3274,7 +3274,17 @@ function setupInventarioEventListeners() {
     });
     
     document.getElementById('importarInventarioBtn')?.addEventListener('click', () => {
-        document.getElementById('importFileInput')?.click();
+        // Crear input de archivo dinámicamente
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx,.xls,.csv';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                importarInventario(file);
+            }
+        };
+        input.click();
     });
 
     // Event listeners para tabs
@@ -3326,7 +3336,7 @@ async function cargarDatosInventario() {
         showLoading('Cargando datos del inventario...');
         
         await Promise.all([
-            cargarInventarioOLD(),
+            // cargarInventarioOLD(), // Deshabilitado - dashboard loadInventario() maneja la carga
             cargarSedes(),
             cargarCategorias(),
             cargarProveedores(),
@@ -3820,16 +3830,46 @@ function cargarContenidoTabInventario(target) {
 }
 
 // Exportar inventario
-function exportarInventario(formato) {
-    showLoading(`Exportando inventario en formato ${formato.toUpperCase()}...`);
-    
-    setTimeout(() => {
+async function exportarInventario(formato) {
+    try {
+        showLoading(`Exportando inventario en formato ${formato.toUpperCase()}...`);
+        
+        // Obtener todos los datos del inventario del servidor
+        const response = await fetch('/api/inventario?porPagina=1000', {
+            headers: {
+                'Content-Type': 'application/json',
+                'user-id': localStorage.getItem('userId') || '1'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al obtener datos del inventario');
+        }
+        
+        const inventarioData = await response.json();
+        console.log('📦 Datos del inventario para exportar:', inventarioData);
+        
+        // Extraer productos del objeto de respuesta
+        const productos = inventarioData.productos || inventarioData.items || inventarioData || [];
+        
+        if (!Array.isArray(productos) || productos.length === 0) {
+            throw new Error('No hay productos para exportar');
+        }
+        
         if (formato === 'excel') {
             const datos = [
-                ['Código', 'Producto', 'Categoría', 'Sede', 'Stock Actual', 'Stock Mínimo', 'Precio Unit.', 'Valor Total', 'Estado'],
-                ...inventarioModule.productos.map(p => [
-                    p.codigo, p.nombre, p.categoria, p.sede, p.stockActual, p.stockMinimo, 
-                    p.precioUnitario, p.valorTotal, getEstadoTexto(p.estado)
+                ['Código', 'Producto', 'Categoría', 'Sede', 'Stock Actual', 'Stock Mínimo', 'Precio Unit.', 'Valor Total', 'Estado', 'Última Actualización'],
+                ...productos.map(p => [
+                    p.codigo || p.id || 'N/A',
+                    p.nombre || 'Sin nombre',
+                    p.categoria || 'Sin categoría',
+                    p.sede || p.sede_nombre || 'General',
+                    p.stock_actual || p.stockActual || p.cantidad || 0,
+                    p.stock_minimo || p.stockMinimo || 0,
+                    p.precio_unitario || p.precioUnitario || p.precio || 0,
+                    (p.stock_actual || p.stockActual || 0) * (p.precio_unitario || p.precioUnitario || p.precio || 0),
+                    p.estado || 'activo',
+                    p.ultima_actualizacion || p.updated_at || new Date().toISOString().split('T')[0]
                 ])
             ];
             
@@ -3838,17 +3878,284 @@ function exportarInventario(formato) {
             
             // Ajustar ancho de columnas
             ws['!cols'] = [
-                { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, 
-                { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 }
+                { wch: 12 }, { wch: 30 }, { wch: 18 }, { wch: 15 }, 
+                { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 18 }
             ];
             
+            // Aplicar estilos al encabezado
+            const headerRange = XLSX.utils.decode_range(ws['!ref']);
+            for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+                if (!ws[cellAddress]) continue;
+                ws[cellAddress].s = {
+                    font: { bold: true },
+                    fill: { fgColor: { rgb: "4472C4" } },
+                    alignment: { horizontal: "center" }
+                };
+            }
+            
             XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-            XLSX.writeFile(wb, `inventario-${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `inventario-clinikdent-${new Date().toISOString().split('T')[0]}.xlsx`);
+            
+            hideLoading();
+            showToast(`✅ Inventario exportado: ${productos.length} productos`, 'success');
         }
         
+    } catch (error) {
+        console.error('❌ Error al exportar inventario:', error);
         hideLoading();
-        showToast(`Inventario exportado exitosamente en ${formato.toUpperCase()}`, 'success');
-    }, 2000);
+        showToast(`Error al exportar: ${error.message}`, 'error');
+    }
+}
+
+// Función para importar inventario desde Excel
+async function importarInventario(file) {
+    try {
+        showLoading('Importando inventario desde Excel...');
+        
+        const reader = new FileReader();
+        
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                console.log('📊 Datos importados:', jsonData);
+                
+                if (jsonData.length === 0) {
+                    throw new Error('El archivo no contiene datos');
+                }
+                
+                // Validar formato esperado
+                const primeraFila = jsonData[0];
+                const columnasRequeridas = ['Producto', 'Categoría'];
+                const columnasFaltantes = columnasRequeridas.filter(col => !primeraFila.hasOwnProperty(col));
+                
+                if (columnasFaltantes.length > 0) {
+                    throw new Error(`Columnas requeridas faltantes: ${columnasFaltantes.join(', ')}`);
+                }
+                
+                // Mostrar modal de confirmación con resumen
+                mostrarModalConfirmacionImportacion(jsonData);
+                
+            } catch (error) {
+                console.error('❌ Error procesando archivo:', error);
+                hideLoading();
+                showToast(`Error al procesar archivo: ${error.message}`, 'error');
+            }
+        };
+        
+        reader.onerror = (error) => {
+            console.error('❌ Error leyendo archivo:', error);
+            hideLoading();
+            showToast('Error al leer el archivo', 'error');
+        };
+        
+        reader.readAsArrayBuffer(file);
+        
+    } catch (error) {
+        console.error('❌ Error al importar inventario:', error);
+        hideLoading();
+        showToast(`Error al importar: ${error.message}`, 'error');
+    }
+}
+
+// Modal de confirmación de importación
+function mostrarModalConfirmacionImportacion(datos) {
+    hideLoading();
+    
+    const totalProductos = datos.length;
+    const categorias = [...new Set(datos.map(d => d.Categoría || d.categoria))];
+    
+    const modalHTML = `
+        <div class="modal fade" id="modalConfirmacionImportacion" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-file-earmark-excel"></i> Confirmar Importación
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-info-circle"></i> Resumen de Importación</h6>
+                            <ul class="mb-0">
+                                <li><strong>Total de productos:</strong> ${totalProductos}</li>
+                                <li><strong>Categorías detectadas:</strong> ${categorias.length} (${categorias.slice(0, 5).join(', ')}${categorias.length > 5 ? '...' : ''})</li>
+                            </ul>
+                        </div>
+                        
+                        <h6>Vista previa (primeros 5 productos):</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Stock</th>
+                                        <th>Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${datos.slice(0, 5).map(d => `
+                                        <tr>
+                                            <td>${d.Producto || d.producto || 'N/A'}</td>
+                                            <td>${d.Categoría || d.categoria || 'N/A'}</td>
+                                            <td>${d['Stock Actual'] || d.stock_actual || d.cantidad || 0}</td>
+                                            <td>$${d['Precio Unit.'] || d.precio_unitario || d.precio || 0}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Nota:</strong> Esta operación agregará o actualizará los productos en el inventario.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="procesarImportacion()">
+                            <i class="bi bi-check"></i> Confirmar Importación
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remover modal anterior si existe
+    const modalExistente = document.getElementById('modalConfirmacionImportacion');
+    if (modalExistente) {
+        modalExistente.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Guardar datos en variable global temporal
+    window.datosImportacionTemp = datos;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmacionImportacion'));
+    modal.show();
+}
+
+// Procesar la importación confirmada
+async function procesarImportacion() {
+    try {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalConfirmacionImportacion'));
+        modal?.hide();
+        
+        showLoading('Procesando importación...');
+        
+        const datos = window.datosImportacionTemp;
+        
+        if (!datos || datos.length === 0) {
+            throw new Error('No hay datos para importar');
+        }
+        
+        // Enviar datos al backend para procesar
+        const response = await fetch('/api/inventario/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'user-id': localStorage.getItem('userId') || '1'
+            },
+            body: JSON.stringify({ productos: datos })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.msg || 'Error al procesar importación');
+        }
+        
+        const resultado = await response.json();
+        
+        hideLoading();
+        
+        // Mostrar resultados detallados
+        if (resultado.success) {
+            let mensaje = `✅ Importación completada:\n`;
+            mensaje += `- ${resultado.insertados} productos insertados\n`;
+            mensaje += `- ${resultado.actualizados} productos actualizados\n`;
+            
+            if (resultado.errores.length > 0) {
+                mensaje += `\n⚠️ ${resultado.errores.length} errores encontrados`;
+            }
+            
+            if (resultado.advertencias.length > 0) {
+                mensaje += `\n📋 ${resultado.advertencias.length} advertencias`;
+            }
+            
+            showToast(mensaje, resultado.errores.length > 0 ? 'warning' : 'success');
+            
+            // Mostrar modal con detalles si hay errores o advertencias
+            if (resultado.errores.length > 0 || resultado.advertencias.length > 0) {
+                mostrarDetallesImportacion(resultado);
+            }
+        } else {
+            throw new Error(resultado.msg || 'Error desconocido en importación');
+        }
+        
+        // Recargar tabla de inventario
+        if (typeof cargarInventario === 'function') {
+            cargarInventario();
+        }
+        
+        // Limpiar datos temporales
+        delete window.datosImportacionTemp;
+        
+    } catch (error) {
+        console.error('❌ Error procesando importación:', error);
+        hideLoading();
+        showToast(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Mostrar detalles de importación (errores y advertencias)
+function mostrarDetallesImportacion(resultado) {
+    let html = '<div class="import-details">';
+    
+    if (resultado.errores.length > 0) {
+        html += '<h6 class="text-danger mb-3">❌ Errores:</h6>';
+        html += '<ul class="list-unstyled">';
+        resultado.errores.forEach(error => {
+            html += `<li class="text-danger mb-2">
+                <strong>Fila ${error.fila}:</strong> ${error.mensaje}
+                ${error.producto ? `(${error.producto})` : ''}
+            </li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (resultado.advertencias.length > 0) {
+        html += '<h6 class="text-warning mb-3 mt-3">⚠️ Advertencias:</h6>';
+        html += '<ul class="list-unstyled">';
+        resultado.advertencias.forEach(adv => {
+            html += `<li class="text-warning mb-2">
+                <strong>Fila ${adv.fila}:</strong> ${adv.mensaje}
+                ${adv.producto ? `(${adv.producto})` : ''}
+            </li>`;
+        });
+        html += '</ul>';
+    }
+    
+    html += '</div>';
+    
+    // Mostrar en modal o alert
+    Swal.fire({
+        title: 'Detalles de Importación',
+        html: html,
+        icon: resultado.errores.length > 0 ? 'warning' : 'info',
+        confirmButtonText: 'Entendido',
+        width: '600px'
+    });
 }
 
 // Placeholder functions para funciones específicas
@@ -4213,7 +4520,7 @@ function cargarProveedores() {
                 tbody.innerHTML = proveedores.map(prov => `
                     <tr>
                         <td><span class="badge bg-primary">${prov.id}</span></td>
-                        <td><strong>${prov.empresa || prov.nombre}</strong></td>
+                        <td><strong>${prov.nombre || prov.empresa || 'N/A'}</strong></td>
                         <td>${prov.contacto || 'N/A'}</td>
                         <td>
                             ${prov.telefono ? 
@@ -5148,3 +5455,374 @@ function verDetallesProveedor(id) {
 
 // Funciones para gestión de equipos (usando nuevo sistema CRUD)
 // Las funciones editarEquipo, eliminarEquipo y verDetallesEquipo están ahora en admin-crud.js
+
+// ========================================
+// Alertas visuales para reasignaciones de odontólogo
+// ========================================
+
+const REASIGNACION_ALERT_DURATION = 5500;
+
+function ensureReasignacionAlertStyles() {
+    if (document.getElementById('reassignAlertStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'reassignAlertStyles';
+    style.textContent = `
+        #reasignacionAlertStack {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1085;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            pointer-events: none;
+        }
+        #reasignacionAlertStack .reasignacion-alert {
+            width: min(340px, calc(100vw - 2rem));
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1rem 1.25rem 1.25rem;
+            border-left: 4px solid #20c997;
+            box-shadow: 0 18px 50px rgba(15, 33, 55, 0.18);
+            opacity: 0;
+            transform: translateY(-8px) scale(0.96);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: auto;
+        }
+        #reasignacionAlertStack .reasignacion-alert.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        #reasignacionAlertStack .reasignacion-alert.hide {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.94);
+        }
+        .reasignacion-alert .status-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #20c997, #198754);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.3rem;
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.12);
+        }
+        .reasignacion-alert .badge-soft {
+            background: rgba(25, 135, 84, 0.12);
+            color: #198754;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.65rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .reassign-progress {
+            height: 4px;
+            background: rgba(25, 135, 84, 0.15);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .reassign-progress span {
+            display: block;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #20c997, #0d6efd);
+            animation: reassignCountdown var(--alert-duration, 5.5s) linear forwards;
+        }
+        .reasignacion-alert .close-pill {
+            border: none;
+            background: rgba(15, 33, 55, 0.06);
+            color: #0f2137;
+            border-radius: 999px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+        .reasignacion-alert .close-pill:hover {
+            background: rgba(15, 33, 55, 0.12);
+        }
+        @keyframes reassignCountdown {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function getReasignacionAlertStack() {
+    ensureReasignacionAlertStyles();
+    let stack = document.getElementById('reasignacionAlertStack');
+    if (!stack) {
+        stack = document.createElement('div');
+        stack.id = 'reasignacionAlertStack';
+        document.body.appendChild(stack);
+    }
+    return stack;
+}
+
+function showReasignacionSuccessAlert(pacienteNombre = '', odontologoNombre = '') {
+    const stack = getReasignacionAlertStack();
+    const alertEl = document.createElement('div');
+    alertEl.className = 'reasignacion-alert shadow-lg';
+    alertEl.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex align-items-center">
+                <div class="status-badge me-3">
+                    <i class="bi bi-check-lg"></i>
+                </div>
+                <div>
+                    <div class="badge-soft mb-1">Reasignación completada</div>
+                    <h6 class="mb-0">${escapeHTML(odontologoNombre || 'Nuevo odontólogo asignado')}</h6>
+                    <small class="text-muted">Ahora atiende a ${escapeHTML(pacienteNombre || 'este paciente')}</small>
+                </div>
+            </div>
+            <button type="button" class="close-pill" aria-label="Cerrar notificación">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="rounded bg-light p-3 mb-3">
+            <div class="text-uppercase text-muted small mb-1">Resumen</div>
+            <div class="fw-semibold text-dark">Paciente · ${escapeHTML(pacienteNombre || 'Sin nombre')}</div>
+            <div class="text-success fw-semibold">Odontólogo · ${escapeHTML(odontologoNombre || 'Por confirmar')}</div>
+        </div>
+        <div class="reassign-progress"><span style="--alert-duration: ${(REASIGNACION_ALERT_DURATION / 1000).toFixed(1)}s"></span></div>
+    `;
+
+    stack.appendChild(alertEl);
+
+    requestAnimationFrame(() => {
+        alertEl.classList.add('visible');
+    });
+
+    const dismissAlert = () => {
+        alertEl.classList.remove('visible');
+        alertEl.classList.add('hide');
+        alertEl.addEventListener('transitionend', function handle(event) {
+            if (event.propertyName === 'opacity') {
+                alertEl.removeEventListener('transitionend', handle);
+                alertEl.remove();
+            }
+        });
+    };
+
+    const timeoutId = setTimeout(dismissAlert, REASIGNACION_ALERT_DURATION);
+
+    const closeBtn = alertEl.querySelector('.close-pill');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            clearTimeout(timeoutId);
+            dismissAlert();
+        });
+    }
+}
+
+function setupReasignacionAlertOverride() {
+    if (window.__reassignAlertOverrideApplied) return;
+    window.__reassignAlertOverrideApplied = true;
+    const nativeAlert = window.alert ? window.alert.bind(window) : null;
+    window.alert = function(message, ...args) {
+        if (typeof message === 'string' && message.toLowerCase().includes('odontólogo reasignado exitosamente')) {
+            const pacienteMatch = message.match(/Paciente:\s*([^\n]+)/i);
+            const odontologoMatch = message.match(/Nuevo Odontólogo:\s*([^\n]+)/i);
+            const pacienteNombre = pacienteMatch ? pacienteMatch[1].trim() : '';
+            const odontologoNombre = odontologoMatch ? odontologoMatch[1].trim() : '';
+            showReasignacionSuccessAlert(pacienteNombre, odontologoNombre);
+            if (typeof showToast === 'function') {
+                showToast(`Odontólogo reasignado exitosamente a ${odontologoNombre || 'el nuevo especialista'}`, 'success');
+            }
+            return;
+        }
+        if (nativeAlert) {
+            nativeAlert(message, ...args);
+        }
+    };
+}
+
+setupReasignacionAlertOverride();
+
+// ========================================
+// Funciones para gestión de Historiales Clínicos
+// ========================================
+
+// Función para abrir modal de reasignación de odontólogo
+async function abrirModalReasignarOdontologo(pacienteId, pacienteNombre) {
+    console.log('🔄 Abriendo modal de reasignación para paciente:', pacienteId, pacienteNombre);
+    
+    try {
+        // Cargar lista de odontólogos disponibles
+        const response = await fetch('/api/usuarios/odontologos', {
+            headers: {
+                'user-id': getUserId(),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al obtener odontólogos');
+        }
+        
+        const odontologos = await response.json();
+        console.log('👨‍⚕️ Odontólogos disponibles:', odontologos);
+        
+        // Crear modal dinámicamente
+        const modalHtml = `
+            <div class="modal fade" id="reasignarOdontologoModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-person-badge"></i> Reasignar Odontólogo
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Paciente:</strong> ${pacienteNombre}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Seleccionar Nuevo Odontólogo</label>
+                                <select class="form-select" id="nuevoOdontologoSelect" required>
+                                    <option value="">-- Seleccione un odontólogo --</option>
+                                    ${odontologos.map(od => `
+                                        <option value="${od.id}">
+                                            Dr./Dra. ${od.nombre} ${od.apellido}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <small>
+                                    <strong>Nota:</strong> El nuevo odontólogo tendrá acceso a todos los historiales 
+                                    clínicos previos del paciente. Los historiales anteriores no se modificarán ni eliminarán.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="confirmarReasignacion(${pacienteId})">
+                                <i class="bi bi-check-circle"></i> Reasignar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Eliminar modal anterior si existe
+        const existingModal = document.getElementById('reasignarOdontologoModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('reasignarOdontologoModal'));
+        modal.show();
+        
+        // Limpiar modal al cerrar
+        document.getElementById('reasignarOdontologoModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+        
+    } catch (error) {
+        console.error('❌ Error al abrir modal de reasignación:', error);
+        if (typeof showAlert === 'function') {
+            showAlert('danger', 'Error al cargar la lista de odontólogos: ' + error.message);
+        } else if (typeof showToast === 'function') {
+            showToast('Error al cargar la lista de odontólogos: ' + error.message, 'danger');
+        } else {
+            alert('Error al cargar la lista de odontólogos: ' + error.message);
+        }
+    }
+}
+
+// Función para confirmar la reasignación
+async function confirmarReasignacion(pacienteId) {
+    const nuevoOdontologoId = document.getElementById('nuevoOdontologoSelect').value;
+    
+    if (!nuevoOdontologoId) {
+        if (typeof showToast === 'function') {
+            showToast('Por favor seleccione un odontólogo', 'warning');
+        } else if (typeof showAlert === 'function') {
+            showAlert('warning', 'Por favor seleccione un odontólogo');
+        } else {
+            alert('Por favor seleccione un odontólogo');
+        }
+        return;
+    }
+    
+    try {
+        console.log('📤 Enviando reasignación:', { pacienteId, nuevoOdontologoId });
+        
+        showLoading('Reasignando odontólogo...');
+        
+        const response = await fetch(`/api/usuarios/${pacienteId}/reasignar-odontologo`, {
+            method: 'PUT',
+            headers: {
+                'user-id': getUserId(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nuevo_odontologo_id: nuevoOdontologoId
+            })
+        });
+        
+        hideLoading();
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.msg || 'Error al reasignar odontólogo');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Reasignación exitosa:', result);
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('reasignarOdontologoModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        const pacienteNombre = result?.paciente?.nombre || '';
+        const odontologoNombre = result?.nuevo_odontologo?.nombre || '';
+
+        showReasignacionSuccessAlert(pacienteNombre, odontologoNombre);
+
+        if (typeof showAlert === 'function') {
+            showAlert('success', `Odontólogo reasignado exitosamente a ${odontologoNombre}`);
+        } else if (typeof showToast === 'function') {
+            showToast(`Odontólogo reasignado exitosamente a ${odontologoNombre}`, 'success');
+        }
+        
+        // Recargar la lista de pacientes si existe la función
+        if (typeof window.dashboardAdmin !== 'undefined' && typeof window.dashboardAdmin.loadUsuarios === 'function') {
+            window.dashboardAdmin.loadUsuarios();
+        }
+        
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Error al reasignar odontólogo:', error);
+        if (typeof showAlert === 'function') {
+            showAlert('danger', 'Error al reasignar odontólogo: ' + error.message);
+        } else if (typeof showToast === 'function') {
+            showToast('Error al reasignar odontólogo: ' + error.message, 'danger');
+        } else {
+            alert('Error al reasignar odontólogo: ' + error.message);
+        }
+    }
+}
+
+// Exportar funciones globalmente
+window.abrirModalReasignarOdontologo = abrirModalReasignarOdontologo;
+window.confirmarReasignacion = confirmarReasignacion;
+

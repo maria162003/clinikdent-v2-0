@@ -952,8 +952,15 @@ class DashboardOdontologo {
             }
             
             const data = await response.json();
-            // El API devuelve {count: number, pacientes: array}
-            this.pacientes = data.pacientes || [];
+            const rawPacientes = data.pacientes || [];
+            const currentOdontologoId = this.currentUser?.id || parseInt(userId, 10);
+
+            this.pacientes = rawPacientes.filter(paciente => {
+                if (!paciente || typeof paciente.asignado_a === 'undefined' || paciente.asignado_a === null) {
+                    return true;
+                }
+                return Number(paciente.asignado_a) === Number(currentOdontologoId);
+            });
             this.renderPacientesTable();
             
         } catch (err) {
@@ -1601,40 +1608,25 @@ class DashboardOdontologo {
             
             console.log('👤 Usuario ID:', userId);
             
-            // Get all pacientes for this odontologo first to get their historiales
-            const pacientesResponse = await authFetch(`./api/usuarios/${userId}/pacientes`);
-            if (!pacientesResponse.ok) throw new Error('Error al obtener pacientes');
+            // Obtener historiales directamente del odontólogo logueado
+            const historialResponse = await authFetch(`/api/historial/odontologo/${userId}`);
             
-            const pacientesData = await pacientesResponse.json();
-            const pacientes = pacientesData.pacientes || [];
-            
-            console.log('👥 Pacientes encontrados:', pacientes.length, pacientes);
-            
-            // Get historiales for all these pacientes
-            let allHistoriales = [];
-            for (const paciente of pacientes) {
-                try {
-                    console.log(`🔍 Buscando historiales para paciente ${paciente.nombre} (ID: ${paciente.id})`);
-                    const historialResponse = await authFetch(`/api/historial/paciente/${paciente.id}`);
-                    if (historialResponse.ok) {
-                        const historiales = await historialResponse.json();
-                        console.log(`📋 Historiales encontrados para ${paciente.nombre}:`, historiales.length, historiales);
-                        // Add paciente info to each historial
-                        historiales.forEach(h => {
-                            h.paciente_nombre = `${paciente.nombre} ${paciente.apellido}`;
-                            h.paciente_email = paciente.correo;
-                        });
-                        allHistoriales = allHistoriales.concat(historiales);
-                    } else {
-                        console.log(`⚠️ No se pudo obtener historiales para ${paciente.nombre}:`, historialResponse.status);
-                    }
-                } catch (err) {
-                    console.log(`❌ Error al obtener historial para paciente ${paciente.nombre}:`, err);
-                }
+            if (!historialResponse.ok) {
+                throw new Error('Error al obtener historiales');
             }
             
-            console.log('📊 Total historiales cargados:', allHistoriales.length, allHistoriales);
-            this.historiales = allHistoriales;
+            const historiales = await historialResponse.json();
+            console.log('📊 Historiales cargados:', historiales.length, historiales);
+            
+            // Formatear los datos para compatibilidad con el frontend
+            this.historiales = historiales.map(h => ({
+                ...h,
+                paciente_nombre: h.paciente ? `${h.paciente.nombre} ${h.paciente.apellido}` : 'N/A',
+                paciente_email: h.paciente?.correo || '',
+                odontologo_nombre: h.odontologo ? `${h.odontologo.nombre} ${h.odontologo.apellido}` : 'N/A'
+            }));
+            
+            console.log('📋 Total historiales procesados:', this.historiales.length);
             this.renderHistorialesTable();
             
         } catch (err) {
@@ -1702,7 +1694,7 @@ class DashboardOdontologo {
                     <button class="btn btn-sm btn-outline-warning me-1" onclick="dashboardOdontologo.openHistorialModal(${historial.id})" title="Editar historial">
                         Editar
                     </button>
-                    <button class="btn btn-sm btn-outline-info" onclick="window.print()" title="Imprimir historial">
+                    <button class="btn btn-sm btn-outline-info" onclick="dashboardOdontologo.imprimirHistorial(${historial.id})" title="Imprimir historial">
                         Imprimir
                     </button>
                 </td>
@@ -1711,6 +1703,163 @@ class DashboardOdontologo {
         });
         
         console.log('✅ Tabla renderizada exitosamente');
+    }
+
+    async imprimirHistorial(id) {
+        try {
+            console.log('🖨️ Preparando impresión del historial ID:', id);
+            
+            // Obtener los datos completos del historial
+            const response = await authFetch(`/api/historial/${id}`);
+            if (!response.ok) throw new Error('Error al obtener historial');
+            
+            const historial = await response.json();
+            
+            // Crear una ventana de impresión con el contenido formateado
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            
+            const printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Historial Clínico - ${historial.paciente_nombre} ${historial.paciente_apellido}</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 20px;
+                            font-size: 12pt;
+                        }
+                        .header {
+                            text-align: center;
+                            border-bottom: 2px solid #333;
+                            padding-bottom: 10px;
+                            margin-bottom: 20px;
+                        }
+                        .header h1 {
+                            margin: 0;
+                            color: #1d9ddd;
+                        }
+                        .section {
+                            margin-bottom: 20px;
+                        }
+                        .section-title {
+                            font-weight: bold;
+                            font-size: 14pt;
+                            color: #1d9ddd;
+                            border-bottom: 1px solid #ddd;
+                            padding-bottom: 5px;
+                            margin-bottom: 10px;
+                        }
+                        .info-row {
+                            margin-bottom: 10px;
+                        }
+                        .label {
+                            font-weight: bold;
+                            display: inline-block;
+                            width: 150px;
+                        }
+                        .content-box {
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            background-color: #f9f9f9;
+                            margin-top: 5px;
+                        }
+                        @media print {
+                            body { margin: 0; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>ClinikDent</h1>
+                        <h2>Historial Clínico</h2>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">Información del Paciente</div>
+                        <div class="info-row">
+                            <span class="label">Nombre:</span>
+                            <span>${historial.paciente_nombre} ${historial.paciente_apellido}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Correo:</span>
+                            <span>${historial.paciente_correo || 'No especificado'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Teléfono:</span>
+                            <span>${historial.paciente_telefono || 'No especificado'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">Información del Odontólogo</div>
+                        <div class="info-row">
+                            <span class="label">Dr./Dra.:</span>
+                            <span>${historial.odontologo_nombre} ${historial.odontologo_apellido}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Fecha de Atención:</span>
+                            <span>${this.formatearFecha(historial.fecha)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Estado:</span>
+                            <span>${this.formatEstado(historial.estado || 'en_proceso')}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">Diagnóstico</div>
+                        <div class="content-box">
+                            ${historial.diagnostico || 'No especificado'}
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">Tratamiento Realizado</div>
+                        <div class="content-box">
+                            ${historial.tratamiento_resumido || 'No especificado'}
+                        </div>
+                    </div>
+                    
+                    ${historial.archivo_adjuntos ? `
+                    <div class="section">
+                        <div class="section-title">Observaciones</div>
+                        <div class="content-box">
+                            ${historial.archivo_adjuntos}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="section no-print" style="margin-top: 30px; text-align: center;">
+                        <button onclick="window.print()" style="padding: 10px 20px; font-size: 14pt; cursor: pointer;">
+                            🖨️ Imprimir
+                        </button>
+                        <button onclick="window.close()" style="padding: 10px 20px; font-size: 14pt; cursor: pointer; margin-left: 10px;">
+                            Cerrar
+                        </button>
+                    </div>
+                    
+                    <script>
+                        // Auto-abrir diálogo de impresión después de cargar
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        };
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+        } catch (error) {
+            console.error('❌ Error al preparar impresión:', error);
+            this.showAlert('Error al preparar el historial para imprimir', 'danger');
+        }
     }
 
     async openHistorialModal(id = null) {
@@ -2854,8 +3003,8 @@ class DashboardOdontologo {
                             <h5><i class="bi bi-person-badge"></i> Información Personal</h5>
                         </div>
                         <div class="card-body text-center">
-                            ${usuario.avatar_url ? 
-                                `<img src="${usuario.avatar_url}" class="rounded-circle mb-3" width="120" height="120" alt="Avatar">` :
+                            ${(usuario.photo_url || usuario.avatar_url) ? 
+                                `<img src="${usuario.photo_url || usuario.avatar_url}" class="rounded-circle mb-3" width="120" height="120" alt="Avatar" style="object-fit: cover;">` :
                                 `<div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 120px; height: 120px;">
                                     <i class="bi bi-person-fill text-white" style="font-size: 3rem;"></i>
                                 </div>`
@@ -3045,6 +3194,17 @@ class DashboardOdontologo {
                             <div class="modal-body">
                                 <form id="formEditarPerfil">
                                     <div class="mb-3">
+                                        <label for="editFotoUrl" class="form-label">Foto de Perfil (URL)</label>
+                                        <input type="url" class="form-control" id="editFotoUrl" name="foto_url" value="${usuario.photo_url || usuario.avatar_url || ''}" placeholder="https://ejemplo.com/mi-foto.jpg">
+                                        <small class="text-muted">Ingresa la URL de tu foto de perfil</small>
+                                        <div class="mt-2 text-center" id="previewContainer">
+                                            ${(usuario.photo_url || usuario.avatar_url) ? 
+                                                `<img src="${usuario.photo_url || usuario.avatar_url}" class="rounded-circle" width="80" height="80" alt="Vista previa" style="object-fit: cover;" id="previewImage">` : 
+                                                `<img src="" class="rounded-circle" width="80" height="80" alt="Vista previa" style="object-fit: cover; display: none;" id="previewImage">`
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
                                         <label for="editNombre" class="form-label">Nombre *</label>
                                         <input type="text" class="form-control" id="editNombre" name="nombre" value="${usuario.nombre || ''}" required>
                                     </div>
@@ -3090,6 +3250,23 @@ class DashboardOdontologo {
             const modal = new bootstrap.Modal(document.getElementById('modalEditarPerfil'));
             modal.show();
 
+            // Agregar listener para vista previa de foto
+            const fotoUrlInput = document.getElementById('editFotoUrl');
+            const previewImage = document.getElementById('previewImage');
+            
+            fotoUrlInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url) {
+                    previewImage.src = url;
+                    previewImage.style.display = 'inline-block';
+                    previewImage.onerror = function() {
+                        this.style.display = 'none';
+                    };
+                } else {
+                    previewImage.style.display = 'none';
+                }
+            });
+
             // Configurar evento para guardar cambios
             document.getElementById('btnGuardarPerfil').addEventListener('click', async () => {
                 await this.guardarCambiosPerfil(userId, modal);
@@ -3116,7 +3293,8 @@ class DashboardOdontologo {
             apellido: document.getElementById('editApellido').value.trim(),
             telefono: document.getElementById('editTelefono').value.trim(),
             direccion: document.getElementById('editDireccion').value.trim(),
-            fecha_nacimiento: document.getElementById('editFechaNacimiento').value || null
+            fecha_nacimiento: document.getElementById('editFechaNacimiento').value || null,
+            photo_url: document.getElementById('editFotoUrl').value.trim() || null
         };
 
         try {

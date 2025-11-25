@@ -249,96 +249,128 @@ const createRegistroInventarioDesdeActualizacion = async (payload = {}, options 
 
 /**
  * GET /api/inventario
- * Obtiene todo el inventario con información de sedes
+ * Obtiene todo el inventario combinando tabla inventario y equipos (sin duplicados)
  */
 exports.obtenerInventario = async (req, res) => {
   console.log('📦 [inventarioController] Obteniendo inventario completo');
   
   try {
-    // Consulta que combina las tres fuentes de datos de inventario
+    // Consulta combinada de inventario, inventario_equipos y equipos SIN DUPLICADOS
     const query = `
-      SELECT 
-        -- Datos básicos del item
-        COALESCE(i.id, ie.id, e.id) as id,
-        COALESCE(i.nombre, e.nombre) as nombre,
-        COALESCE(i.descripcion, ie.descripcion, e.descripcion) as descripcion,
-        COALESCE(i.codigo, CONCAT('EQ-', e.id)) as codigo,
-        COALESCE(CAST(i.categoria_id AS VARCHAR), e.categoria) as categoria,
+      SELECT DISTINCT ON (origen, id_real)
+        id,
+        codigo,
+        nombre,
+        descripcion,
+        categoria_id,
+        cantidad,
+        stock_minimo,
+        precio_unitario,
+        sede_id,
+        ubicacion,
+        estado,
+        fecha_registro,
+        fecha_actualizacion,
+        sede_nombre,
+        sede_ciudad,
+        origen,
+        id_real
+      FROM (
+        -- Tabla inventario
+        SELECT 
+          i.id,
+          COALESCE(i.codigo, 'INV-' || i.id::text) as codigo,
+          i.nombre,
+          i.descripcion,
+          i.categoria_id,
+          COALESCE(i.cantidad_actual, 0) as cantidad,
+          COALESCE(i.cantidad_minima, 0) as stock_minimo,
+          COALESCE(i.precio_unitario, 0) as precio_unitario,
+          i.sede_id,
+          i.ubicacion,
+          COALESCE(i.estado, 'disponible') as estado,
+          i.created_at as fecha_registro,
+          NULL as fecha_actualizacion,
+          s.nombre as sede_nombre,
+          s.ciudad as sede_ciudad,
+          'inventario' as origen,
+          i.id as id_real
+        FROM inventario i
+        LEFT JOIN sedes s ON i.sede_id = s.id
         
-        -- Información de cantidades y stock
-    COALESCE(i.cantidad_actual, ie.cantidad, 0) as cantidad,
-    COALESCE(i.cantidad_minima, 1) as stock_minimo,
-    COALESCE(i.precio_unitario, e.precio, 0) as precio_unitario,
-    COALESCE(ie.equipo_id, e.id) as equipo_id,
+        UNION ALL
         
-        -- Información de ubicación
-        COALESCE(i.sede_id, ie.sede_id) as sede_id,
-        COALESCE(s.nombre, 'Sin asignar') as sede_nombre,
-        COALESCE(s.ciudad, '') as sede_ciudad,
-        COALESCE(i.ubicacion, 'No especificada') as ubicacion,
+        -- Tabla inventario_equipos
+        SELECT 
+          ie.id,
+          'EQU-' || ie.id::text as codigo,
+          e.nombre,
+          ie.descripcion,
+          NULL as categoria_id,
+          COALESCE(ie.cantidad, 0) as cantidad,
+          0 as stock_minimo,
+          COALESCE(e.precio, 0) as precio_unitario,
+          ie.sede_id,
+          NULL as ubicacion,
+          'disponible' as estado,
+          NULL as fecha_registro,
+          NULL as fecha_actualizacion,
+          s.nombre as sede_nombre,
+          s.ciudad as sede_ciudad,
+          'inventario_equipos' as origen,
+          ie.id as id_real
+        FROM inventario_equipos ie
+        LEFT JOIN equipos e ON ie.equipo_id = e.id
+        LEFT JOIN sedes s ON ie.sede_id = s.id
         
-        -- Información adicional
-        COALESCE(i.proveedor, 'Sin especificar') as proveedor,
-        COALESCE(i.estado, 'activo') as estado,
-        COALESCE(i.created_at, e.fecha_alta, NOW()) as fecha_registro,
+        UNION ALL
         
-        -- Campo para identificar la fuente
-        CASE 
-          WHEN i.id IS NOT NULL THEN 'inventario'
-          WHEN ie.id IS NOT NULL THEN 'inventario_equipos'
-          ELSE 'equipos'
-        END as fuente_datos
-        
-      FROM equipos e
-      LEFT JOIN inventario_equipos ie ON e.id = ie.equipo_id
-      LEFT JOIN inventario i ON (i.nombre = e.nombre OR i.codigo LIKE CONCAT('%', e.id, '%'))
-      LEFT JOIN sedes s ON COALESCE(i.sede_id, ie.sede_id) = s.id
-      
-      UNION ALL
-      
-      -- Items que están solo en la tabla inventario (sin equipos)
-      SELECT 
-        i.id,
-        i.nombre,
-        i.descripcion,
-        i.codigo,
-    CAST(i.categoria_id AS VARCHAR) as categoria,
-    i.cantidad_actual as cantidad,
-    i.cantidad_minima as stock_minimo,
-    i.precio_unitario,
-    NULL as equipo_id,
-        i.sede_id,
-        COALESCE(s.nombre, 'Sin asignar') as sede_nombre,
-        COALESCE(s.ciudad, '') as sede_ciudad,
-        i.ubicacion,
-        i.proveedor,
-        i.estado,
-        i.created_at as fecha_registro,
-        'inventario' as fuente_datos
-      FROM inventario i
-      LEFT JOIN sedes s ON i.sede_id = s.id
-      WHERE NOT EXISTS (
-        SELECT 1 FROM equipos e 
-        WHERE e.nombre = i.nombre OR i.codigo LIKE CONCAT('%', e.id, '%')
-      )
-      
-      ORDER BY categoria, nombre
+        -- Tabla equipos (equipos sin asignar a inventario)
+        SELECT 
+          e.id,
+          'EQ-' || e.id::text as codigo,
+          e.nombre,
+          e.descripcion,
+          NULL as categoria_id,
+          0 as cantidad,
+          0 as stock_minimo,
+          COALESCE(e.precio, 0) as precio_unitario,
+          NULL as sede_id,
+          NULL as ubicacion,
+          'disponible' as estado,
+          e.fecha_alta as fecha_registro,
+          NULL as fecha_actualizacion,
+          NULL as sede_nombre,
+          NULL as sede_ciudad,
+          'equipos' as origen,
+          e.id as id_real
+        FROM equipos e
+        WHERE NOT EXISTS (
+          SELECT 1 FROM inventario_equipos ie2 WHERE ie2.equipo_id = e.id
+        )
+      ) AS inventario_completo
+      ORDER BY origen, id_real, nombre ASC
     `;
     
-    console.log('🔍 Ejecutando consulta combinada de inventario...');
+    console.log('🔍 Ejecutando consulta combinada de inventario (sin duplicados)...');
     const result = await db.query(query);
     const inventario = result.rows;
     
-    console.log(`✅ Inventario obtenido: ${inventario.length} items total`);
-    console.log('📊 Fuentes de datos:', inventario.reduce((acc, item) => {
-      acc[item.fuente_datos] = (acc[item.fuente_datos] || 0) + 1;
-      return acc;
-    }, {}));
+    console.log(`✅ Inventario obtenido: ${inventario.length} items únicos`);
     
     return res.json(inventario);
   } catch (err) {
     console.error('❌ Error en obtenerInventario:', err);
-    return res.status(500).json({ msg: 'Error al obtener inventario.', error: err.message });
+    console.error('📝 Detalles del error:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
+    return res.status(500).json({ 
+      msg: 'Error al obtener inventario.', 
+      error: err.message,
+      details: err.code 
+    });
   }
 };
 
@@ -819,59 +851,80 @@ exports.obtenerEstadisticasInventario = async (req, res) => {
   console.log('📊 [inventarioController] Obteniendo estadísticas REALES del inventario');
   
   try {
-    // Total productos = equipos + items en inventario
-    const totalEquiposResult = await db.query(`
+    // Total productos desde todas las tablas (sin duplicados)
+    const totalProductosResult = await db.query(`
       SELECT COUNT(*) as total_productos
-      FROM equipos
+      FROM (
+        SELECT id FROM inventario
+        UNION
+        SELECT id FROM inventario_equipos
+        UNION
+        SELECT id FROM equipos WHERE NOT EXISTS (SELECT 1 FROM inventario_equipos ie WHERE ie.equipo_id = equipos.id)
+      ) AS productos_unicos
     `);
     
-    // Valor total = suma de precios de equipos
+    // Valor total del stock combinado
     const valorTotalResult = await db.query(`
-      SELECT COALESCE(SUM(precio), 0) as valor_total_stock
-      FROM equipos
+      SELECT COALESCE(SUM(valor), 0) as valor_total_stock
+      FROM (
+        SELECT (COALESCE(cantidad_actual, 0) * COALESCE(precio_unitario, 0)) as valor FROM inventario
+        UNION ALL
+        SELECT (COALESCE(ie.cantidad, 0) * COALESCE(e.precio, 0)) as valor 
+        FROM inventario_equipos ie 
+        LEFT JOIN equipos e ON ie.equipo_id = e.id
+      ) AS valores_stock
     `);
     
-    const equiposPorCategoriaResult = await db.query(`
+    // Productos por categoría
+    const productosPorCategoriaResult = await db.query(`
       SELECT 
-        categoria,
+        CAST(categoria_id AS VARCHAR) as categoria,
         COUNT(*) as cantidad,
-        SUM(precio) as valor_categoria
-      FROM equipos
-      WHERE categoria IS NOT NULL
-      GROUP BY categoria
-      ORDER BY categoria
+        SUM(valor) as valor_categoria
+      FROM (
+        SELECT categoria_id, (COALESCE(cantidad_actual, 0) * COALESCE(precio_unitario, 0)) as valor 
+        FROM inventario
+      ) AS productos_categoria
+      WHERE categoria_id IS NOT NULL
+      GROUP BY categoria_id
+      ORDER BY categoria_id
     `);
     
-    // Stock bajo: buscar en inventario_equipos (que sí tiene cantidad)
+    // Stock bajo: productos donde cantidad actual < stock mínimo
     const stockBajoCount = await db.query(`
       SELECT COUNT(*) as productos_stock_bajo
-      FROM inventario_equipos ie
-      WHERE ie.cantidad > 0 AND ie.cantidad < 5
+      FROM inventario
+      WHERE cantidad_actual > 0 AND cantidad_minima > 0 AND cantidad_actual < cantidad_minima
     `);
     
-    // Productos agotados: cantidad = 0 en inventario_equipos
+    // Productos agotados: cantidad = 0
     const productosAgotadosCount = await db.query(`
       SELECT COUNT(*) as productos_agotados
-      FROM inventario_equipos ie
-      WHERE ie.cantidad = 0
+      FROM (
+        SELECT cantidad_actual as cantidad FROM inventario WHERE cantidad_actual = 0
+        UNION ALL
+        SELECT cantidad FROM inventario_equipos WHERE cantidad = 0
+      ) AS productos_sin_stock
     `);
 
+    const totalProductos = parseInt(totalProductosResult.rows[0].total_productos) || 0;
+    
     const estadisticas = {
-      totalProductos: parseInt(totalEquiposResult.rows[0].total_productos) || 0,
+      totalProductos,
       valorTotalStock: parseFloat(valorTotalResult.rows[0].valor_total_stock) || 0,
       productosStockBajo: parseInt(stockBajoCount.rows[0].productos_stock_bajo) || 0,
       productosAgotados: parseInt(productosAgotadosCount.rows[0].productos_agotados) || 0,
-      equiposPorCategoria: equiposPorCategoriaResult.rows || [],
+      productosPorCategoria: productosPorCategoriaResult.rows || [],
       // Datos adicionales para el dashboard
       estadisticasDetalladas: {
         totalPorSede: [
           { 
-            sede: 'Sede Principal', 
-            total_items: parseInt(totalEquiposResult.rows[0].total_productos) || 0, 
-            total_cantidad: parseInt(totalEquiposResult.rows[0].total_productos) || 0 
+            sede: 'Todas las sedes', 
+            total_items: totalProductos, 
+            total_cantidad: totalProductos 
           }
         ],
-        totalPorCategoria: equiposPorCategoriaResult.rows.map(cat => ({
+        totalPorCategoria: productosPorCategoriaResult.rows.map(cat => ({
           categoria: cat.categoria,
           total_items: parseInt(cat.cantidad) || 0,
           total_cantidad: parseInt(cat.cantidad) || 0
@@ -902,36 +955,36 @@ exports.obtenerAlertas = async (req, res) => {
   console.log('🚨 [inventarioController] Obteniendo alertas REALES de stock');
   
   try {
-    // Obtener alertas desde inventario_equipos (que sí tiene cantidad)
+    // Obtener alertas desde tabla inventario
     const alertasResult = await db.query(`
       SELECT 
-        e.id,
-        e.nombre as producto,
-        COALESCE(s.nombre, 'Sede Principal') as sede,
-        e.categoria,
-        ie.cantidad as "stockActual",
-        5 as "stockMinimo",
-        e.precio,
+        i.id,
+        COALESCE(i.codigo, 'INV-' || i.id::text) as codigo,
+        i.nombre as producto,
+        COALESCE(s.nombre, 'Sin sede') as sede,
+        CAST(i.categoria_id AS VARCHAR) as categoria,
+        COALESCE(i.cantidad_actual, 0) as "stockActual",
+        COALESCE(i.cantidad_minima, 0) as "stockMinimo",
+        COALESCE(i.precio_unitario, 0) as precio,
         CASE 
-          WHEN ie.cantidad = 0 THEN 'agotado'
-          WHEN ie.cantidad < 5 THEN 'bajo'
+          WHEN i.cantidad_actual = 0 THEN 'agotado'
+          WHEN i.cantidad_minima > 0 AND i.cantidad_actual < i.cantidad_minima THEN 'bajo'
           ELSE 'normal'
         END as estado,
         CASE 
-          WHEN ie.cantidad = 0 THEN 'stock_agotado'
-          WHEN ie.cantidad < 5 THEN 'stock_bajo'
+          WHEN i.cantidad_actual = 0 THEN 'stock_agotado'
+          WHEN i.cantidad_minima > 0 AND i.cantidad_actual < i.cantidad_minima THEN 'stock_bajo'
           ELSE 'normal'
         END as "tipoAlerta",
         CASE 
-          WHEN ie.cantidad = 0 THEN 3
-          WHEN ie.cantidad < 2 THEN 2
+          WHEN i.cantidad_actual = 0 THEN 3
+          WHEN i.cantidad_minima > 0 AND i.cantidad_actual < (i.cantidad_minima / 2) THEN 2
           ELSE 1
         END as prioridad
-      FROM inventario_equipos ie
-      LEFT JOIN equipos e ON ie.equipo_id = e.id
-      LEFT JOIN sedes s ON ie.sede_id = s.id
-      WHERE ie.cantidad <= 5
-      ORDER BY prioridad DESC, ie.cantidad ASC
+      FROM inventario i
+      LEFT JOIN sedes s ON i.sede_id = s.id
+      WHERE i.cantidad_actual = 0 OR (i.cantidad_minima > 0 AND i.cantidad_actual <= i.cantidad_minima)
+      ORDER BY prioridad DESC, i.cantidad_actual ASC
       LIMIT 50
     `);
     
@@ -944,6 +997,10 @@ exports.obtenerAlertas = async (req, res) => {
     return res.json(alertas);
   } catch (err) {
     console.error('❌ Error en obtenerAlertas:', err);
+    console.error('📝 Detalles del error:', {
+      message: err.message,
+      code: err.code
+    });
     // Si falla, devolver array vacío en lugar de error
     return res.json([]);
   }
@@ -1668,3 +1725,236 @@ exports.eliminarCategoria = async (req, res) => {
     return res.status(500).json({ msg: 'Error al eliminar categoría.', error: err.message });
   }
 };
+
+/**
+ * POST /api/inventario/import
+ * Procesa importación masiva de inventario desde Excel
+ * Valida datos, verifica existencia por código, inserta o actualiza productos
+ */
+const importarInventario = async (req, res) => {
+  try {
+    console.log('📥 [inventarioController] Procesando importación de inventario');
+    const { productos } = req.body;
+
+    if (!Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ 
+        msg: 'Se requiere un array de productos válido',
+        success: false 
+      });
+    }
+
+    const resultados = {
+      total: productos.length,
+      insertados: 0,
+      actualizados: 0,
+      errores: [],
+      advertencias: []
+    };
+
+    // Validar columnas requeridas
+    const columnasRequeridas = ['Producto', 'Categoría'];
+    for (let i = 0; i < productos.length; i++) {
+      const producto = productos[i];
+      for (const columna of columnasRequeridas) {
+        if (!producto[columna] || producto[columna].toString().trim() === '') {
+          resultados.errores.push({
+            fila: i + 2, // +2 porque Excel empieza en 1 y tiene header
+            mensaje: `Falta columna requerida: ${columna}`,
+            producto: producto.Producto || `Fila ${i + 2}`
+          });
+        }
+      }
+    }
+
+    // Si hay errores de validación, retornar sin procesar
+    if (resultados.errores.length > 0) {
+      console.log(`❌ Validación fallida: ${resultados.errores.length} errores encontrados`);
+      return res.status(400).json({ 
+        msg: 'Errores de validación encontrados',
+        success: false,
+        ...resultados 
+      });
+    }
+
+    // Obtener categorías existentes para mapeo
+    const categoriasQuery = 'SELECT id, nombre FROM equipos GROUP BY categoria, id, nombre';
+    const categoriasResult = await db.query(categoriasQuery);
+    const categoriasMap = new Map();
+    categoriasResult.rows.forEach(cat => {
+      categoriasMap.set(cat.nombre.toLowerCase(), cat.id);
+    });
+
+    // Obtener sedes existentes para mapeo
+    const sedesQuery = 'SELECT id, nombre FROM sedes';
+    const sedesResult = await db.query(sedesQuery);
+    const sedesMap = new Map();
+    sedesResult.rows.forEach(sede => {
+      sedesMap.set(sede.nombre.toLowerCase(), sede.id);
+    });
+
+    // Obtener proveedores existentes para mapeo
+    const proveedoresQuery = 'SELECT id, nombre FROM proveedores';
+    const proveedoresResult = await db.query(proveedoresQuery);
+    const proveedoresMap = new Map();
+    proveedoresResult.rows.forEach(prov => {
+      proveedoresMap.set(prov.nombre.toLowerCase(), prov.id);
+    });
+
+    // Procesar cada producto
+    for (let i = 0; i < productos.length; i++) {
+      const producto = productos[i];
+      const fila = i + 2;
+
+      try {
+        // Parsear y validar datos
+        const codigo = producto.Código || producto.Codigo || `AUTO-${Date.now()}-${i}`;
+        const nombre = producto.Producto.toString().trim();
+        const categoria = producto.Categoría || producto.Categoria;
+        const stockActual = parseInt(producto['Stock Actual'] || producto.stock_actual || 0);
+        const stockMinimo = parseInt(producto['Stock Mínimo'] || producto.stock_minimo || 0);
+        const precioUnitario = parseFloat(producto['Precio Unitario'] || producto.precio_unitario || 0);
+        const proveedor = producto.Proveedor || null;
+        const sede = producto.Sede || null;
+        const estado = producto.Estado || 'disponible';
+
+        // Validar números
+        if (isNaN(stockActual) || isNaN(stockMinimo) || isNaN(precioUnitario)) {
+          resultados.errores.push({
+            fila,
+            mensaje: 'Valores numéricos inválidos en Stock Actual, Stock Mínimo o Precio Unitario',
+            producto: nombre
+          });
+          continue;
+        }
+
+        // Mapear categoría a ID (si existe)
+        let categoriaId = null;
+        if (categoria) {
+          categoriaId = categoriasMap.get(categoria.toLowerCase());
+          if (!categoriaId) {
+            resultados.advertencias.push({
+              fila,
+              mensaje: `Categoría "${categoria}" no encontrada, se creará automáticamente`,
+              producto: nombre
+            });
+          }
+        }
+
+        // Mapear sede a ID
+        let sedeId = null;
+        if (sede) {
+          sedeId = sedesMap.get(sede.toLowerCase());
+          if (!sedeId) {
+            resultados.advertencias.push({
+              fila,
+              mensaje: `Sede "${sede}" no encontrada, se usará sede por defecto`,
+              producto: nombre
+            });
+          }
+        }
+
+        // Mapear proveedor a ID
+        let proveedorId = null;
+        if (proveedor) {
+          proveedorId = proveedoresMap.get(proveedor.toLowerCase());
+          if (!proveedorId) {
+            resultados.advertencias.push({
+              fila,
+              mensaje: `Proveedor "${proveedor}" no encontrado, se creará o se omitirá`,
+              producto: nombre
+            });
+          }
+        }
+
+        // Verificar si el producto ya existe por código
+        const checkQuery = 'SELECT id FROM inventario WHERE codigo = $1 LIMIT 1';
+        const checkResult = await db.query(checkQuery, [codigo]);
+
+        if (checkResult.rows.length > 0) {
+          // ACTUALIZAR producto existente
+          const productoId = checkResult.rows[0].id;
+          const updateQuery = `
+            UPDATE inventario 
+            SET nombre = $1,
+                categoria_id = $2,
+                cantidad_actual = $3,
+                cantidad_minima = $4,
+                precio_unitario = $5,
+                proveedor_id = $6,
+                sede_id = $7,
+                estado = $8,
+                fecha_actualizacion = NOW()
+            WHERE id = $9
+          `;
+          await db.query(updateQuery, [
+            nombre,
+            categoriaId,
+            stockActual,
+            stockMinimo,
+            precioUnitario,
+            proveedorId,
+            sedeId,
+            estado,
+            productoId
+          ]);
+          resultados.actualizados++;
+          console.log(`✅ Producto actualizado: ${nombre} (ID: ${productoId})`);
+        } else {
+          // INSERTAR nuevo producto
+          const insertQuery = `
+            INSERT INTO inventario (
+              codigo, nombre, categoria_id, cantidad_actual, cantidad_minima,
+              precio_unitario, proveedor_id, sede_id, estado, 
+              fecha_creacion, fecha_actualizacion
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            RETURNING id
+          `;
+          const insertResult = await db.query(insertQuery, [
+            codigo,
+            nombre,
+            categoriaId,
+            stockActual,
+            stockMinimo,
+            precioUnitario,
+            proveedorId,
+            sedeId,
+            estado
+          ]);
+          resultados.insertados++;
+          console.log(`✅ Producto insertado: ${nombre} (ID: ${insertResult.rows[0].id})`);
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando fila ${fila}:`, error);
+        resultados.errores.push({
+          fila,
+          mensaje: error.message,
+          producto: producto.Producto || `Fila ${fila}`
+        });
+      }
+    }
+
+    // Resumen final
+    const exitoso = resultados.insertados + resultados.actualizados;
+    console.log(`📊 Importación completada: ${exitoso}/${resultados.total} exitosos`);
+    console.log(`   - Insertados: ${resultados.insertados}`);
+    console.log(`   - Actualizados: ${resultados.actualizados}`);
+    console.log(`   - Errores: ${resultados.errores.length}`);
+    console.log(`   - Advertencias: ${resultados.advertencias.length}`);
+
+    res.json({
+      msg: `Importación completada: ${exitoso} productos procesados exitosamente`,
+      success: true,
+      ...resultados
+    });
+  } catch (err) {
+    console.error('❌ Error en importación de inventario:', err);
+    res.status(500).json({ 
+      msg: 'Error al procesar importación de inventario',
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Exportar función de importación
+exports.importarInventario = importarInventario;

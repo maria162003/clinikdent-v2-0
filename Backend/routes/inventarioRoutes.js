@@ -117,6 +117,9 @@ router.use(authMiddleware);
 
 // =================== RUTAS PRINCIPALES EXPANDIDAS ===================
 
+// Ruta de importación de inventario (debe ir antes de las rutas con parámetros)
+router.post('/import', inventarioController.importarInventario);
+
 // Rutas para información de soporte
 router.get('/proveedores', inventarioController.obtenerProveedores);
 router.post('/proveedores', inventarioController.crearProveedor);
