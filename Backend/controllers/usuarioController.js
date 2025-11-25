@@ -379,7 +379,9 @@ exports.obtenerPerfil = async (req, res) => {
         u.tipo_documento, 
         u.numero_documento, 
         u.activo as estado, 
-        u.created_at as fecha_registro
+        u.created_at as fecha_registro,
+        u.photo_url,
+        u.photo_url as avatar_url
       FROM usuarios u
       LEFT JOIN roles r ON u.rol_id = r.id
       WHERE u.id = $1
@@ -399,9 +401,9 @@ exports.obtenerPerfil = async (req, res) => {
 
 exports.actualizarPerfil = async (req, res) => {
   const { id } = req.params;
-  const { nombre, apellido, telefono, direccion, fecha_nacimiento } = req.body;
+  const { nombre, apellido, telefono, direccion, fecha_nacimiento, photo_url } = req.body;
   
-  console.log(`🔍 Actualizando perfil usuario ID: ${id}`, { nombre, apellido, telefono, direccion, fecha_nacimiento });
+  console.log(`🔍 Actualizando perfil usuario ID: ${id}`, { nombre, apellido, telefono, direccion, fecha_nacimiento, photo_url });
   
   if (!nombre || !apellido) {
     return res.status(400).json({ msg: 'Nombre y apellido son requeridos.' });
@@ -414,10 +416,10 @@ exports.actualizarPerfil = async (req, res) => {
       return res.status(404).json({ msg: 'Usuario no encontrado.' });
     }
     
-    // Actualizar perfil
+    // Actualizar perfil incluyendo photo_url
     await db.query(
-      'UPDATE usuarios SET nombre = $1, apellido = $2, telefono = $3, direccion = $4, fecha_nacimiento = $5 WHERE id = $6',
-      [nombre, apellido, telefono || null, direccion || null, fecha_nacimiento || null, id]
+      'UPDATE usuarios SET nombre = $1, apellido = $2, telefono = $3, direccion = $4, fecha_nacimiento = $5, photo_url = $6 WHERE id = $7',
+      [nombre, apellido, telefono || null, direccion || null, fecha_nacimiento || null, photo_url || null, id]
     );
     
     console.log(`✅ Perfil actualizado exitosamente para usuario ID: ${id}`);

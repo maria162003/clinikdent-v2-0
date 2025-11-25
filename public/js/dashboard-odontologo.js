@@ -3003,8 +3003,8 @@ class DashboardOdontologo {
                             <h5><i class="bi bi-person-badge"></i> Información Personal</h5>
                         </div>
                         <div class="card-body text-center">
-                            ${usuario.avatar_url ? 
-                                `<img src="${usuario.avatar_url}" class="rounded-circle mb-3" width="120" height="120" alt="Avatar">` :
+                            ${(usuario.photo_url || usuario.avatar_url) ? 
+                                `<img src="${usuario.photo_url || usuario.avatar_url}" class="rounded-circle mb-3" width="120" height="120" alt="Avatar" style="object-fit: cover;">` :
                                 `<div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 120px; height: 120px;">
                                     <i class="bi bi-person-fill text-white" style="font-size: 3rem;"></i>
                                 </div>`
@@ -3194,6 +3194,17 @@ class DashboardOdontologo {
                             <div class="modal-body">
                                 <form id="formEditarPerfil">
                                     <div class="mb-3">
+                                        <label for="editFotoUrl" class="form-label">Foto de Perfil (URL)</label>
+                                        <input type="url" class="form-control" id="editFotoUrl" name="foto_url" value="${usuario.photo_url || usuario.avatar_url || ''}" placeholder="https://ejemplo.com/mi-foto.jpg">
+                                        <small class="text-muted">Ingresa la URL de tu foto de perfil</small>
+                                        <div class="mt-2 text-center" id="previewContainer">
+                                            ${(usuario.photo_url || usuario.avatar_url) ? 
+                                                `<img src="${usuario.photo_url || usuario.avatar_url}" class="rounded-circle" width="80" height="80" alt="Vista previa" style="object-fit: cover;" id="previewImage">` : 
+                                                `<img src="" class="rounded-circle" width="80" height="80" alt="Vista previa" style="object-fit: cover; display: none;" id="previewImage">`
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
                                         <label for="editNombre" class="form-label">Nombre *</label>
                                         <input type="text" class="form-control" id="editNombre" name="nombre" value="${usuario.nombre || ''}" required>
                                     </div>
@@ -3239,6 +3250,23 @@ class DashboardOdontologo {
             const modal = new bootstrap.Modal(document.getElementById('modalEditarPerfil'));
             modal.show();
 
+            // Agregar listener para vista previa de foto
+            const fotoUrlInput = document.getElementById('editFotoUrl');
+            const previewImage = document.getElementById('previewImage');
+            
+            fotoUrlInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url) {
+                    previewImage.src = url;
+                    previewImage.style.display = 'inline-block';
+                    previewImage.onerror = function() {
+                        this.style.display = 'none';
+                    };
+                } else {
+                    previewImage.style.display = 'none';
+                }
+            });
+
             // Configurar evento para guardar cambios
             document.getElementById('btnGuardarPerfil').addEventListener('click', async () => {
                 await this.guardarCambiosPerfil(userId, modal);
@@ -3265,7 +3293,8 @@ class DashboardOdontologo {
             apellido: document.getElementById('editApellido').value.trim(),
             telefono: document.getElementById('editTelefono').value.trim(),
             direccion: document.getElementById('editDireccion').value.trim(),
-            fecha_nacimiento: document.getElementById('editFechaNacimiento').value || null
+            fecha_nacimiento: document.getElementById('editFechaNacimiento').value || null,
+            photo_url: document.getElementById('editFotoUrl').value.trim() || null
         };
 
         try {
