@@ -230,7 +230,7 @@ export default function PacientesScreen() {
               <View style={styles.pacienteRow}>
                 <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                   <ThemedText style={styles.avatarText} lightColor="#fff" darkColor="#fff">
-                    {paciente.nombre?.charAt(0)}{paciente.apellido?.charAt(0)}
+                    {(paciente.nombre?.charAt(0) || '?')}{(paciente.apellido?.charAt(0) || '')}
                   </ThemedText>
                 </View>
                 <View style={styles.pacienteInfo}>
