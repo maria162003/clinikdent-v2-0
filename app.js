@@ -82,6 +82,10 @@ console.log('🔄 Cargando rutas de contenido del sitio...');
 const siteContentRoutes = require('./Backend/routes/siteContentRoutes');
 console.log('✅ Rutas de contenido del sitio cargadas');
 
+console.log('🔄 Cargando rutas de facturas (SISTEMA DEMO)...');
+const facturasRoutes = require('./Backend/routes/facturas');
+console.log('✅ Rutas de facturas cargadas exitosamente');
+
 const app = express();
 
 // Middlewares
@@ -298,6 +302,11 @@ const planesRoutes = require('./Backend/routes/planesRoutes');
 console.log('🔗 Registrando rutas de planes...');
 app.use('/api/planes', planesRoutes);
 console.log('✅ Rutas de planes registradas exitosamente');
+
+// Agregar rutas de facturas (SISTEMA DEMO)
+console.log('🔗 Registrando rutas de facturas (MODO DEMO)...');
+app.use('/api/facturas', facturasRoutes);
+console.log('✅ Rutas de facturas registradas exitosamente (MODO DEMO)');
 
 // Agregar rutas de seguridad avanzada
 console.log('🔗 Registrando rutas de seguridad...');

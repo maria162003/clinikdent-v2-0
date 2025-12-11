@@ -272,9 +272,13 @@ exports.actualizarUsuario = async (req, res) => {
 
         let query, params;
         if (password) {
-            // Si se proporciona nueva contraseña, actualizarla también
+            // Si se proporciona nueva contraseña, hashearla con bcrypt
+            const bcrypt = require('bcrypt');
+            const passwordHash = await bcrypt.hash(password, 10);
+            console.log('🔐 Hasheando nueva contraseña para usuario:', id);
+            
             query = 'UPDATE usuarios SET nombre = $1, apellido = $2, correo = $3, telefono = $4, direccion = $5, rol_id = $6, fecha_nacimiento = $7, contraseña_hash = $8, tipo_documento = $9, numero_documento = $10 WHERE id = $11';
-            params = [nombre, apellido, correo, telefono, direccion, rol_id, fecha_nacimiento, password, tipo_documento || 'CC', numero_documento, id];
+            params = [nombre, apellido, correo, telefono, direccion, rol_id, fecha_nacimiento, passwordHash, tipo_documento || 'CC', numero_documento, id];
         } else {
             // Si no se proporciona contraseña, mantener la actual
             query = 'UPDATE usuarios SET nombre = $1, apellido = $2, correo = $3, telefono = $4, direccion = $5, rol_id = $6, fecha_nacimiento = $7, tipo_documento = $8, numero_documento = $9 WHERE id = $10';

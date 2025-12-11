@@ -1529,11 +1529,13 @@ exports.actualizarEquipo = async (req, res) => {
     especificaciones, 
     garantia_meses, 
     estado, 
-    proveedor_id 
+    proveedor_id,
+    fecha_alta 
   } = req.body;
   
-  if (!nombre || !categoria || !precio) {
-    return res.status(400).json({ msg: 'Datos incompletos: nombre, categoría y precio son requeridos.' });
+  // Solo nombre es realmente obligatorio
+  if (!nombre) {
+    return res.status(400).json({ msg: 'El nombre del equipo es requerido.' });
   }
   
   try {
@@ -1550,14 +1552,25 @@ exports.actualizarEquipo = async (req, res) => {
         especificaciones = $8,
         garantia_meses = $9,
         estado = $10,
-        proveedor_id = $11
-      WHERE id = $12
+        proveedor_id = $11,
+        fecha_alta = $12
+      WHERE id = $13
     `;
     
     const result = await db.query(updateQuery, [
-      nombre, categoria, precio, descripcion, codigo_producto,
-      marca, modelo, especificaciones, garantia_meses, estado,
-      proveedor_id, id
+      nombre, 
+      categoria || null, 
+      precio || 0, 
+      descripcion || null, 
+      codigo_producto || null,
+      marca || null, 
+      modelo || null, 
+      especificaciones || null, 
+      garantia_meses || null, 
+      estado || 'disponible',
+      proveedor_id || null,
+      fecha_alta || null,
+      id
     ]);
     
     if (result.rowCount === 0) {

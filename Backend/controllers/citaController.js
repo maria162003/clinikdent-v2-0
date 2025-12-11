@@ -132,13 +132,26 @@ exports.agendarCita = async (req, res) => {
   try {
     // Validar fecha y determinar confirmación automática
     const fechaActual = new Date();
-    const fechaCita = new Date(fecha);
+    
+    // Parsear la fecha correctamente evitando problemas de zona horaria
+    // Si la fecha viene como "2025-12-01", crear la fecha en hora local
+    const [year, month, day] = fecha.split('-').map(Number);
+    const fechaCita = new Date(year, month - 1, day); // month - 1 porque los meses van de 0-11
+    
     const horaCita = hora.split(':');
     const horaInt = parseInt(horaCita[0]);
     const minutosInt = parseInt(horaCita[1]);
     
     // Validar que no sea domingo (día 0)
     const diaSemana = fechaCita.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+    
+    console.log('📅 Fecha parseada:', {
+      fechaOriginal: fecha,
+      fechaParseada: fechaCita.toISOString(),
+      diaSemana: diaSemana,
+      nombreDia: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana]
+    });
+    
     if (diaSemana === 0) {
       console.log('❌ Intento de agendar cita en domingo');
       return res.status(400).json({ 
@@ -311,6 +324,55 @@ exports.agendarCita = async (req, res) => {
     } catch (emailError) {
       console.error('❌ Error enviando email de confirmación:', emailError);
       // No falla la operación principal si el email falla
+    }
+
+    // 💰 Generar factura automáticamente para la cita
+    try {
+      console.log('💰 Generando factura automática para la cita...');
+      
+      // Crear factura con servicio de "Consulta General" (ID 1, $50,000)
+      const servicios = [{
+        servicio_id: 1,
+        nombre: "Consulta General",
+        cantidad: 1,
+        precio_unitario: 50000,
+        subtotal: 50000
+      }];
+      
+      const insertFacturaQuery = `
+        INSERT INTO facturas (
+          paciente_id, 
+          odontologo_id, 
+          cita_id,
+          servicios, 
+          subtotal, 
+          descuento, 
+          total,
+          fecha_vencimiento,
+          es_demo
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, numero_factura
+      `;
+      
+      const facturaParams = [
+        userId,                           // paciente_id
+        odontologoSeleccionado,          // odontologo_id
+        nuevaCitaId,                     // cita_id
+        JSON.stringify(servicios),       // servicios
+        50000,                           // subtotal
+        0,                               // descuento
+        50000,                           // total
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // vencimiento: 7 días
+        true                             // es_demo
+      ];
+      
+      const facturaResult = await db.query(insertFacturaQuery, facturaParams);
+      const nuevaFactura = facturaResult.rows[0];
+      
+      console.log(`✅ Factura ${nuevaFactura.numero_factura} generada automáticamente (ID: ${nuevaFactura.id})`);
+    } catch (facturaError) {
+      console.error('❌ Error generando factura automática:', facturaError);
+      // No falla la operación principal si la factura falla
     }
 
     return res.json({ 
@@ -515,7 +577,6 @@ exports.reagendarCita = async (req, res) => {
       return res.status(400).json({ msg: 'No se puede modificar una cita cancelada.' });
     }
 
-clinikdent-total
     // Regla de negocio: solo se puede reprogramar si faltan más de 24 horas para la cita actual
     try {
       const ahora = new Date();
@@ -545,7 +606,6 @@ clinikdent-total
     const fechaAnterior = cita.fecha;
     const horaAnterior = cita.hora;
     const huboReprogramacion = (fecha && fecha !== fechaAnterior) || (hora && hora !== horaAnterior);
-main
 
     // Actualizar la cita
     const updateData = {

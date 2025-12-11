@@ -20,70 +20,6 @@ exports.obtenerTodasEvaluaciones = async (req, res) => {
       ORDER BY e.fecha_evaluacion DESC
     `);
     
-    // Si no hay evaluaciones, devolver datos de ejemplo
-    if (rows.length === 0) {
-      console.log('⚠️ No hay evaluaciones en BD, devolviendo datos de ejemplo');
-      return res.json({
-        success: true,
-        evaluaciones: [
-          {
-            id: 1,
-            paciente_id: 1,
-            odontologo_id: 2,
-            cita_id: 1,
-            calificacion_servicio: 5,
-            calificacion_atencion: 5,
-            calificacion_instalaciones: 4,
-            calificacion_limpieza: 5,
-            calificacion_puntualidad: 4,
-            comentarios: 'Excelente atención, muy profesional y las instalaciones están muy bien.',
-            recomendaria: 1,
-            fecha_evaluacion: new Date().toISOString(),
-            paciente_nombre: 'María González',
-            odontologo_nombre: 'Dr. Carlos Rodriguez',
-            cita_fecha: '2025-08-25',
-            cita_hora: '10:00'
-          },
-          {
-            id: 2,
-            paciente_id: 3,
-            odontologo_id: 4,
-            cita_id: 2,
-            calificacion_servicio: 4,
-            calificacion_atencion: 5,
-            calificacion_instalaciones: 5,
-            calificacion_limpieza: 5,
-            calificacion_puntualidad: 4,
-            comentarios: 'Muy buena atención, la doctora es muy amable y explicó todo el procedimiento.',
-            recomendaria: 1,
-            fecha_evaluacion: new Date(Date.now() - 86400000).toISOString(),
-            paciente_nombre: 'Luis Fernández',
-            odontologo_nombre: 'Dra. Ana Martinez',
-            cita_fecha: '2025-08-24',
-            cita_hora: '14:30'
-          },
-          {
-            id: 3,
-            paciente_id: 5,
-            odontologo_id: 2,
-            cita_id: 3,
-            calificacion_servicio: 5,
-            calificacion_atencion: 4,
-            calificacion_instalaciones: 4,
-            calificacion_limpieza: 5,
-            calificacion_puntualidad: 3,
-            comentarios: 'El tratamiento fue exitoso, aunque la espera fue un poco larga.',
-            recomendaria: 1,
-            fecha_evaluacion: new Date(Date.now() - 172800000).toISOString(),
-            paciente_nombre: 'Carmen Silva',
-            odontologo_nombre: 'Dr. Carlos Rodriguez',
-            cita_fecha: '2025-08-23',
-            cita_hora: '09:00'
-          }
-        ]
-      });
-    }
-    
     console.log('✅ Evaluaciones obtenidas:', rows.length);
     res.json({
       success: true,
@@ -91,48 +27,10 @@ exports.obtenerTodasEvaluaciones = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error al obtener evaluaciones:', error);
-    
-    // En caso de error, devolver datos de ejemplo
-    res.json({
-      success: true,
-      evaluaciones: [
-        {
-          id: 1,
-          paciente_id: 1,
-          odontologo_id: 2,
-          cita_id: 1,
-          calificacion_servicio: 5,
-          calificacion_atencion: 5,
-          calificacion_instalaciones: 4,
-          calificacion_limpieza: 5,
-          calificacion_puntualidad: 4,
-          comentarios: 'Excelente atención, muy profesional.',
-          recomendaria: 1,
-          fecha_evaluacion: new Date().toISOString(),
-          paciente_nombre: 'María González',
-          odontologo_nombre: 'Dr. Carlos Rodriguez',
-          cita_fecha: '2025-08-25',
-          cita_hora: '10:00'
-        },
-        {
-          id: 2,
-          paciente_id: 3,
-          odontologo_id: 4,
-          cita_id: 2,
-          calificacion_servicio: 4,
-          calificacion_atencion: 5,
-          calificacion_instalaciones: 5,
-          calificacion_limpieza: 5,
-          calificacion_puntualidad: 4,
-          comentarios: 'Muy buena atención, la doctora es muy amable.',
-          recomendaria: 1,
-          fecha_evaluacion: new Date(Date.now() - 86400000).toISOString(),
-          paciente_nombre: 'Luis Fernández',
-          odontologo_nombre: 'Dra. Ana Martinez',
-          cita_fecha: '2025-08-24',
-          cita_hora: '14:30'
-        }
-      ]
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener evaluaciones',
+      error: error.message
     });
   }
 };

@@ -140,25 +140,25 @@ const obtenerIngresosGrafico = async (req, res) => {
         
         switch (periodo) {
             case 'semanal':
-                formatoFecha = '%Y-%u'; // Año-semana
-                groupBy = 'YEARWEEK(fecha_pago)';
-                labelFormat = 'Sem %u';
+                formatoFecha = 'YYYY-IW'; // Año-semana ISO en PostgreSQL
+                groupBy = "TO_CHAR(fecha_pago, 'IYYY-IW')";
+                labelFormat = "'Sem' IW";
                 break;
             case 'anual':
-                formatoFecha = '%Y';
-                groupBy = 'YEAR(fecha_pago)';
-                labelFormat = '%Y';
+                formatoFecha = 'YYYY';
+                groupBy = "TO_CHAR(fecha_pago, 'YYYY')";
+                labelFormat = 'YYYY';
                 break;
             default: // mensual
-                formatoFecha = '%Y-%m';
-                groupBy = 'DATE_FORMAT(fecha_pago, "%Y-%m")';
-                labelFormat = '%M %Y';
+                formatoFecha = 'YYYY-MM';
+                groupBy = "TO_CHAR(fecha_pago, 'YYYY-MM')";
+                labelFormat = 'TMMonth YYYY';
         }
 
         let query = `
             SELECT 
                 ${groupBy} as periodo,
-                DATE_FORMAT(fecha_pago, '${labelFormat}') as label,
+                TO_CHAR(fecha_pago, '${labelFormat}') as label,
                 SUM(monto) as total_ingresos,
                 COUNT(*) as cantidad_pagos
             FROM pagos 
@@ -166,39 +166,43 @@ const obtenerIngresosGrafico = async (req, res) => {
         `;
         
         let params = [];
+        let paramIndex = 1;
         
         if (fecha_desde && fecha_hasta) {
-            query += ' AND fecha_pago BETWEEN ? AND ?';
+            query += ` AND fecha_pago BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
             params.push(fecha_desde, fecha_hasta);
+            paramIndex += 2;
         } else {
             // Por defecto, últimos 6 meses
-            query += ' AND fecha_pago >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
+            query += ` AND fecha_pago >= NOW() - INTERVAL '6 months'`;
         }
         
         if (sede_id) {
-            query += ' AND sede_id = ?';
+            query += ` AND sede_id = $${paramIndex}`;
             params.push(sede_id);
+            paramIndex++;
         }
         
-        query += ` GROUP BY ${groupBy} ORDER BY periodo ASC`;
+        query += ` GROUP BY ${groupBy}, TO_CHAR(fecha_pago, '${labelFormat}') ORDER BY periodo ASC`;
 
-        const resultados = await db.query(query, params);
+        const result = await db.query(query, params);
+        const resultados = result.rows || result;
         
         const datosGrafico = {
             labels: resultados.map(r => r.label),
             datasets: [{
                 label: 'Ingresos (COP)',
-                data: resultados.map(r => r.total_ingresos),
+                data: resultados.map(r => parseFloat(r.total_ingresos) || 0),
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.1)',
                 tension: 0.4
             }],
             resumen: {
-                totalIngresos: resultados.reduce((sum, r) => sum + r.total_ingresos, 0),
+                totalIngresos: resultados.reduce((sum, r) => sum + (parseFloat(r.total_ingresos) || 0), 0),
                 promedioMensual: resultados.length > 0 ? 
-                    resultados.reduce((sum, r) => sum + r.total_ingresos, 0) / resultados.length : 0,
+                    resultados.reduce((sum, r) => sum + (parseFloat(r.total_ingresos) || 0), 0) / resultados.length : 0,
                 mejorPeriodo: resultados.length > 0 ? 
-                    resultados.reduce((max, r) => r.total_ingresos > max.total_ingresos ? r : max) : null
+                    resultados.reduce((max, r) => (parseFloat(r.total_ingresos) || 0) > (parseFloat(max.total_ingresos) || 0) ? r : max) : null
             }
         };
 
@@ -243,40 +247,44 @@ const obtenerDistribucionTratamientos = async (req, res) => {
                 ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM tratamientos t2 
                     INNER JOIN citas c2 ON t2.cita_id = c2.id
                     WHERE 1=1
-                    ${fecha_desde && fecha_hasta ? 'AND c2.fecha_cita BETWEEN ? AND ?' : ''}
-                    ${sede_id ? 'AND c2.sede_id = ?' : ''}
-                )), 1) as porcentaje
+        `;
+        
+        let params = [];
+        let paramIndex = 1;
+        let whereClause = '';
+        
+        if (fecha_desde && fecha_hasta) {
+            whereClause += ` AND c2.fecha_cita BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
+            params.push(fecha_desde, fecha_hasta);
+            paramIndex += 2;
+        }
+        
+        if (sede_id) {
+            whereClause += ` AND c2.sede_id = $${paramIndex}`;
+            params.push(sede_id);
+            paramIndex++;
+        }
+        
+        query += whereClause;
+        query += `)), 1) as porcentaje
             FROM tratamientos t
             INNER JOIN citas c ON t.cita_id = c.id
             WHERE 1=1
         `;
         
-        let params = [];
-        let subParams = [];
-        
-        if (fecha_desde && fecha_hasta) {
-            query += ' AND c.fecha_cita BETWEEN ? AND ?';
-            params.push(fecha_desde, fecha_hasta);
-            subParams.push(fecha_desde, fecha_hasta);
-        }
-        
-        if (sede_id) {
-            query += ' AND c.sede_id = ?';
-            params.push(sede_id);
-            subParams.push(sede_id);
-        }
+        query += whereClause.replace(/c2\./g, 'c.').replace(/\$(\d+)/g, (match, num) => {
+            return '$' + num;
+        });
         
         query += ' GROUP BY t.tipo_tratamiento ORDER BY cantidad DESC';
         
-        // Ajustar parámetros para la subconsulta
-        const finalParams = [...subParams, ...params];
-        
-        const resultados = await db.query(query, finalParams);
+        const result = await db.query(query, params);
+        const resultados = result.rows || result;
         
         const distribucion = {
             labels: resultados.map(r => r.tipo_tratamiento || 'Sin especificar'),
             datasets: [{
-                data: resultados.map(r => r.cantidad),
+                data: resultados.map(r => parseInt(r.cantidad) || 0),
                 backgroundColor: [
                     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
                     '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
@@ -284,8 +292,8 @@ const obtenerDistribucionTratamientos = async (req, res) => {
             }],
             detalles: resultados.map(r => ({
                 tratamiento: r.tipo_tratamiento || 'Sin especificar',
-                cantidad: r.cantidad,
-                porcentaje: r.porcentaje
+                cantidad: parseInt(r.cantidad) || 0,
+                porcentaje: parseFloat(r.porcentaje) || 0
             }))
         };
 
@@ -326,49 +334,55 @@ const obtenerEstadisticasCitas = async (req, res) => {
                 COUNT(*) as cantidad,
                 ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM citas c2 
                     WHERE 1=1
-                    ${fecha_desde && fecha_hasta ? 'AND c2.fecha_cita BETWEEN ? AND ?' : ''}
-                    ${sede_id ? 'AND c2.sede_id = ?' : ''}
-                )), 1) as porcentaje
+        `;
+        
+        let params = [];
+        let paramIndex = 1;
+        let whereClause = '';
+        
+        if (fecha_desde && fecha_hasta) {
+            whereClause += ` AND c2.fecha_cita BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
+            params.push(fecha_desde, fecha_hasta);
+            paramIndex += 2;
+        }
+        
+        if (sede_id) {
+            whereClause += ` AND c2.sede_id = $${paramIndex}`;
+            params.push(sede_id);
+            paramIndex++;
+        }
+        
+        query += whereClause;
+        query += `)), 1) as porcentaje
             FROM citas c
             WHERE 1=1
         `;
         
-        let params = [];
-        let subParams = [];
-        
-        if (fecha_desde && fecha_hasta) {
-            query += ' AND c.fecha_cita BETWEEN ? AND ?';
-            params.push(fecha_desde, fecha_hasta);
-            subParams.push(fecha_desde, fecha_hasta);
-        }
-        
-        if (sede_id) {
-            query += ' AND c.sede_id = ?';
-            params.push(sede_id);
-            subParams.push(sede_id);
-        }
+        query += whereClause.replace(/c2\./g, 'c.').replace(/\$(\d+)/g, (match, num) => {
+            return '$' + num;
+        });
         
         query += ' GROUP BY estado ORDER BY cantidad DESC';
         
-        const finalParams = [...subParams, ...params];
-        const resultados = await db.query(query, finalParams);
+        const result = await db.query(query, params);
+        const resultados = result.rows || result;
         
         const estadisticas = {
             labels: resultados.map(r => r.estado || 'Sin estado'),
             datasets: [{
-                data: resultados.map(r => r.cantidad),
+                data: resultados.map(r => parseInt(r.cantidad) || 0),
                 backgroundColor: ['#28a745', '#17a2b8', '#dc3545', '#ffc107', '#6c757d']
             }],
             detalles: resultados.map(r => ({
                 estado: r.estado || 'Sin estado',
-                cantidad: r.cantidad,
-                porcentaje: r.porcentaje
+                cantidad: parseInt(r.cantidad) || 0,
+                porcentaje: parseFloat(r.porcentaje) || 0
             })),
             resumen: {
-                total: resultados.reduce((sum, r) => sum + r.cantidad, 0),
-                completadas: resultados.find(r => r.estado === 'completada')?.cantidad || 0,
-                programadas: resultados.find(r => r.estado === 'programada')?.cantidad || 0,
-                canceladas: resultados.find(r => r.estado === 'cancelada')?.cantidad || 0
+                total: resultados.reduce((sum, r) => sum + (parseInt(r.cantidad) || 0), 0),
+                completadas: parseInt(resultados.find(r => r.estado === 'completada')?.cantidad) || 0,
+                programadas: parseInt(resultados.find(r => r.estado === 'programada')?.cantidad) || 0,
+                canceladas: parseInt(resultados.find(r => r.estado === 'cancelada')?.cantidad) || 0
             }
         };
 
