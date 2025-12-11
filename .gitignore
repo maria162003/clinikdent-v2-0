@@ -54,3 +54,10 @@ config/credentials.json
 *.pem
 *.key
 *.cert
+
+# Demos y archivos innecesarios
+ReactNativeDemo/
+ReactNativeDemo.rar
+ClinikdentRealApp/
+*.rar
+*.zip

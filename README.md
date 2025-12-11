@@ -3,10 +3,16 @@
 [![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)](https://clinikdent.pages.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Wrangler](https://img.shields.io/badge/Wrangler-CLI-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/wrangler/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Contributor%20Covenant-purple.svg)](CODE_OF_CONDUCT.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-red.svg)](SECURITY.md)
 
 Sistema completo de gestión clínica odontológica con arquitectura serverless moderna. Desplegado en **Cloudflare Pages** con funciones serverless y base de datos **Supabase PostgreSQL**.
 
 🌐 **Producción**: [https://clinikdent.pages.dev](https://clinikdent.pages.dev)
+
+> **⚠️ Nota**: Este es un proyecto en desarrollo activo. Revisa la [guía de contribución](CONTRIBUTING.md) para participar.
 
 ---
 
@@ -670,6 +676,23 @@ Este proyecto es privado y pertenece a **ClinikDent**. Todos los derechos reserv
 
 ---
 
+## 🤝 Contribución
+
+¡Las contribuciones son bienvenidas! Por favor lee nuestra [Guía de Contribución](CONTRIBUTING.md) para conocer el proceso.
+
+1. Fork el proyecto
+2. Crea tu feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'feat: Add some AmazingFeature'`)
+4. Push a la branch (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+Por favor revisa:
+- [Código de Conducta](CODE_OF_CONDUCT.md)
+- [Política de Seguridad](SECURITY.md)
+- [Licencia MIT](LICENSE)
+
+---
+
 ## 🙏 Agradecimientos
 
 - [Cloudflare](https://www.cloudflare.com/) por la infraestructura serverless
@@ -679,7 +702,15 @@ Este proyecto es privado y pertenece a **ClinikDent**. Todos los derechos reserv
 
 ---
 
+## 📄 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+
+---
+
 <div align="center">
+
+**Hecho con ❤️ para mejorar la gestión de clínicas odontológicas**
 
 **[⬆ Volver arriba](#-clinikdent---sistema-de-gestión-clínica-odontológica)**
 
