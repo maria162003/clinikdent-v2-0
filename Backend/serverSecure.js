@@ -223,7 +223,8 @@ app.get('/api/usuarios/:id', authenticateToken, usuarioController.obtenerUsuario
 app.put('/api/usuarios/:id', authenticateToken, usuarioController.actualizarUsuario);
 
 // 🌐 Contenido público administrable
-app.use('/api/site-content', siteContentRoutes);
+// TEMPORAL: Comentado para debugging
+// app.use('/api/site-content', siteContentRoutes);
 
 // 📊 Evaluaciones - Solo usuarios autenticados
 app.get('/api/evaluaciones', authenticateToken, evaluacionesController.obtenerTodasEvaluaciones);

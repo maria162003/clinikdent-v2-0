@@ -768,12 +768,13 @@ class EmailService {
   }
 
   // Método genérico para enviar emails (para códigos de seguridad)
-  async sendEmail(to, subject, htmlContent) {
+  async sendEmail(to, subject, htmlContent, attachments = []) {
     if (this.demoMode) {
       console.log('📧 MODO DEMO - Email que se enviaría:');
       console.log(`Para: ${to}`);
       console.log(`Asunto: ${subject}`);
       console.log(`Contenido: ${htmlContent}`);
+      console.log(`Adjuntos: ${attachments.length}`);
       return { success: true, demo: true };
     }
 
@@ -783,6 +784,11 @@ class EmailService {
       subject: subject,
       html: htmlContent
     };
+
+    // Add attachments if provided
+    if (attachments && attachments.length > 0) {
+      mailOptions.attachments = attachments;
+    }
 
     try {
       const info = await this.transporter.sendMail(mailOptions);

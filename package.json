@@ -1,46 +1,39 @@
 {
-  "name": "clinkdent",
-  "version": "1.0.0",
-  "description": "Sistema para gestión de clínica odontológica",
-  "main": "start.js",
+  "name": "clinikdent-backend",
+  "version": "1.9.0",
+  "description": "Sistema de gestión dental ClinikDent - Backend con PostgreSQL y Supabase",
+  "main": "app.js",
   "scripts": {
-    "start": "node start.js",
-    "dev": "nodemon app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "secure": "node Backend/serverSecure.js"
   },
-  "keywords": [],
-  "author": "Daniel Rayo",
-  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.81.0",
-    "axios": "^1.11.0",
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@supabase/supabase-js": "^2.87.1",
     "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
-    "connect-pg-simple": "^10.0.0",
-    "cookie-parser": "^1.4.7",
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^9.0.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
-    "docker": "^1.0.0",
-    "docx": "^9.5.1",
-    "dotenv": "^17.2.3",
+    "dotenv": "^16.0.3",
     "exceljs": "^4.4.0",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.2.1",
-    "express-session": "^1.18.2",
-    "express-validator": "^7.3.0",
-    "follow-redirects": "^1.15.11",
-    "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mercadopago": "^2.8.0",
-    "multer": "^2.0.2",
-    "mysql": "^2.18.1",
-    "mysql2": "^3.14.3",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "express-session": "^1.17.3",
+    "express-validator": "^7.0.0",
+    "groq-sdk": "^0.37.0",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "mercadopago": "^2.11.0",
     "node-cron": "^4.2.1",
-    "node-fetch": "^2.7.0",
-    "nodemailer": "^7.0.10",
-    "pdfkit": "^0.17.2",
-    "pg": "^8.16.3"
+    "nodemailer": "^6.9.0",
+    "pg": "^8.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.0.0"
   }
 }

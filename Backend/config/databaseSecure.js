@@ -10,10 +10,10 @@ const supabaseConfig = {
   port: process.env.SUPABASE_DB_PORT || 5432,
   database: process.env.SUPABASE_DB_NAME || 'postgres',
   
-  // ⚡ Configuración de pool optimizada para seguridad
-  max: 20, // Máximo 20 conexiones concurrentes
-  min: 2,  // Mínimo 2 conexiones activas
-  idleTimeoutMillis: 30000, // 30 segundos timeout
+  // ⚡ Configuración de pool optimizada para Supabase Pooler
+  max: 5, // Máximo 5 conexiones (pooler tiene límites estrictos)
+  min: 1,  // Mínimo 1 conexión activa
+  idleTimeoutMillis: 10000, // 10 segundos timeout (liberar rápido)
   connectionTimeoutMillis: 5000, // 5 segundos para conectar
   
   // 🛡️ SSL requerido para producción
@@ -77,15 +77,16 @@ const logSecurityEvent = async (eventType, details) => {
     fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
     
     // También intentar log en BD si está disponible
-    try {
-      await pool.query(`
-        INSERT INTO audit_log (event_type, table_name, user_id, details, ip_address, user_agent)
-        VALUES ($1, 'system', NULL, $2, 'system', 'database_pool')
-      `, [eventType, details]);
-    } catch (dbErr) {
-      // Si falla el log en BD, al menos tenemos el archivo
-      console.warn('⚠️ No se pudo guardar audit_log en BD:', dbErr.message);
-    }
+    // DESHABILITADO: estructura de audit_log no coincide
+    // try {
+    //   await pool.query(`
+    //     INSERT INTO audit_log (event_type, table_name, user_id, details, ip_address, user_agent)
+    //     VALUES ($1, 'system', NULL, $2, 'system', 'database_pool')
+    //   `, [eventType, details]);
+    // } catch (dbErr) {
+    //   // Si falla el log en BD, al menos tenemos el archivo
+    //   console.warn('⚠️ No se pudo guardar audit_log en BD:', dbErr.message);
+    // }
     
   } catch (err) {
     console.error('❌ Error logging evento de seguridad:', err);

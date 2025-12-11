@@ -1,0 +1,475 @@
+{
+  "name": "Clinikdent - Asistente WhatsApp Completo",
+  "description": "Flujo completo para registro de pacientes, agendamiento de citas y soporte",
+  "version": "1.0",
+  "webhook_base_url": "https://francisco-gruffiest-unpatiently.ngrok-free.app/api/whatsapp",
+  
+  "custom_fields": [
+    "nombre_paciente",
+    "cedula",
+    "email",
+    "telefono",
+    "fecha_nacimiento",
+    "direccion",
+    "fecha_cita",
+    "hora_cita",
+    "servicio",
+    "mensaje_soporte",
+    "tipo_soporte"
+  ],
+
+  "flows": [
+    {
+      "id": "main_flow",
+      "trigger": "default_reply",
+      "nodes": [
+        {
+          "id": "1",
+          "type": "send_message",
+          "content": {
+            "text": "¡Bienvenido a Clinikdent! 🦷\n\nSoy tu asistente virtual. ¿En qué puedo ayudarte hoy?",
+            "quick_replies": [
+              {
+                "title": "📋 Registrarme",
+                "payload": "REGISTRO_PACIENTE"
+              },
+              {
+                "title": "📅 Agendar Cita",
+                "payload": "AGENDAR_CITA"
+              },
+              {
+                "title": "🔍 Mis Citas",
+                "payload": "CONSULTAR_CITAS"
+              },
+              {
+                "title": "💬 Soporte",
+                "payload": "SOPORTE_PQR"
+              }
+            ]
+          },
+          "webhooks": [
+            {
+              "url": "{{webhook_base_url}}/nuevo-contacto",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json"
+              },
+              "body": {
+                "telefono": "{{contact.phone}}",
+                "nombre": "{{contact.name}}",
+                "mensaje": "{{user.last_input}}"
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "registro_flow",
+      "trigger": "REGISTRO_PACIENTE",
+      "nodes": [
+        {
+          "id": "reg_1",
+          "type": "send_message",
+          "content": {
+            "text": "📋 *Registro de Paciente*\n\nPor favor, indícame tu nombre completo:"
+          },
+          "next": "reg_2"
+        },
+        {
+          "id": "reg_2",
+          "type": "user_input",
+          "save_to": "nombre_paciente",
+          "validation": {
+            "required": true,
+            "min_length": 3
+          },
+          "next": "reg_3"
+        },
+        {
+          "id": "reg_3",
+          "type": "send_message",
+          "content": {
+            "text": "Perfecto {{nombre_paciente}}, ahora tu número de cédula:"
+          },
+          "next": "reg_4"
+        },
+        {
+          "id": "reg_4",
+          "type": "user_input",
+          "save_to": "cedula",
+          "validation": {
+            "required": true,
+            "type": "numeric"
+          },
+          "next": "reg_5"
+        },
+        {
+          "id": "reg_5",
+          "type": "send_message",
+          "content": {
+            "text": "Ahora tu correo electrónico:"
+          },
+          "next": "reg_6"
+        },
+        {
+          "id": "reg_6",
+          "type": "user_input",
+          "save_to": "email",
+          "validation": {
+            "required": true,
+            "type": "email"
+          },
+          "next": "reg_7"
+        },
+        {
+          "id": "reg_7",
+          "type": "send_message",
+          "content": {
+            "text": "Tu fecha de nacimiento (DD/MM/AAAA):"
+          },
+          "next": "reg_8"
+        },
+        {
+          "id": "reg_8",
+          "type": "user_input",
+          "save_to": "fecha_nacimiento",
+          "validation": {
+            "required": true
+          },
+          "next": "reg_9"
+        },
+        {
+          "id": "reg_9",
+          "type": "send_message",
+          "content": {
+            "text": "Por último, tu dirección completa:"
+          },
+          "next": "reg_10"
+        },
+        {
+          "id": "reg_10",
+          "type": "user_input",
+          "save_to": "direccion",
+          "validation": {
+            "required": true
+          },
+          "next": "reg_11"
+        },
+        {
+          "id": "reg_11",
+          "type": "webhook",
+          "url": "{{webhook_base_url}}/registrar-paciente",
+          "method": "POST",
+          "body": {
+            "nombre": "{{nombre_paciente}}",
+            "cedula": "{{cedula}}",
+            "email": "{{email}}",
+            "telefono": "{{contact.phone}}",
+            "fecha_nacimiento": "{{fecha_nacimiento}}",
+            "direccion": "{{direccion}}"
+          },
+          "next": "reg_12"
+        },
+        {
+          "id": "reg_12",
+          "type": "send_message",
+          "content": {
+            "text": "✅ ¡Registro exitoso!\n\nYa estás registrado en Clinikdent.\n\n¿Deseas agendar una cita ahora?",
+            "quick_replies": [
+              {
+                "title": "Sí, agendar cita",
+                "payload": "AGENDAR_CITA"
+              },
+              {
+                "title": "Volver al menú",
+                "payload": "MENU_PRINCIPAL"
+              }
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "agendar_flow",
+      "trigger": "AGENDAR_CITA",
+      "nodes": [
+        {
+          "id": "cita_1",
+          "type": "send_message",
+          "content": {
+            "text": "📅 *Agendar Cita*\n\n¿Para cuál servicio deseas agendar?",
+            "quick_replies": [
+              { "title": "Limpieza dental", "payload": "SRV_LIMPIEZA" },
+              { "title": "Ortodoncia", "payload": "SRV_ORTODONCIA" },
+              { "title": "Endodoncia", "payload": "SRV_ENDODONCIA" },
+              { "title": "Implantes", "payload": "SRV_IMPLANTES" },
+              { "title": "Otro servicio", "payload": "SRV_OTRO" }
+            ]
+          },
+          "next": "cita_2"
+        },
+        {
+          "id": "cita_2",
+          "type": "button_response",
+          "save_to": "servicio",
+          "mapping": {
+            "SRV_LIMPIEZA": "Limpieza dental",
+            "SRV_ORTODONCIA": "Ortodoncia",
+            "SRV_ENDODONCIA": "Endodoncia",
+            "SRV_IMPLANTES": "Implantes",
+            "SRV_OTRO": "Otro"
+          },
+          "next": "cita_3"
+        },
+        {
+          "id": "cita_3",
+          "type": "send_message",
+          "content": {
+            "text": "Perfecto. ¿Qué fecha prefieres? (DD/MM/AAAA)"
+          },
+          "next": "cita_4"
+        },
+        {
+          "id": "cita_4",
+          "type": "user_input",
+          "save_to": "fecha_cita",
+          "validation": {
+            "required": true
+          },
+          "next": "cita_5"
+        },
+        {
+          "id": "cita_5",
+          "type": "send_message",
+          "content": {
+            "text": "¿En qué horario prefieres?",
+            "quick_replies": [
+              { "title": "8:00 AM", "payload": "HORA_08" },
+              { "title": "10:00 AM", "payload": "HORA_10" },
+              { "title": "2:00 PM", "payload": "HORA_14" },
+              { "title": "4:00 PM", "payload": "HORA_16" }
+            ]
+          },
+          "next": "cita_6"
+        },
+        {
+          "id": "cita_6",
+          "type": "button_response",
+          "save_to": "hora_cita",
+          "mapping": {
+            "HORA_08": "08:00",
+            "HORA_10": "10:00",
+            "HORA_14": "14:00",
+            "HORA_16": "16:00"
+          },
+          "next": "cita_7"
+        },
+        {
+          "id": "cita_7",
+          "type": "send_message",
+          "content": {
+            "text": "Por último, tu número de cédula para confirmar:"
+          },
+          "next": "cita_8"
+        },
+        {
+          "id": "cita_8",
+          "type": "user_input",
+          "save_to": "cedula",
+          "validation": {
+            "required": true
+          },
+          "next": "cita_9"
+        },
+        {
+          "id": "cita_9",
+          "type": "webhook",
+          "url": "{{webhook_base_url}}/agendar-cita",
+          "method": "POST",
+          "body": {
+            "cedula": "{{cedula}}",
+            "telefono": "{{contact.phone}}",
+            "servicio": "{{servicio}}",
+            "fecha": "{{fecha_cita}}",
+            "hora": "{{hora_cita}}"
+          },
+          "next": "cita_10"
+        },
+        {
+          "id": "cita_10",
+          "type": "send_message",
+          "content": {
+            "text": "✅ *Cita Agendada*\n\n📋 Servicio: {{servicio}}\n📅 Fecha: {{fecha_cita}}\n🕐 Hora: {{hora_cita}}\n\nRecibirás un recordatorio 24h antes.",
+            "quick_replies": [
+              {
+                "title": "Volver al menú",
+                "payload": "MENU_PRINCIPAL"
+              }
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "consultar_flow",
+      "trigger": "CONSULTAR_CITAS",
+      "nodes": [
+        {
+          "id": "cons_1",
+          "type": "send_message",
+          "content": {
+            "text": "🔍 *Consultar Citas*\n\nIndícame tu cédula:"
+          },
+          "next": "cons_2"
+        },
+        {
+          "id": "cons_2",
+          "type": "user_input",
+          "save_to": "cedula",
+          "validation": {
+            "required": true
+          },
+          "next": "cons_3"
+        },
+        {
+          "id": "cons_3",
+          "type": "webhook",
+          "url": "{{webhook_base_url}}/consultar-citas",
+          "method": "POST",
+          "body": {
+            "cedula": "{{cedula}}",
+            "telefono": "{{contact.phone}}"
+          },
+          "save_response_to": "citas_resultado",
+          "next": "cons_4"
+        },
+        {
+          "id": "cons_4",
+          "type": "send_message",
+          "content": {
+            "text": "{{citas_resultado}}",
+            "quick_replies": [
+              {
+                "title": "Volver al menú",
+                "payload": "MENU_PRINCIPAL"
+              }
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "soporte_flow",
+      "trigger": "SOPORTE_PQR",
+      "nodes": [
+        {
+          "id": "sop_1",
+          "type": "send_message",
+          "content": {
+            "text": "💬 *Soporte*\n\n¿Con qué necesitas ayuda?",
+            "quick_replies": [
+              { "title": "Consulta general", "payload": "TIPO_CONSULTA" },
+              { "title": "Queja", "payload": "TIPO_QUEJA" },
+              { "title": "Reclamo", "payload": "TIPO_RECLAMO" },
+              { "title": "Sugerencia", "payload": "TIPO_SUGERENCIA" }
+            ]
+          },
+          "next": "sop_2"
+        },
+        {
+          "id": "sop_2",
+          "type": "button_response",
+          "save_to": "tipo_soporte",
+          "mapping": {
+            "TIPO_CONSULTA": "consulta",
+            "TIPO_QUEJA": "queja",
+            "TIPO_RECLAMO": "reclamo",
+            "TIPO_SUGERENCIA": "sugerencia"
+          },
+          "next": "sop_3"
+        },
+        {
+          "id": "sop_3",
+          "type": "send_message",
+          "content": {
+            "text": "Por favor describe tu {{tipo_soporte}}:"
+          },
+          "next": "sop_4"
+        },
+        {
+          "id": "sop_4",
+          "type": "user_input",
+          "save_to": "mensaje_soporte",
+          "validation": {
+            "required": true
+          },
+          "next": "sop_5"
+        },
+        {
+          "id": "sop_5",
+          "type": "webhook",
+          "url": "{{webhook_base_url}}/pqr",
+          "method": "POST",
+          "body": {
+            "telefono": "{{contact.phone}}",
+            "nombre": "{{contact.name}}",
+            "tipo": "{{tipo_soporte}}",
+            "mensaje": "{{mensaje_soporte}}"
+          },
+          "next": "sop_6"
+        },
+        {
+          "id": "sop_6",
+          "type": "send_message",
+          "content": {
+            "text": "✅ Tu {{tipo_soporte}} ha sido registrada.\n\nNuestro equipo te contactará pronto.",
+            "quick_replies": [
+              {
+                "title": "Volver al menú",
+                "payload": "MENU_PRINCIPAL"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+
+  "webhooks": [
+    {
+      "name": "Nuevo Contacto WhatsApp",
+      "url": "https://francisco-gruffiest-unpatiently.ngrok-free.app/api/whatsapp/nuevo-contacto",
+      "method": "POST",
+      "trigger": "user_message"
+    },
+    {
+      "name": "Registrar Paciente",
+      "url": "https://francisco-gruffiest-unpatiently.ngrok-free.app/api/whatsapp/registrar-paciente",
+      "method": "POST",
+      "trigger": "custom"
+    },
+    {
+      "name": "Agendar Cita",
+      "url": "https://francisco-gruffiest-unpatiently.ngrok-free.app/api/whatsapp/agendar-cita",
+      "method": "POST",
+      "trigger": "custom"
+    },
+    {
+      "name": "Consultar Citas",
+      "url": "https://francisco-gruffiest-unpatiently.ngrok-free.app/api/whatsapp/consultar-citas",
+      "method": "POST",
+      "trigger": "custom"
+    },
+    {
+      "name": "Soporte PQR",
+      "url": "https://francisco-gruffiest-unpatiently.ngrok-free.app/api/whatsapp/pqr",
+      "method": "POST",
+      "trigger": "custom"
+    }
+  ]
+}

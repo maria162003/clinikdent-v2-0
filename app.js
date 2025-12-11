@@ -66,9 +66,9 @@ console.log('🔄 Cargando rutas de IA y automatización...');
 const iaAutomatizacionRoutes = require('./Backend/routes/iaAutomatizacionRoutes');
 console.log('✅ Rutas de IA y automatización cargadas');
 
-console.log('🔄 Cargando rutas de integración...');
-const integracionRoutes = require('./Backend/routes/integracionRoutes');
-console.log('✅ Rutas de integración cargadas');
+// console.log('🔄 Cargando rutas de integración...');
+// const integracionRoutes = require('./Backend/routes/integracionRoutes');
+// console.log('✅ Rutas de integración cargadas');
 
 console.log('🔄 Cargando rutas de performance...');
 const performanceRoutes = require('./Backend/routes/performanceRoutes');
@@ -82,26 +82,32 @@ console.log('🔄 Cargando rutas de contenido del sitio...');
 const siteContentRoutes = require('./Backend/routes/siteContentRoutes');
 console.log('✅ Rutas de contenido del sitio cargadas');
 
+console.log('🔄 Cargando rutas de WhatsApp Bot Simple...');
+const whatsappBotRoutes = require('./Backend/routes/whatsappSimpleBotRoutes');
+console.log('✅ Rutas de WhatsApp Bot Simple cargadas');
+
+console.log('🔄 Cargando rutas para integración con React Native...');
+const reactNativeWebhookRoutes = require('./Backend/routes/reactNativeWebhookRoutes');
+console.log('✅ Rutas para React Native cargadas');
+
+console.log('🔄 Cargando rutas extras de React Native (citas, tratamientos, PQRS)...');
+const reactNativeExtrasRoutes = require('./Backend/routes/reactNativeExtrasRoutes');
+console.log('✅ Rutas extras de React Native cargadas');
+
+console.log('🔄 Cargando rutas de reportes para React Native...');
+const reactNativeReportesRoutes = require('./Backend/routes/reactNativeReportesRoutes');
+console.log('✅ Rutas de reportes para React Native cargadas');
+
+console.log('🔄 Cargando rutas de lista de usuarios...');
+const usuariosListaRoutes = require('./Backend/routes/usuariosListaRoutes');
+console.log('✅ Rutas de lista de usuarios cargadas');
+
 const app = express();
 
 // Middlewares
 app.use(cors());
 
-// ANTI-CACHE MIDDLEWARE: Prevenir que Chrome cachee archivos localmente
-app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  next();
-});
-
-// Log global para debug
-app.use((req, res, next) => {
-  console.log(`🌍 GLOBAL REQUEST: ${req.method} ${req.url}`);
-  console.log(`🌍 BODY:`, req.body);
-  next();
-});
-// Soporta JSON
+// Soporta JSON - DEBE IR PRIMERO
 app.use(express.json());
 // Soporta formularios <form method="POST">
 app.use(express.urlencoded({ extended: true })); // <-- agrega esto
@@ -285,9 +291,9 @@ console.log('🔗 Registrando rutas de IA y automatización...');
 app.use('/api/ia-automatizacion', iaAutomatizacionRoutes);
 console.log('✅ Rutas de IA y automatización registradas exitosamente');
 
-console.log('🔗 Registrando rutas de integración...');
-app.use('/api/integracion', integracionRoutes);
-console.log('✅ Rutas de integración registradas exitosamente');
+// console.log('🔗 Registrando rutas de integración...');
+// app.use('/api/integracion', integracionRoutes);
+// console.log('✅ Rutas de integración registradas exitosamente');
 
 console.log('🔗 Registrando rutas de performance...');
 app.use('/api/performance', performanceRoutes);
@@ -313,11 +319,25 @@ console.log('🔗 Registrando rutas de contenido del sitio...');
 app.use('/api/site-content', siteContentRoutes);
 console.log('✅ Rutas de contenido del sitio registradas exitosamente');
 
+console.log('🔗 Registrando rutas de WhatsApp Bot...');
+app.use('/api/whatsapp', whatsappBotRoutes);
+console.log('✅ Rutas de WhatsApp Bot registradas exitosamente');
+
+console.log('🔗 Registrando rutas para React Native...');
+app.use('/api/react-native', reactNativeWebhookRoutes);
+app.use('/api/react-native-extras', reactNativeExtrasRoutes);
+app.use('/api/react-native-reportes', reactNativeReportesRoutes);
+console.log('✅ Rutas para React Native registradas exitosamente');
+
+console.log('🔗 Registrando rutas de lista de usuarios...');
+app.use('/api/pacientes', usuariosListaRoutes);
+console.log('✅ Rutas de lista de usuarios registradas exitosamente');
+
 // Agregar rutas de reportes básicos
-console.log('🔗 Registrando rutas de reportes básicos...');
-const reportesRoutes = require('./Backend/routes/reportesRoutes');
-app.use('/api/reportes-basicos', reportesRoutes);
-console.log('✅ Rutas de reportes básicos registradas exitosamente');
+// console.log('🔗 Registrando rutas de reportes básicos...');
+// const reportesRoutes = require('./Backend/routes/reportesRoutes');
+// app.use('/api/reportes-basicos', reportesRoutes);
+// console.log('✅ Rutas de reportes básicos registradas exitosamente');
 
 // Agregar rutas de configuración
 console.log('🔗 Registrando rutas de configuración...');
