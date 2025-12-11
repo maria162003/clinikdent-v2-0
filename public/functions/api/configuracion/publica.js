@@ -25,15 +25,18 @@ export async function onRequest(context) {
 
     const { data, error } = await supabase
       .from('configuracion_sistema')
-      .select('*')
-      .eq('es_publica', true);
+      .select('clave, valor');
 
     if (error) throw error;
 
-    // Convertir array a objeto config
+    // Convertir array a objeto config (solo las claves públicas)
     const config = {};
+    const publicKeys = ['nombre_clinica', 'telefono', 'email', 'direccion', 'horario_atencion'];
+    
     data?.forEach(item => {
-      config[item.clave] = item.valor;
+      if (publicKeys.includes(item.clave)) {
+        config[item.clave] = item.valor;
+      }
     });
 
     return new Response(JSON.stringify({
