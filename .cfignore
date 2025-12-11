@@ -1,0 +1,17 @@
+node_modules/
+Backend/
+.env
+.git/
+*.rar
+*.zip
+ReactNativeDemo/
+ReactNativeDemo.rar
+routes/
+scripts/
+services/
+manual-tecnico-only/
+*.md
+.gitignore
+app.js
+ARRANCAR_CLINIKDENT.bat
+logs/

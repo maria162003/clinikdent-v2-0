@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Pendiente - Clinikdent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="../css/styles.css" rel="stylesheet">
+    <style>
+        .pending-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+        .pending-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: 2rem;
+        }
+        .pending-icon {
+            font-size: 4rem;
+            color: #ffc107;
+            margin-bottom: 1rem;
+        }
+        .pending-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="pending-container">
+        <div class="pending-card">
+            <div class="pending-icon pulse">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            
+            <h1 class="text-warning mb-3">Pago Pendiente</h1>
+            <p class="lead text-muted mb-4">
+                Tu pago está siendo procesado. Te notificaremos cuando se complete.
+            </p>
+            
+            <div class="pending-info">
+                <h6 class="text-warning mb-3">Estado del Proceso</h6>
+                <div class="row text-start">
+                    <div class="col-6">
+                        <small class="text-muted">Transacción:</small><br>
+                        <strong id="transactionId">Cargando...</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Estado:</small><br>
+                        <span class="badge bg-warning">Pendiente</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-start">
+                    <div class="col-6">
+                        <small class="text-muted">Fecha:</small><br>
+                        <strong id="paymentDate">Cargando...</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Monto:</small><br>
+                        <strong id="paymentAmount" class="text-warning">Cargando...</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>¿Qué significa esto?</strong><br>
+                <small id="pendingReason">Tu pago está siendo verificado. Esto puede tomar unos minutos dependiendo del método de pago seleccionado.</small>
+            </div>
+            
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Importante:</strong><br>
+                <small>No cierres esta ventana ni realices el pago nuevamente. Te notificaremos por email cuando se procese.</small>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-warning btn-lg" onclick="verificarEstado()" id="checkStatusBtn">
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    Verificar Estado
+                </button>
+                <a href="../dashboard-paciente.html" class="btn btn-outline-secondary">
+                    <i class="bi bi-house-door me-2"></i>
+                    Volver al Dashboard
+                </a>
+            </div>
+            
+            <div class="mt-4 pt-3 border-top">
+                <small class="text-muted">
+                    Tiempo transcurrido: <span id="timeElapsed">0 minutos</span>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Obtener parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get('payment_id');
+        const status = urlParams.get('status');
+        const statusDetail = urlParams.get('status_detail');
+        const externalReference = urlParams.get('external_reference');
+        const paymentType = urlParams.get('payment_type_id');
+        
+        let startTime = Date.now();
+        let checkInterval;
+        
+        // Mostrar información si está disponible
+        if (paymentId) {
+            document.getElementById('transactionId').textContent = paymentId;
+        } else if (externalReference) {
+            document.getElementById('transactionId').textContent = externalReference;
+        }
+        
+        // Mostrar fecha actual
+        document.getElementById('paymentDate').textContent = new Date().toLocaleDateString('es-CO', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Mensajes específicos según el tipo de pago pendiente
+        const pendingReasons = {
+            'bank_transfer': 'Se está procesando la transferencia bancaria. Puede tomar hasta 24 horas.',
+            'ticket': 'Pago en efectivo recibido. Se está verificando en el punto de pago.',
+            'atm': 'Pago realizado en cajero automático. Se está confirmando.',
+            'credit_card': 'Pago con tarjeta en proceso de autorización.',
+            'debit_card': 'Pago con tarjeta débito siendo verificado.',
+            'digital_currency': 'Pago con moneda digital en confirmación.',
+            'digital_wallet': 'Pago con billetera digital siendo procesado.'
+        };
+        
+        // Mostrar razón específica si está disponible
+        if (paymentType && pendingReasons[paymentType]) {
+            document.getElementById('pendingReason').textContent = pendingReasons[paymentType];
+        } else if (statusDetail) {
+            document.getElementById('pendingReason').textContent = `Estado: ${statusDetail}`;
+        }
+        
+        // Función para verificar el estado del pago
+        async function verificarEstado() {
+            if (!paymentId) {
+                alert('No se puede verificar el estado sin ID de pago');
+                return;
+            }
+            
+            const btn = document.getElementById('checkStatusBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+            
+            try {
+                const response = await fetch(`/api/mercadopago/pago/${paymentId}`);
+                const data = await response.json();
+                
+                if (data.success && data.pago) {
+                    const newStatus = data.pago.status;
+                    
+                    if (newStatus === 'approved') {
+                        // Redirigir a página de éxito
+                        window.location.href = `exito.html?payment_id=${paymentId}&status=${newStatus}`;
+                    } else if (newStatus === 'rejected') {
+                        // Redirigir a página de error
+                        window.location.href = `error.html?payment_id=${paymentId}&status=${newStatus}&status_detail=${data.pago.status_detail}`;
+                    } else {
+                        // Actualizar información en pantalla
+                        const amount = data.pago.transaction_amount;
+                        document.getElementById('paymentAmount').textContent = 
+                            new Intl.NumberFormat('es-CO', { 
+                                style: 'currency', 
+                                currency: 'COP' 
+                            }).format(amount);
+                        
+                        alert('El pago sigue pendiente. Te notificaremos cuando se procese.');
+                    }
+                } else {
+                    alert('No se pudo verificar el estado del pago');
+                }
+            } catch (error) {
+                console.error('Error verificando estado:', error);
+                alert('Error al verificar el estado del pago');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+        
+        // Actualizar tiempo transcurrido
+        function updateTimeElapsed() {
+            const elapsed = Math.floor((Date.now() - startTime) / 60000);
+            document.getElementById('timeElapsed').textContent = `${elapsed} minuto${elapsed !== 1 ? 's' : ''}`;
+        }
+        
+        // Actualizar cada minuto
+        setInterval(updateTimeElapsed, 60000);
+        
+        // Verificar estado automáticamente cada 2 minutos
+        checkInterval = setInterval(() => {
+            if (paymentId) {
+                verificarEstado();
+            }
+        }, 120000);
+        
+        // Limpiar intervalo al salir
+        window.addEventListener('beforeunload', () => {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+        });
+    </script>
+</body>
+</html>

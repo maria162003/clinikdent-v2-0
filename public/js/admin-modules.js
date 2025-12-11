@@ -807,43 +807,68 @@ function initSystemSettings() {
             // Verificar autenticación usando la información del usuario
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             
+            console.log('🔍 [CONFIG] Verificando acceso - Usuario completo:', user);
+            console.log('🔍 [CONFIG] Rol detectado:', user.rol);
+            console.log('🔍 [CONFIG] Tipo de rol:', typeof user.rol);
+            
             // Verificar si hay usuario logueado
             if (!user.id || !user.rol) {
                 console.log('❌ Error: No hay sesión de usuario válida');
+                alert('No hay sesión de usuario válida. Por favor inicia sesión nuevamente.');
                 window.location.href = '/index.html';
                 return;
             }
             
-            // Verificar que sea administrador
-            if (user.rol !== 'administrador') {
-                console.log('❌ Error: Usuario no es administrador');
-                alert('No tienes permisos para acceder a la configuración del sistema');
+            // Verificar que sea administrador (normalizar rol para evitar problemas de mayúsculas/espacios)
+            const rolNormalizado = user.rol.toString().toLowerCase().trim();
+            console.log('🔍 [CONFIG] Rol normalizado:', rolNormalizado);
+            
+            if (rolNormalizado !== 'administrador') {
+                console.log('❌ Error: Usuario no es administrador. Rol actual:', user.rol);
+                alert(`Solo administradores pueden acceder a esta configuración.\nTu rol actual es: ${user.rol}`);
                 return;
             }
             
             console.log('✅ Usuario autorizado para configuración:', user);
             
-            // Usar datos de demostración para desarrollo (ya que no hay backend real para configuración)
+            // Cargar configuración desde la API
+            console.log('📡 Cargando configuración desde el servidor...');
+            const response = await fetch('/api/configuracion', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Error al cargar configuración del servidor');
+            }
+            
+            const result = await response.json();
+            console.log('📦 Configuración recibida:', result);
+            
+            // Transformar configuración plana a formato esperado por el formulario
+            const config = result.configuracion || {};
             const mockConfig = {
                 horariosClinica: {
-                    apertura: '08:00',
-                    cierre: '18:00',
-                    diasHabiles: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie']
+                    apertura: config.horario_apertura || '08:00',
+                    cierre: config.horario_cierre || '18:00',
+                    diasHabiles: config.dias_atencion || ['Lun', 'Mar', 'Mie', 'Jue', 'Vie']
                 },
                 recordatorios: {
-                    sms: true,
-                    email: true,
-                    horasAnticipacion: 24
+                    sms: config.notif_sms_enabled !== undefined ? config.notif_sms_enabled : true,
+                    email: config.notif_email_enabled !== undefined ? config.notif_email_enabled : true,
+                    horasAnticipacion: config.notif_horas_anticipacion || 24
                 },
                 cancelacion: {
-                    permite: true,
-                    horasMin: 12,
-                    penalizacion: 0
+                    permite: config.cancelacion_permitida !== undefined ? config.cancelacion_permitida : true,
+                    horasMin: config.cancelacion_horas_min || 2,
+                    penalizacion: config.cancelacion_penalizacion || 0
                 },
                 branding: {
-                    nombreClinica: 'Clinik Dent',
-                    logoUrl: '',
-                    colorPrimario: '#0ea5e9'
+                    nombreClinica: config.clinica_nombre || 'ClinikDent',
+                    logoUrl: config.clinica_logo_url || '',
+                    colorPrimario: config.clinica_color_primario || '#0ea5e9'
                 }
             };
             
@@ -1023,25 +1048,58 @@ function initSystemSettings() {
             
             console.log('✅ Usuario autenticado para config:', user.nombre);
             
-            // Simular guardado exitoso usando localStorage (modo desarrollo)
-            console.log('💾 Guardando configuración en modo desarrollo...');
-            setTimeout(() => {
-                // Actualizar estado local con los mismos datos del formulario
-                adminModules.config.data = configData;
-                
-                // Aplicar cambios de branding de inmediato
-                applyBrandingChanges(configData.branding);
-                
-                // Cerrar modal y mostrar mensaje
-                const configModal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
-                configModal.hide();
-                
-                showToast('Configuración actualizada con éxito', 'success');
-                
-                adminModules.config.loading = false;
-                updateConfigUI();
-            }, 800); // Simulación de retardo de red
-            return;
+            // Transformar datos del formulario al formato de la API (claves planas)
+            const configuraciones = {
+                horario_apertura: configData.horariosClinica.apertura,
+                horario_cierre: configData.horariosClinica.cierre,
+                dias_atencion: configData.horariosClinica.diasHabiles,
+                notif_sms_enabled: configData.recordatorios.sms,
+                notif_email_enabled: configData.recordatorios.email,
+                notif_horas_anticipacion: configData.recordatorios.horasAnticipacion,
+                cancelacion_permitida: configData.cancelacion.permite,
+                cancelacion_horas_min: configData.cancelacion.horasMin,
+                cancelacion_penalizacion: configData.cancelacion.penalizacion,
+                clinica_nombre: configData.branding.nombreClinica,
+                clinica_logo_url: configData.branding.logoUrl,
+                clinica_color_primario: configData.branding.colorPrimario
+            };
+            
+            console.log('💾 Guardando configuración en el servidor...');
+            
+            // Enviar a la API
+            const response = await fetch('/api/configuracion', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    configuraciones: configuraciones,
+                    usuario_id: user.id
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.msg || 'Error al guardar configuración');
+            }
+            
+            const result = await response.json();
+            console.log('✅ Configuración guardada:', result);
+            
+            // Actualizar estado local
+            adminModules.config.data = configData;
+            
+            // Aplicar cambios de branding de inmediato
+            applyBrandingChanges(configData.branding);
+            
+            // Cerrar modal y mostrar mensaje
+            const configModal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
+            configModal.hide();
+            
+            showToast('Configuración actualizada exitosamente', 'success');
+            
+            adminModules.config.loading = false;
+            updateConfigUI();
             
             /* 
             // CÓDIGO ORIGINAL COMENTADO - CAUSABA LOGOUT
@@ -5090,3 +5148,374 @@ function verDetallesProveedor(id) {
 
 // Funciones para gestión de equipos (usando nuevo sistema CRUD)
 // Las funciones editarEquipo, eliminarEquipo y verDetallesEquipo están ahora en admin-crud.js
+
+// ========================================
+// Alertas visuales para reasignaciones de odontólogo
+// ========================================
+
+const REASIGNACION_ALERT_DURATION = 5500;
+
+function ensureReasignacionAlertStyles() {
+    if (document.getElementById('reassignAlertStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'reassignAlertStyles';
+    style.textContent = `
+        #reasignacionAlertStack {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1085;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            pointer-events: none;
+        }
+        #reasignacionAlertStack .reasignacion-alert {
+            width: min(340px, calc(100vw - 2rem));
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1rem 1.25rem 1.25rem;
+            border-left: 4px solid #20c997;
+            box-shadow: 0 18px 50px rgba(15, 33, 55, 0.18);
+            opacity: 0;
+            transform: translateY(-8px) scale(0.96);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: auto;
+        }
+        #reasignacionAlertStack .reasignacion-alert.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        #reasignacionAlertStack .reasignacion-alert.hide {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.94);
+        }
+        .reasignacion-alert .status-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #20c997, #198754);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.3rem;
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.12);
+        }
+        .reasignacion-alert .badge-soft {
+            background: rgba(25, 135, 84, 0.12);
+            color: #198754;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.65rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .reassign-progress {
+            height: 4px;
+            background: rgba(25, 135, 84, 0.15);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .reassign-progress span {
+            display: block;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #20c997, #0d6efd);
+            animation: reassignCountdown var(--alert-duration, 5.5s) linear forwards;
+        }
+        .reasignacion-alert .close-pill {
+            border: none;
+            background: rgba(15, 33, 55, 0.06);
+            color: #0f2137;
+            border-radius: 999px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+        .reasignacion-alert .close-pill:hover {
+            background: rgba(15, 33, 55, 0.12);
+        }
+        @keyframes reassignCountdown {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function getReasignacionAlertStack() {
+    ensureReasignacionAlertStyles();
+    let stack = document.getElementById('reasignacionAlertStack');
+    if (!stack) {
+        stack = document.createElement('div');
+        stack.id = 'reasignacionAlertStack';
+        document.body.appendChild(stack);
+    }
+    return stack;
+}
+
+function showReasignacionSuccessAlert(pacienteNombre = '', odontologoNombre = '') {
+    const stack = getReasignacionAlertStack();
+    const alertEl = document.createElement('div');
+    alertEl.className = 'reasignacion-alert shadow-lg';
+    alertEl.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex align-items-center">
+                <div class="status-badge me-3">
+                    <i class="bi bi-check-lg"></i>
+                </div>
+                <div>
+                    <div class="badge-soft mb-1">Reasignación completada</div>
+                    <h6 class="mb-0">${escapeHTML(odontologoNombre || 'Nuevo odontólogo asignado')}</h6>
+                    <small class="text-muted">Ahora atiende a ${escapeHTML(pacienteNombre || 'este paciente')}</small>
+                </div>
+            </div>
+            <button type="button" class="close-pill" aria-label="Cerrar notificación">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="rounded bg-light p-3 mb-3">
+            <div class="text-uppercase text-muted small mb-1">Resumen</div>
+            <div class="fw-semibold text-dark">Paciente · ${escapeHTML(pacienteNombre || 'Sin nombre')}</div>
+            <div class="text-success fw-semibold">Odontólogo · ${escapeHTML(odontologoNombre || 'Por confirmar')}</div>
+        </div>
+        <div class="reassign-progress"><span style="--alert-duration: ${(REASIGNACION_ALERT_DURATION / 1000).toFixed(1)}s"></span></div>
+    `;
+
+    stack.appendChild(alertEl);
+
+    requestAnimationFrame(() => {
+        alertEl.classList.add('visible');
+    });
+
+    const dismissAlert = () => {
+        alertEl.classList.remove('visible');
+        alertEl.classList.add('hide');
+        alertEl.addEventListener('transitionend', function handle(event) {
+            if (event.propertyName === 'opacity') {
+                alertEl.removeEventListener('transitionend', handle);
+                alertEl.remove();
+            }
+        });
+    };
+
+    const timeoutId = setTimeout(dismissAlert, REASIGNACION_ALERT_DURATION);
+
+    const closeBtn = alertEl.querySelector('.close-pill');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            clearTimeout(timeoutId);
+            dismissAlert();
+        });
+    }
+}
+
+function setupReasignacionAlertOverride() {
+    if (window.__reassignAlertOverrideApplied) return;
+    window.__reassignAlertOverrideApplied = true;
+    const nativeAlert = window.alert ? window.alert.bind(window) : null;
+    window.alert = function(message, ...args) {
+        if (typeof message === 'string' && message.toLowerCase().includes('odontólogo reasignado exitosamente')) {
+            const pacienteMatch = message.match(/Paciente:\s*([^\n]+)/i);
+            const odontologoMatch = message.match(/Nuevo Odontólogo:\s*([^\n]+)/i);
+            const pacienteNombre = pacienteMatch ? pacienteMatch[1].trim() : '';
+            const odontologoNombre = odontologoMatch ? odontologoMatch[1].trim() : '';
+            showReasignacionSuccessAlert(pacienteNombre, odontologoNombre);
+            if (typeof showToast === 'function') {
+                showToast(`Odontólogo reasignado exitosamente a ${odontologoNombre || 'el nuevo especialista'}`, 'success');
+            }
+            return;
+        }
+        if (nativeAlert) {
+            nativeAlert(message, ...args);
+        }
+    };
+}
+
+setupReasignacionAlertOverride();
+
+// ========================================
+// Funciones para gestión de Historiales Clínicos
+// ========================================
+
+// Función para abrir modal de reasignación de odontólogo
+async function abrirModalReasignarOdontologo(pacienteId, pacienteNombre) {
+    console.log('🔄 Abriendo modal de reasignación para paciente:', pacienteId, pacienteNombre);
+    
+    try {
+        // Cargar lista de odontólogos disponibles
+        const response = await fetch('/api/usuarios/odontologos', {
+            headers: {
+                'user-id': getUserId(),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al obtener odontólogos');
+        }
+        
+        const odontologos = await response.json();
+        console.log('👨‍⚕️ Odontólogos disponibles:', odontologos);
+        
+        // Crear modal dinámicamente
+        const modalHtml = `
+            <div class="modal fade" id="reasignarOdontologoModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-person-badge"></i> Reasignar Odontólogo
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Paciente:</strong> ${pacienteNombre}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Seleccionar Nuevo Odontólogo</label>
+                                <select class="form-select" id="nuevoOdontologoSelect" required>
+                                    <option value="">-- Seleccione un odontólogo --</option>
+                                    ${odontologos.map(od => `
+                                        <option value="${od.id}">
+                                            Dr./Dra. ${od.nombre} ${od.apellido}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <small>
+                                    <strong>Nota:</strong> El nuevo odontólogo tendrá acceso a todos los historiales 
+                                    clínicos previos del paciente. Los historiales anteriores no se modificarán ni eliminarán.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="confirmarReasignacion(${pacienteId})">
+                                <i class="bi bi-check-circle"></i> Reasignar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Eliminar modal anterior si existe
+        const existingModal = document.getElementById('reasignarOdontologoModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('reasignarOdontologoModal'));
+        modal.show();
+        
+        // Limpiar modal al cerrar
+        document.getElementById('reasignarOdontologoModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+        
+    } catch (error) {
+        console.error('❌ Error al abrir modal de reasignación:', error);
+        if (typeof showAlert === 'function') {
+            showAlert('danger', 'Error al cargar la lista de odontólogos: ' + error.message);
+        } else if (typeof showToast === 'function') {
+            showToast('Error al cargar la lista de odontólogos: ' + error.message, 'danger');
+        } else {
+            alert('Error al cargar la lista de odontólogos: ' + error.message);
+        }
+    }
+}
+
+// Función para confirmar la reasignación
+async function confirmarReasignacion(pacienteId) {
+    const nuevoOdontologoId = document.getElementById('nuevoOdontologoSelect').value;
+    
+    if (!nuevoOdontologoId) {
+        if (typeof showToast === 'function') {
+            showToast('Por favor seleccione un odontólogo', 'warning');
+        } else if (typeof showAlert === 'function') {
+            showAlert('warning', 'Por favor seleccione un odontólogo');
+        } else {
+            alert('Por favor seleccione un odontólogo');
+        }
+        return;
+    }
+    
+    try {
+        console.log('📤 Enviando reasignación:', { pacienteId, nuevoOdontologoId });
+        
+        showLoading('Reasignando odontólogo...');
+        
+        const response = await fetch(`/api/usuarios/${pacienteId}/reasignar-odontologo`, {
+            method: 'PUT',
+            headers: {
+                'user-id': getUserId(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nuevo_odontologo_id: nuevoOdontologoId
+            })
+        });
+        
+        hideLoading();
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.msg || 'Error al reasignar odontólogo');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Reasignación exitosa:', result);
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('reasignarOdontologoModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        const pacienteNombre = result?.paciente?.nombre || '';
+        const odontologoNombre = result?.nuevo_odontologo?.nombre || '';
+
+        showReasignacionSuccessAlert(pacienteNombre, odontologoNombre);
+
+        if (typeof showAlert === 'function') {
+            showAlert('success', `Odontólogo reasignado exitosamente a ${odontologoNombre}`);
+        } else if (typeof showToast === 'function') {
+            showToast(`Odontólogo reasignado exitosamente a ${odontologoNombre}`, 'success');
+        }
+        
+        // Recargar la lista de pacientes si existe la función
+        if (typeof window.dashboardAdmin !== 'undefined' && typeof window.dashboardAdmin.loadUsuarios === 'function') {
+            window.dashboardAdmin.loadUsuarios();
+        }
+        
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Error al reasignar odontólogo:', error);
+        if (typeof showAlert === 'function') {
+            showAlert('danger', 'Error al reasignar odontólogo: ' + error.message);
+        } else if (typeof showToast === 'function') {
+            showToast('Error al reasignar odontólogo: ' + error.message, 'danger');
+        } else {
+            alert('Error al reasignar odontólogo: ' + error.message);
+        }
+    }
+}
+
+// Exportar funciones globalmente
+window.abrirModalReasignarOdontologo = abrirModalReasignarOdontologo;
+window.confirmarReasignacion = confirmarReasignacion;
+

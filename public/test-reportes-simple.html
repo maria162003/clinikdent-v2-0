@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Reportes - Clinik Dent</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #resultado {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success {
+      color: green;
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Test del Sistema de Reportes</h1>
+  
+  <div class="card">
+    <h3>Pruebas Rápidas</h3>
+    <button onclick="testFinanciero()">Test Reporte Financiero</button>
+    <button onclick="testCitas()">Test Reporte Citas</button>
+    <button onclick="testCancelaciones()">Test Cancelaciones</button>
+    <button onclick="testActividad()">Test Actividad</button>
+    <button onclick="testTratamientos()">Test Tratamientos</button>
+    <button onclick="limpiarResultado()">Limpiar</button>
+  </div>
+
+  <div class="card">
+    <h3>📊 Resultado</h3>
+    <div id="resultado">Presiona un botón para probar...</div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/reportes-basicos';
+
+    function log(mensaje, tipo = 'info') {
+      const resultado = document.getElementById('resultado');
+      const timestamp = new Date().toLocaleTimeString();
+      const color = tipo === 'success' ? 'green' : tipo === 'error' ? 'red' : 'black';
+      resultado.innerHTML += `<div style="color: ${color}">[${timestamp}] ${mensaje}</div>`;
+      resultado.scrollTop = resultado.scrollHeight;
+    }
+
+    function limpiarResultado() {
+      document.getElementById('resultado').innerHTML = 'Limpio. Presiona un botón para probar...';
+    }
+
+    async function testEndpoint(nombre, endpoint, body) {
+      log(`\n🔍 Probando: ${nombre}`, 'info');
+      log(`📍 Endpoint: POST ${endpoint}`, 'info');
+      log(`📦 Body: ${JSON.stringify(body)}`, 'info');
+      
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        log(`📡 Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        if (response.ok) {
+          const data = await response.json();
+          log(`✅ ÉXITO - Datos recibidos:`, 'success');
+          log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+          
+          if (data.resumen) {
+            log(`📊 Resumen: ${JSON.stringify(data.resumen)}`, 'success');
+          }
+          if (data.detalles) {
+            log(`📋 Registros: ${data.detalles.length}`, 'success');
+          }
+        } else {
+          const errorText = await response.text();
+          log(`❌ ERROR: ${errorText}`, 'error');
+        }
+      } catch (error) {
+        log(`❌ ERROR DE RED: ${error.message}`, 'error');
+        log(`Stack: ${error.stack}`, 'error');
+      }
+    }
+
+    async function testFinanciero() {
+      await testEndpoint(
+        'Reporte Financiero',
+        `${API_BASE}/financiero`,
+        {
+          fechaInicio: '2025-01-01',
+          fechaFin: '2025-01-31',
+          metodoPago: ''
+        }
+      );
+    }
+
+    async function testCitas() {
+      await testEndpoint(
+        'Reporte Citas Agendadas',
+        `${API_BASE}/citas-agendadas`,
+        {
+          fechaInicio: '2025-01-01',
+          fechaFin: '2025-01-31',
+          estado: '',
+          odontologoId: ''
+        }
+      );
+    }
+
+    async function testCancelaciones() {
+      await testEndpoint(
+        'Reporte Cancelaciones',
+        `${API_BASE}/cancelaciones`,
+        {
+          fechaInicio: '2025-01-01',
+          fechaFin: '2025-01-31',
+          motivo: ''
+        }
+      );
+    }
+
+    async function testActividad() {
+      await testEndpoint(
+        'Reporte Actividad Usuarios',
+        `${API_BASE}/actividad-usuarios`,
+        {
+          fechaInicio: '2025-01-01',
+          fechaFin: '2025-01-31',
+          usuarioId: '',
+          tipoAccion: ''
+        }
+      );
+    }
+
+    async function testTratamientos() {
+      await testEndpoint(
+        'Reporte Seguimiento Tratamientos',
+        `${API_BASE}/seguimiento-tratamientos`,
+        {
+          fechaInicio: '2025-01-01',
+          fechaFin: '2025-01-31',
+          estado: '',
+          tipo: ''
+        }
+      );
+    }
+
+    // Auto-ejecutar test al cargar
+    document.addEventListener('DOMContentLoaded', () => {
+      log('🚀 Sistema de pruebas cargado', 'success');
+      log('✅ Listo para probar endpoints', 'success');
+    });
+  </script>
+</body>
+</html>

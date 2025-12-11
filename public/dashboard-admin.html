@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="css/dashboard-admin.css">
     <!-- Color Scheme CSS -->
     <link rel="stylesheet" href="css/color-scheme-extra.css">
+    <!-- Sistema de Reportes CSS -->
+    <link rel="stylesheet" href="css/reportes-sistema.css">
     <!-- Color Scheme Utility -->
     <script src="js/color-scheme.js"></script>
 </head>
@@ -114,6 +116,12 @@
                     <span>Inventario</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#contenido" data-section="contenido">
+                    <i class="bi bi-window-sidebar"></i>
+                    <span>Contenido Web</span>
+                </a>
+            </li>
             <li class="nav-item mt-auto">
                 <a class="nav-link text-danger" href="#" id="logoutBtn">
                     <i class="bi bi-box-arrow-right"></i>
@@ -171,7 +179,7 @@
                                 <div class="row no-gutters align-items-center">
                                     <div class="col mr-2">
                                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                            Citas Hoy</div>
+                                            Total Citas</div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800" id="citasHoy">0</div>
                                     </div>
                                     <div class="col-auto">
@@ -564,11 +572,6 @@
                             Operativo
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="detallado-tab" data-bs-toggle="tab" data-bs-target="#detallado-reportes" type="button" role="tab" aria-controls="detallado-reportes" aria-selected="false">
-                            Reportes Detallados
-                        </button>
-                    </li>
                 </ul>
 
                 <!-- Contenido de los tabs -->
@@ -728,28 +731,78 @@
                             </div>
                         </div>
 
+                        <!-- Filtros y Exportación -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Filtros de Reporte</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label>Fecha Inicio *</label>
+                                        <input type="date" class="form-control" id="fin-fecha-inicio" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Fecha Fin *</label>
+                                        <input type="date" class="form-control" id="fin-fecha-fin" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Método de Pago</label>
+                                        <select class="form-control" id="fin-metodo-pago">
+                                            <option value="">Todos</option>
+                                            <option value="efectivo">Efectivo</option>
+                                            <option value="tarjeta">Tarjeta</option>
+                                            <option value="transferencia">Transferencia</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-primary btn-block" onclick="generarReporte('financiero')">
+                                            <i class="bi bi-search"></i> Generar Reporte
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-success" id="btn-excel-financiero" onclick="descargarExcel('financiero')" disabled>
+                                                <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="btn-pdf-financiero" onclick="descargarPDF('financiero')" disabled>
+                                                <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+                                            </button>
+                                            <button type="button" class="btn btn-info" id="btn-docx-financiero" onclick="descargarDOCX('financiero')" disabled>
+                                                <i class="bi bi-file-earmark-word"></i> Descargar Word
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Tabla de ingresos detallados -->
                         <div class="card shadow">
                             <div class="card-header">
                                 <h6 class="m-0 font-weight-bold text-primary">Detalle de Ingresos</h6>
                             </div>
                             <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover" id="ingresosDetalleTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Fecha</th>
-                                                <th>Concepto</th>
-                                                <th>Paciente</th>
-                                                <th>Método de Pago</th>
-                                                <th>Monto</th>
-                                                <th>Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="ingresosDetalleTableBody">
-                                            <!-- Se carga dinámicamente -->
-                                        </tbody>
-                                    </table>
+                                <div id="resultados-financiero">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover" id="ingresosDetalleTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Concepto</th>
+                                                    <th>Paciente</th>
+                                                    <th>Método de Pago</th>
+                                                    <th>Monto</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="ingresosDetalleTableBody">
+                                                <!-- Se carga dinámicamente -->
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -757,6 +810,62 @@
 
                     <!-- Operativo Tab -->
                     <div class="tab-pane fade" id="operativo-reportes" role="tabpanel" aria-labelledby="operativo-tab">
+                        <!-- Filtros y Exportación -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Filtros de Reporte</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label>Fecha Inicio *</label>
+                                        <input type="date" class="form-control" id="op-fecha-inicio" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label>Fecha Fin *</label>
+                                        <input type="date" class="form-control" id="op-fecha-fin" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label>Estado</label>
+                                        <select class="form-control" id="op-estado">
+                                            <option value="">Todos</option>
+                                            <option value="programada">Programada</option>
+                                            <option value="completada">Completada</option>
+                                            <option value="confirmada">Confirmada</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Odontólogo</label>
+                                        <select class="form-control" id="op-odontologo">
+                                            <option value="">Todos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-primary btn-block" onclick="generarReporte('operativo')">
+                                            <i class="bi bi-search"></i> Generar Reporte
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-success" id="btn-excel-operativo" onclick="descargarExcel('operativo')" disabled>
+                                                <i class="bi bi-file-earmark-excel"></i> Excel
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="btn-pdf-operativo" onclick="descargarPDF('operativo')" disabled>
+                                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                                            </button>
+                                            <button type="button" class="btn btn-info" id="btn-docx-operativo" onclick="descargarDOCX('operativo')" disabled>
+                                                <i class="bi bi-file-earmark-word"></i> Word
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="resultados-operativo"></div>
+                        
                         <div class="row mb-4">
                             <div class="col-lg-6">
                                 <div class="card shadow">
@@ -808,107 +917,224 @@
 
                     <!-- Reportes Detallados Tab -->
                     <div class="tab-pane fade" id="detallado-reportes" role="tabpanel" aria-labelledby="detallado-tab">
-                        <div class="card shadow">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary">Reportes Personalizados</h6>
-                                <button class="btn btn-sm btn-primary" id="configurarReporteBtn">
-                                    <i class="bi bi-gear"></i> Configurar Reporte
-                                </button>
+                        <!-- SISTEMA COMPLETO DE REPORTES -->
+                        <div class="reportes-container">
+                            <!-- Pestañas de navegación -->
+                            <div class="tabs-container">
+                              <button class="reporte-tab-button active" data-tab="financiero">💰 Financiero</button>
+                              <button class="reporte-tab-button" data-tab="operativo">📋 Operativo</button>
+                              <button class="reporte-tab-button" data-tab="cancelaciones">❌ Cancelaciones</button>
+                              <button class="reporte-tab-button" data-tab="actividad">👥 Actividad Usuarios</button>
+                              <button class="reporte-tab-button" data-tab="tratamientos">🦷 Seguimiento Tratamientos</button>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <h6 class="font-weight-bold">Reportes Disponibles</h6>
-                                        <div class="list-group" id="reportesDisponibles">
-                                            <button type="button" class="list-group-item list-group-item-action active" data-reporte="general">
-                                                Reporte General
-                                            </button>
-                                            <button type="button" class="list-group-item list-group-item-action" data-reporte="pacientes-detalle">
-                                                Detalle de Pacientes
-                                            </button>
-                                            <button type="button" class="list-group-item list-group-item-action" data-reporte="tratamientos-detalle">
-                                                Tratamientos por Período
-                                            </button>
-                                            <button type="button" class="list-group-item list-group-item-action" data-reporte="odontologos-rendimiento">
-                                                Rendimiento Odontólogos
-                                            </button>
-                                            <button type="button" class="list-group-item list-group-item-action" data-reporte="inventario-rotacion">
-                                                Rotación de Inventario
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-9">
-                                        <div id="reporteDetalladoContent">
-                                            <!-- Lista de Reportes Generados -->
-                                            <div class="card mb-4">
-                                                <div class="card-header">
-                                                    <h6 class="m-0 font-weight-bold text-primary">Lista de Reportes Generados</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-striped table-hover" id="reportesTable">
-                                                            <thead class="table-dark">
-                                                                <tr>
-                                                                    <th>ID</th>
-                                                                    <th>Tipo</th>
-                                                                    <th>Fecha Generación</th>
-                                                                    <th>Estado</th>
-                                                                    <th>Tamaño</th>
-                                                                    <th>Acciones</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td colspan="6" class="text-center">
-                                                                        <div class="spinner-border text-primary" role="status">
-                                                                            <span class="visually-hidden">Cargando reportes...</span>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                    
-                                                    <!-- Pagination info for reportes -->
-                                                    <div id="reportesPaginationInfo" class="pagination-info-container d-flex justify-content-between align-items-center mb-3" style="display: none;">
-                                                        <div class="d-flex align-items-center">
-                                                            <span class="text-muted me-3">
-                                                                Mostrando <span id="reportesShowing">0</span> de <span id="reportesTotal">0</span> reportes
-                                                            </span>
-                                                            <div class="d-flex align-items-center">
-                                                                <label class="form-label me-2 mb-0 text-muted" for="reportesItemsPerPage">
-                                                                    Mostrar:
-                                                                </label>
-                                                                <select class="form-select form-select-sm pagination-select" id="reportesItemsPerPage" style="width: auto; z-index: 1050;" onchange="changeItemsPerPageAdmin('reportes', this.value)">
-                                                                    <option value="5">5</option>
-                                                                    <option value="10" selected>10</option>
-                                                                    <option value="25">25</option>
-                                                                    <option value="50">50</option>
-                                                                    <option value="100">100</option>
-                                                                </select>
-                                                                <span class="text-muted ms-2">por página</span>
-                                                            </div>
-                                                        </div>
-                                                        <div class="text-muted">
-                                                            Página <span id="reportesCurrentPage">1</span> de <span id="reportesTotalPages">1</span>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <!-- Pagination controls for reportes -->
-                                                    <div id="reportesPagination" class="d-flex justify-content-center" style="display: none;">
-                                                        <!-- Pagination buttons generated dynamically -->
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="text-center">
-                                                <p class="text-muted">Selecciona un reporte de la lista para ver los detalles</p>
-                                            </div>
-                                        </div>
-                                    </div>
+
+                            <!-- TAB: Reporte Financiero -->
+                            <div id="tab-financiero" class="reporte-tab-content active">
+                              <div class="filtros-card">
+                                <h3>Análisis de Ingresos</h3>
+                                <div class="filtros-grid">
+                                  <div class="form-group">
+                                    <label for="fin-fecha-inicio">Fecha Inicio *</label>
+                                    <input type="date" id="fin-fecha-inicio" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="fin-fecha-fin">Fecha Fin *</label>
+                                    <input type="date" id="fin-fecha-fin" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="fin-metodo-pago">Método de Pago</label>
+                                    <select id="fin-metodo-pago">
+                                      <option value="">Todos</option>
+                                      <option value="efectivo">Efectivo</option>
+                                      <option value="tarjeta">Tarjeta</option>
+                                      <option value="transferencia">Transferencia</option>
+                                    </select>
+                                  </div>
                                 </div>
+                                <div class="acciones-container">
+                                  <button class="btn btn-limpiar" onclick="limpiarFiltros('financiero')">🔄 Limpiar</button>
+                                  <button class="btn btn-generar" onclick="generarReporte('financiero')">📊 Generar Reporte</button>
+                                  <button class="btn btn-descargar" id="btn-descargar-financiero" disabled onclick="descargarExcel('financiero')">
+                                    📥 Descargar Excel
+                                  </button>
+                                </div>
+                              </div>
+                              <div id="resultados-financiero" class="resultados-card"></div>
+                            </div>
+
+                            <!-- TAB: Reporte Operativo -->
+                            <div id="tab-operativo" class="reporte-tab-content">
+                              <div class="filtros-card">
+                                <h3>Citas Agendadas</h3>
+                                <div class="filtros-grid">
+                                  <div class="form-group">
+                                    <label for="op-fecha-inicio">Fecha Inicio *</label>
+                                    <input type="date" id="op-fecha-inicio" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="op-fecha-fin">Fecha Fin *</label>
+                                    <input type="date" id="op-fecha-fin" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="op-estado">Estado</label>
+                                    <select id="op-estado">
+                                      <option value="">Todos</option>
+                                      <option value="programada">Programada</option>
+                                      <option value="completada">Completada</option>
+                                      <option value="confirmada">Confirmada</option>
+                                    </select>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="op-odontologo">Odontólogo</label>
+                                    <select id="op-odontologo">
+                                      <option value="">Todos</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="acciones-container">
+                                  <button class="btn btn-limpiar" onclick="limpiarFiltros('operativo')">🔄 Limpiar</button>
+                                  <button class="btn btn-generar" onclick="generarReporte('operativo')">📊 Generar Reporte</button>
+                                  <button class="btn btn-descargar" id="btn-descargar-operativo" disabled onclick="descargarExcel('operativo')">
+                                    📥 Descargar Excel
+                                  </button>
+                                </div>
+                              </div>
+                              <div id="resultados-operativo" class="resultados-card"></div>
+                            </div>
+
+                            <!-- TAB: Cancelaciones -->
+                            <div id="tab-cancelaciones" class="reporte-tab-content">
+                              <div class="filtros-card">
+                                <h3>Análisis de Cancelaciones</h3>
+                                <div class="filtros-grid">
+                                  <div class="form-group">
+                                    <label for="canc-fecha-inicio">Fecha Inicio *</label>
+                                    <input type="date" id="canc-fecha-inicio" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="canc-fecha-fin">Fecha Fin *</label>
+                                    <input type="date" id="canc-fecha-fin" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="canc-motivo">Motivo</label>
+                                    <select id="canc-motivo">
+                                      <option value="">Todos</option>
+                                      <option value="paciente">Por Paciente</option>
+                                      <option value="clinica">Por Clínica</option>
+                                      <option value="emergencia">Emergencia</option>
+                                      <option value="otro">Otro</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="acciones-container">
+                                  <button class="btn btn-limpiar" onclick="limpiarFiltros('cancelaciones')">🔄 Limpiar</button>
+                                  <button class="btn btn-generar" onclick="generarReporte('cancelaciones')">📊 Generar Reporte</button>
+                                  <button class="btn btn-descargar" id="btn-descargar-cancelaciones" disabled onclick="descargarExcel('cancelaciones')">
+                                    📥 Descargar Excel
+                                  </button>
+                                </div>
+                              </div>
+                              <div id="resultados-cancelaciones" class="resultados-card"></div>
+                            </div>
+
+                            <!-- TAB: Actividad Usuarios -->
+                            <div id="tab-actividad" class="reporte-tab-content">
+                              <div class="filtros-card">
+                                <h3>Registro de Actividad de Usuarios</h3>
+                                <div class="filtros-grid">
+                                  <div class="form-group">
+                                    <label for="act-fecha-inicio">Fecha Inicio *</label>
+                                    <input type="date" id="act-fecha-inicio" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="act-fecha-fin">Fecha Fin *</label>
+                                    <input type="date" id="act-fecha-fin" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="act-usuario">Usuario</label>
+                                    <select id="act-usuario">
+                                      <option value="">Todos</option>
+                                    </select>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="act-tipo-accion">Tipo de Acción</label>
+                                    <select id="act-tipo-accion">
+                                      <option value="">Todas</option>
+                                      <option value="login">Inicio de sesión</option>
+                                      <option value="crear">Crear registro</option>
+                                      <option value="editar">Editar registro</option>
+                                      <option value="eliminar">Eliminar registro</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="acciones-container">
+                                  <button class="btn btn-limpiar" onclick="limpiarFiltros('actividad')">🔄 Limpiar</button>
+                                  <button class="btn btn-generar" onclick="generarReporte('actividad')">📊 Generar Reporte</button>
+                                  <button class="btn btn-descargar" id="btn-descargar-actividad" disabled onclick="descargarExcel('actividad')">
+                                    📥 Descargar Excel
+                                  </button>
+                                </div>
+                              </div>
+                              <div id="resultados-actividad" class="resultados-card"></div>
+                            </div>
+
+                            <!-- TAB: Seguimiento Tratamientos -->
+                            <div id="tab-tratamientos" class="reporte-tab-content">
+                              <div class="filtros-card">
+                                <h3>Seguimiento de Tratamientos</h3>
+                                <div class="filtros-grid">
+                                  <div class="form-group">
+                                    <label for="trat-fecha-inicio">Fecha Inicio *</label>
+                                    <input type="date" id="trat-fecha-inicio" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="trat-fecha-fin">Fecha Fin *</label>
+                                    <input type="date" id="trat-fecha-fin" required>
+                                    <span class="error-message">Este campo es requerido</span>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="trat-estado">Estado</label>
+                                    <select id="trat-estado">
+                                      <option value="">Todos</option>
+                                      <option value="en_progreso">En Progreso</option>
+                                      <option value="completado">Completado</option>
+                                      <option value="pausado">Pausado</option>
+                                      <option value="cancelado">Cancelado</option>
+                                    </select>
+                                  </div>
+                                  <div class="form-group">
+                                    <label for="trat-tipo">Tipo de Tratamiento</label>
+                                    <select id="trat-tipo">
+                                      <option value="">Todos</option>
+                                      <option value="limpieza">Limpieza Dental</option>
+                                      <option value="ortodoncia">Ortodoncia</option>
+                                      <option value="endodoncia">Endodoncia</option>
+                                      <option value="implante">Implantes</option>
+                                      <option value="estetica">Estética Dental</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="acciones-container">
+                                  <button class="btn btn-limpiar" onclick="limpiarFiltros('tratamientos')">🔄 Limpiar</button>
+                                  <button class="btn btn-generar" onclick="generarReporte('tratamientos')">📊 Generar Reporte</button>
+                                  <button class="btn btn-descargar" id="btn-descargar-tratamientos" disabled onclick="descargarExcel('tratamientos')">
+                                    📥 Descargar Excel
+                                  </button>
+                                </div>
+                              </div>
+                              <div id="resultados-tratamientos" class="resultados-card"></div>
                             </div>
                         </div>
+                        <!-- FIN SISTEMA COMPLETO DE REPORTES -->
                     </div>
                 </div>
             </section>
@@ -1669,6 +1895,68 @@
                     </div>
                 </div>
                 
+            </section>
+            
+            <!-- Contenido Web Section -->
+            <section id="contenido-section" class="content-section">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <h5 class="mb-0">Noticias y promociones</h5>
+                                    <small class="text-muted">Se muestran en la página principal</small>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-secondary btn-sm" id="refreshNewsBtn" title="Actualizar lista">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" id="addNewsBtn">
+                                        <i class="bi bi-plus-lg me-1"></i>Nueva
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush" id="newsList">
+                                    <div class="p-4 text-center text-muted" id="newsEmptyState">
+                                        <i class="bi bi-newspaper fs-2 d-block mb-2"></i>
+                                        <p class="mb-0">Aún no hay noticias registradas.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <h5 class="mb-0">Equipo destacado</h5>
+                                    <small class="text-muted">Actualiza la sección "Nuestro equipo"</small>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-secondary btn-sm" id="refreshTeamBtn" title="Actualizar lista">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" id="addTeamBtn">
+                                        <i class="bi bi-plus-lg me-1"></i>Nuevo
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush" id="teamList">
+                                    <div class="p-4 text-center text-muted" id="teamEmptyState">
+                                        <i class="bi bi-people fs-2 d-block mb-2"></i>
+                                        <p class="mb-0">Agrega los profesionales que deseas destacar.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-4 d-none" id="contentReadonlyAlert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Estás viendo información en modo solo lectura porque no se detectó una sesión de administrador válida.
+                </div>
             </section>
             
             <!-- Pagos y Facturación Section -->
@@ -3675,6 +3963,136 @@
         </div>
     </div>
 
+    <!-- Modal Gestión de Noticias -->
+    <div class="modal fade" id="newsModal" tabindex="-1" aria-labelledby="newsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <form class="modal-content border-0 shadow-lg" id="newsForm">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <h5 class="modal-title" id="newsModalLabel">Nueva noticia</h5>
+                        <small class="text-muted">Controla el contenido que aparece en la landing.</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="newsId">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Título*</label>
+                            <input type="text" class="form-control" id="newsTitulo" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha de publicación</label>
+                            <input type="date" class="form-control" id="newsFecha">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Resumen corto*</label>
+                            <textarea class="form-control" id="newsResumen" rows="2" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Detalle (opcional)</label>
+                            <textarea class="form-control" id="newsContenido" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Imagen (URL)</label>
+                            <input type="url" class="form-control" id="newsImagen">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Categoría</label>
+                            <input type="text" class="form-control" id="newsCategoria" placeholder="Promoción">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Etiqueta</label>
+                            <input type="text" class="form-control" id="newsBadge" placeholder="HOY">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Texto del botón</label>
+                            <input type="text" class="form-control" id="newsBotonTexto" placeholder="Ver más">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">URL del botón</label>
+                            <input type="url" class="form-control" id="newsBotonUrl" placeholder="/noticias.html">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Orden</label>
+                            <input type="number" class="form-control" id="newsOrden" min="0" value="0">
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="newsActivo" checked>
+                        <label class="form-check-label" for="newsActivo">Visible en la landing</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="saveNewsBtn">
+                        <i class="bi bi-save me-2"></i>Guardar noticia
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gestión de Equipo -->
+    <div class="modal fade" id="teamModal" tabindex="-1" aria-labelledby="teamModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <form class="modal-content border-0 shadow-lg" id="teamForm">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <h5 class="modal-title" id="teamModalLabel">Nuevo integrante</h5>
+                        <small class="text-muted">Actualiza el equipo destacado del sitio.</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="teamId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre completo*</label>
+                            <input type="text" class="form-control" id="teamNombre" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cargo</label>
+                            <input type="text" class="form-control" id="teamCargo" placeholder="Director clínico">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Especialidad</label>
+                            <input type="text" class="form-control" id="teamEspecialidad" placeholder="Ortodoncia">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Orden</label>
+                            <input type="number" class="form-control" id="teamOrden" min="0" value="0">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check form-switch w-100">
+                                <input class="form-check-input" type="checkbox" id="teamActivo" checked>
+                                <label class="form-check-label" for="teamActivo">Visible</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Foto (URL)</label>
+                            <input type="url" class="form-control" id="teamFoto" placeholder="https://">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">LinkedIn u otra red</label>
+                            <input type="url" class="form-control" id="teamLinkedin" placeholder="https://linkedin.com/in/...">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción breve*</label>
+                            <textarea class="form-control" id="teamDescripcion" rows="3" required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="saveTeamBtn">
+                        <i class="bi bi-save me-2"></i>Guardar integrante
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal de Confirmación Personalizado -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -3756,16 +4174,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- App Config -->
     <script src="js/app-config.js"></script>
-    <!-- Fix para Configuración del Sistema -->
-    <script src="js/config-fix.js"></script>
     <!-- Sistema de paginación completa -->
     <script src="js/pagination-system.js"></script>
     <!-- Módulos de administración -->
     <script src="js/admin-modules.js"></script>
+    <!-- Gestor de contenido web -->
+    <script src="js/admin-site-content.js"></script>
     <!-- Funciones CRUD de administración -->
     <script src="js/admin-crud.js"></script>
     <!-- Script principal del dashboard -->
     <script src="js/dashboard-admin.js"></script>
+    <!-- Sistema de Reportes Integrado -->
+    <script src="js/reportes-dashboard.js"></script>
     <!-- Forzar Colores Sólidos -->
     <script src="js/force-colors.js"></script>
 </body>

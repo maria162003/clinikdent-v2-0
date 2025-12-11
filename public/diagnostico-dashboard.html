@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Dashboard - Clinik Dent</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { background: white; margin: 15px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status { padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .ok { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Diagnóstico del Dashboard</h1>
+        
+        <div class="section">
+            <h2>🎯 Acciones Rápidas</h2>
+            <button onclick="abrirDashboard()" class="btn-success">📊 Abrir Dashboard</button>
+            <button onclick="verificarEstado()">🔍 Verificar Estado</button>
+            <button onclick="activarSecciones()">🚀 Activar Secciones</button>
+            <button onclick="limpiarCache()" class="btn-warning">🗑️ Limpiar Cache</button>
+        </div>
+
+        <div class="section">
+            <h2>📋 Estado del Sistema</h2>
+            <div id="status-container">
+                <p>Haz clic en "Verificar Estado" para ver el diagnóstico</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 APIs del Sistema</h2>
+            <div id="api-status">
+                <p>Verificando APIs...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurar usuario por defecto
+        localStorage.setItem('user', JSON.stringify({ id: 4, nombre: 'Admin', rol: 'administrador' }));
+        localStorage.setItem('userId', '4');
+
+        let dashboardWindow = null;
+
+        function abrirDashboard() {
+            dashboardWindow = window.open('/dashboard-admin.html', 'dashboard', 'width=1200,height=800');
+            if (dashboardWindow) {
+                addStatus('✅ Dashboard abierto en nueva ventana', 'ok');
+                
+                // Verificar después de 3 segundos
+                setTimeout(() => {
+                    if (dashboardWindow && !dashboardWindow.closed) {
+                        addStatus('✅ Dashboard sigue activo', 'ok');
+                    } else {
+                        addStatus('⚠️ Dashboard fue cerrado', 'warning');
+                    }
+                }, 3000);
+            } else {
+                addStatus('❌ No se pudo abrir dashboard (popup bloqueado?)', 'error');
+            }
+        }
+
+        async function verificarEstado() {
+            const statusContainer = document.getElementById('status-container');
+            statusContainer.innerHTML = '<p>🔄 Verificando estado...</p>';
+
+            // Verificar localStorage
+            const user = localStorage.getItem('user');
+            const userId = localStorage.getItem('userId');
+            
+            if (user && userId) {
+                addStatus('✅ Usuario configurado correctamente', 'ok');
+            } else {
+                addStatus('❌ Usuario no configurado', 'error');
+            }
+
+            // Verificar si dashboard está abierto
+            if (dashboardWindow && !dashboardWindow.closed) {
+                addStatus('✅ Dashboard está abierto', 'ok');
+                try {
+                    dashboardWindow.postMessage({ type: 'PING' }, '*');
+                    addStatus('✅ Comunicación con dashboard activa', 'ok');
+                } catch (e) {
+                    addStatus('⚠️ No se puede comunicar con dashboard', 'warning');
+                }
+            } else {
+                addStatus('⚠️ Dashboard no está abierto', 'warning');
+            }
+
+            // Verificar APIs
+            await verificarAPIs();
+        }
+
+        async function verificarAPIs() {
+            const apiStatus = document.getElementById('api-status');
+            apiStatus.innerHTML = '<p>🔄 Verificando APIs...</p>';
+
+            const apis = [
+                ['/api/usuarios', 'Usuarios'],
+                ['/api/citas', 'Citas'],
+                ['/api/pagos', 'Pagos'],
+                ['/api/faqs', 'FAQs'],
+                ['/api/evaluaciones/admin/todas', 'Evaluaciones'],
+                ['/api/inventario', 'Inventario'],
+                ['/api/sedes', 'Sedes']
+            ];
+
+            for (const [url, name] of apis) {
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': '4'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const count = Array.isArray(data) ? data.length : (data.pagos ? data.pagos.length : 'OK');
+                        addAPIStatus(`✅ ${name}: ${count} elementos`, 'ok');
+                    } else {
+                        addAPIStatus(`⚠️ ${name}: HTTP ${response.status}`, 'warning');
+                    }
+                } catch (error) {
+                    addAPIStatus(`❌ ${name}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function activarSecciones() {
+            if (dashboardWindow && !dashboardWindow.closed) {
+                try {
+                    dashboardWindow.postMessage({ type: 'ACTIVATE_SECTIONS' }, '*');
+                    addStatus('📤 Comando de activación enviado al dashboard', 'ok');
+                } catch (e) {
+                    addStatus('❌ No se pudo enviar comando de activación', 'error');
+                }
+            } else {
+                addStatus('⚠️ Dashboard no está abierto. Abre primero el dashboard.', 'warning');
+            }
+        }
+
+        function limpiarCache() {
+            localStorage.clear();
+            localStorage.setItem('user', JSON.stringify({ id: 4, nombre: 'Admin', rol: 'administrador' }));
+            localStorage.setItem('userId', '4');
+            addStatus('🗑️ Cache limpiado y usuario reconfigurado', 'ok');
+        }
+
+        function addStatus(message, type) {
+            const statusContainer = document.getElementById('status-container');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            statusContainer.appendChild(div);
+        }
+
+        function addAPIStatus(message, type) {
+            const apiStatus = document.getElementById('api-status');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            apiStatus.appendChild(div);
+        }
+
+        // Escuchar mensajes del dashboard
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'DASHBOARD_STATUS') {
+                addStatus(`📨 Dashboard: ${event.data.message}`, 'ok');
+            }
+        });
+
+        // Auto-verificar APIs al cargar
+        window.onload = function() {
+            addStatus('🔧 Sistema de diagnóstico cargado', 'ok');
+            setTimeout(verificarAPIs, 1000);
+        };
+    </script>
+</body>
+</html>

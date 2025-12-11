@@ -47,28 +47,122 @@ let currentDeleteCallback = null;
 // UTILIDADES GENERALES
 // ============================================================================
 
-// Función para mostrar notificaciones
-function showNotification(message, type = 'success') {
-    const alertClass = type === 'success' ? 'alert-success' : 
-                      type === 'error' ? 'alert-danger' : 
-                      type === 'warning' ? 'alert-warning' : 'alert-info';
-    
+// Función para mostrar notificaciones mejoradas
+function showNotification(message, type = 'success', duration = 5000) {
+    // Mapear tipos de iconos
+    const iconMap = {
+        'success': 'bi-check-circle-fill',
+        'error': 'bi-exclamation-triangle-fill',
+        'danger': 'bi-exclamation-triangle-fill',
+        'warning': 'bi-exclamation-triangle-fill',
+        'info': 'bi-info-circle-fill'
+    };
+
+    const alertType = type === 'error' ? 'danger' : type;
+    const icon = iconMap[alertType] || iconMap['info'];
+
+    // Crear contenedor de alertas si no existe
+    let alertsContainer = document.getElementById('alerts-container');
+    if (!alertsContainer) {
+        alertsContainer = document.createElement('div');
+        alertsContainer.id = 'alerts-container';
+        alertsContainer.className = 'alerts-container';
+        alertsContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            pointer-events: none;
+        `;
+        document.body.appendChild(alertsContainer);
+    }
+
     const notification = document.createElement('div');
-    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    const alertId = 'alert-' + Date.now();
+    notification.id = alertId;
+    notification.className = `alert alert-${alertType} alert-dismissible fade show`;
+    notification.style.cssText = `
+        min-width: 350px;
+        max-width: 500px;
+        margin-bottom: 0.75rem;
+        pointer-events: all;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        font-weight: 500;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+        animation: alertSlideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        border-left: 4px solid var(--bs-${alertType});
+    `;
+
+    // Aplicar gradientes según el tipo
+    const gradients = {
+        'success': 'linear-gradient(135deg, #d4edda, #c3e6cb)',
+        'danger': 'linear-gradient(135deg, #f8d7da, #f1b6bb)',
+        'warning': 'linear-gradient(135deg, #fff3cd, #ffeaa7)',
+        'info': 'linear-gradient(135deg, #d1ecf1, #bee5eb)'
+    };
+    
+    notification.style.background = gradients[alertType] || gradients['info'];
+
     notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="d-flex align-items-start">
+            <i class="bi ${icon}" style="color: var(--bs-${alertType}); font-size: 1.2em; margin-right: 0.75rem; flex-shrink: 0;"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="background: none; border: none; font-size: 1.2em; opacity: 0.6; transition: all 0.2s ease; padding: 0.25rem; margin: -0.25rem -0.25rem -0.25rem 0;"></button>
+        </div>
+        <div class="alert-progress" style="position: absolute; bottom: 0; left: 0; height: 3px; background: var(--bs-${alertType}); animation: progressBar ${duration}ms linear;"></div>
     `;
     
-    document.body.appendChild(notification);
+    alertsContainer.appendChild(notification);
+
+    // Agregar estilos de animación si no existen
+    if (!document.getElementById('alert-animations')) {
+        const style = document.createElement('style');
+        style.id = 'alert-animations';
+        style.textContent = `
+            @keyframes alertSlideInRight {
+                0% { opacity: 0; transform: translateX(100%) scale(0.9); }
+                100% { opacity: 1; transform: translateX(0) scale(1); }
+            }
+            @keyframes progressBar {
+                0% { width: 100%; }
+                100% { width: 0%; }
+            }
+            .btn-close:hover {
+                opacity: 1 !important;
+                transform: scale(1.1) !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
     
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
+    // Auto-remove after specified duration
+    const timer = setTimeout(() => {
         if (notification.parentNode) {
-            notification.remove();
+            notification.style.animation = 'alertSlideInRight 0.3s ease-in-out reverse';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
         }
-    }, 5000);
+    }, duration);
+
+    // Event listener para el botón de cerrar
+    const closeBtn = notification.querySelector('.btn-close');
+    closeBtn.onclick = () => {
+        clearTimeout(timer);
+        notification.style.animation = 'alertSlideInRight 0.3s ease-in-out reverse';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    };
 }
 
 // Función para formatear fechas

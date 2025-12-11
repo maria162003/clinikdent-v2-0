@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Webhook · Clinikdent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            margin-bottom: 10px;
+        }
+        .result {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .result-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        .result-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        .result-card p {
+            color: #555;
+            margin: 5px 0;
+        }
+        .cita-item {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: #fee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 8px;
+            color: #d32f2f;
+            margin-bottom: 15px;
+        }
+        .paciente-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .paciente-item {
+            padding: 12px;
+            background: #f8f9fa;
+            margin: 5px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .paciente-item:hover {
+            background: #e9ecef;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦷 Demo Webhooks Clinikdent</h1>
+            <p>Prueba de integración con backend - Consulta pacientes, citas, tratamientos y PQRS</p>
+        </div>
+
+        <div class="grid">
+            <!-- Tarjeta de consulta de pacientes -->
+            <div class="card">
+                <h2>📋 Pacientes de DB</h2>
+                <button class="btn btn-secondary" onclick="cargarPacientes()">Cargar Pacientes</button>
+                <div id="pacientes-list" class="paciente-list"></div>
+            </div>
+
+            <!-- Tarjeta de webhook principal -->
+            <div class="card">
+                <h2>📞 Webhook Principal</h2>
+                <div class="form-group">
+                    <label>ID del paciente</label>
+                    <input type="number" id="pacienteId" placeholder="Ej: 1">
+                </div>
+                <div class="form-group">
+                    <label>O correo electrónico</label>
+                    <input type="email" id="email" placeholder="paciente@ejemplo.com">
+                </div>
+                <div class="form-group">
+                    <label>Motivo</label>
+                    <textarea id="motivo" rows="3">Actualización desde demo web</textarea>
+                </div>
+                <button class="btn" onclick="ejecutarWebhook()">Enviar Webhook</button>
+            </div>
+
+            <!-- Tarjeta de citas -->
+            <div class="card">
+                <h2>📅 Consultar Citas</h2>
+                <div class="form-group">
+                    <label>ID del paciente</label>
+                    <input type="number" id="pacienteIdCitas" placeholder="Ej: 1">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="enviarEmailCitas">
+                        Enviar resumen por correo
+                    </label>
+                </div>
+                <button class="btn" onclick="consultarCitas()">Consultar Citas</button>
+            </div>
+
+            <!-- Tarjeta de tratamientos -->
+            <div class="card">
+                <h2>🦷 Consultar Tratamientos</h2>
+                <div class="form-group">
+                    <label>ID del paciente</label>
+                    <input type="number" id="pacienteIdTratamientos" placeholder="Ej: 1">
+                </div>
+                <button class="btn" onclick="consultarTratamientos()">Consultar Tratamientos</button>
+            </div>
+
+            <!-- Tarjeta de PQRS -->
+            <div class="card">
+                <h2>✉️ Crear PQRS</h2>
+                <div class="form-group">
+                    <label>ID del paciente</label>
+                    <input type="number" id="pacienteIdPqrs" placeholder="Ej: 1">
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="tipoPqrs">
+                        <option value="peticion">Petición</option>
+                        <option value="queja">Queja</option>
+                        <option value="reclamo">Reclamo</option>
+                        <option value="sugerencia">Sugerencia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Asunto</label>
+                    <input type="text" id="asuntoPqrs" placeholder="Asunto del PQRS">
+                </div>
+                <div class="form-group">
+                    <label>Mensaje</label>
+                    <textarea id="mensajePqrs" rows="4" placeholder="Describe tu solicitud..."></textarea>
+                </div>
+                <button class="btn" onclick="crearPqrs()">Enviar PQRS</button>
+            </div>
+        </div>
+
+        <div id="resultado" class="result"></div>
+    </div>
+
+    <script>
+        const baseUrl = 'http://localhost:3001';
+
+        async function cargarPacientes() {
+            const container = document.getElementById('pacientes-list');
+            container.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/pacientes`);
+                const data = await response.json();
+                
+                if (data.success && data.pacientes.length > 0) {
+                    container.innerHTML = data.pacientes.map(p => `
+                        <div class="paciente-item" onclick="seleccionarPaciente(${p.id}, '${p.correo}')">
+                            <strong>${p.nombre} ${p.apellido}</strong>
+                            <br><small>${p.correo} - ID: ${p.id}</small>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p>No se encontraron pacientes</p>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function seleccionarPaciente(id, email) {
+            document.getElementById('pacienteId').value = id;
+            document.getElementById('email').value = email;
+            document.getElementById('pacienteIdCitas').value = id;
+            document.getElementById('pacienteIdTratamientos').value = id;
+            document.getElementById('pacienteIdPqrs').value = id;
+        }
+
+        async function ejecutarWebhook() {
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.innerHTML = '<div class="loader"></div>';
+            resultadoDiv.classList.add('show');
+
+            try {
+                const response = await fetch(`${baseUrl}/api/react-native/trigger`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pacienteId: document.getElementById('pacienteId').value || undefined,
+                        email: document.getElementById('email').value || undefined,
+                        motivo: document.getElementById('motivo').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultadoDiv.innerHTML = `
+                        <h2>✅ Respuesta Webhook Principal</h2>
+                        <div class="result-card">
+                            <h3>👤 Paciente</h3>
+                            <p><strong>Nombre:</strong> ${data.patient.nombre} ${data.patient.apellido}</p>
+                            <p><strong>Correo:</strong> ${data.patient.correo}</p>
+                            <p><strong>Teléfono:</strong> ${data.patient.telefono || 'No registrado'}</p>
+                        </div>
+                        <div class="result-card">
+                            <h3>📅 Citas (${data.appointments.length})</h3>
+                            ${data.appointments.map(cita => `
+                                <div class="cita-item">
+                                    <strong>🦷 ${cita.servicio}</strong>
+                                    <br>${cita.fechaLegible} - ${cita.horaLegible}
+                                    <br>Estado: <span class="badge badge-success">${cita.estado}</span>
+                                </div>
+                            `).join('') || '<p>No hay citas</p>'}
+                        </div>
+                        <div class="result-card">
+                            <h3>📧 Email</h3>
+                            <p><strong>Destinatario:</strong> ${data.email.destinatario}</p>
+                            <p><strong>Modo:</strong> ${data.email.demo ? '🧪 Demo' : '✅ Real'}</p>
+                        </div>
+                    `;
+                } else {
+                    resultadoDiv.innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function consultarCitas() {
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.innerHTML = '<div class="loader"></div>';
+            resultadoDiv.classList.add('show');
+
+            try {
+                const response = await fetch(`${baseUrl}/api/react-native/citas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pacienteId: document.getElementById('pacienteIdCitas').value,
+                        enviarEmail: document.getElementById('enviarEmailCitas').checked
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultadoDiv.innerHTML = `
+                        <h2>📅 Citas del Paciente (${data.total})</h2>
+                        ${data.citas.map(cita => `
+                            <div class="result-card">
+                                <h3>🦷 ${cita.servicio}</h3>
+                                <p><strong>Fecha:</strong> ${cita.fecha}</p>
+                                <p><strong>Hora:</strong> ${cita.hora}</p>
+                                <p><strong>Estado:</strong> <span class="badge badge-success">${cita.estado}</span></p>
+                                ${cita.odontologo_nombre ? `<p><strong>Odontólogo:</strong> ${cita.odontologo_nombre} ${cita.odontologo_apellido}</p>` : ''}
+                            </div>
+                        `).join('') || '<p>No hay citas registradas</p>'}
+                    `;
+                } else {
+                    resultadoDiv.innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function consultarTratamientos() {
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.innerHTML = '<div class="loader"></div>';
+            resultadoDiv.classList.add('show');
+
+            try {
+                const response = await fetch(`${baseUrl}/api/react-native/tratamientos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pacienteId: document.getElementById('pacienteIdTratamientos').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultadoDiv.innerHTML = `
+                        <h2>🦷 Tratamientos del Paciente (${data.total})</h2>
+                        ${data.tratamientos.map(trat => `
+                            <div class="result-card">
+                                <h3>${trat.titulo}</h3>
+                                <p>${trat.descripcion}</p>
+                                <p><strong>Estado:</strong> <span class="badge badge-warning">${trat.estado}</span></p>
+                                <p><strong>Costo:</strong> $${trat.costo || 'No definido'}</p>
+                                <p><strong>Inicio:</strong> ${trat.fecha_inicio || 'Pendiente'}</p>
+                            </div>
+                        `).join('') || '<p>No hay tratamientos registrados</p>'}
+                    `;
+                } else {
+                    resultadoDiv.innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function crearPqrs() {
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.innerHTML = '<div class="loader"></div>';
+            resultadoDiv.classList.add('show');
+
+            try {
+                const response = await fetch(`${baseUrl}/api/react-native/pqrs`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pacienteId: document.getElementById('pacienteIdPqrs').value,
+                        tipo: document.getElementById('tipoPqrs').value,
+                        asunto: document.getElementById('asuntoPqrs').value,
+                        mensaje: document.getElementById('mensajePqrs').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultadoDiv.innerHTML = `
+                        <h2>✅ PQRS Creada Exitosamente</h2>
+                        <div class="result-card">
+                            <p><strong>ID:</strong> ${data.pqrs.id}</p>
+                            <p><strong>Tipo:</strong> ${data.pqrs.tipo}</p>
+                            <p><strong>Asunto:</strong> ${data.pqrs.asunto}</p>
+                            <p><strong>Estado:</strong> <span class="badge badge-warning">${data.pqrs.estado}</span></p>
+                            <p><strong>Mensaje:</strong> ${data.pqrs.mensaje}</p>
+                        </div>
+                    `;
+                    // Limpiar formulario
+                    document.getElementById('asuntoPqrs').value = '';
+                    document.getElementById('mensajePqrs').value = '';
+                } else {
+                    resultadoDiv.innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Sesión - Clinik Dent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        button {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #ff3742;
+        }
+        .success {
+            background: #2ed573;
+        }
+        .success:hover {
+            background: #26d065;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Limpiar Sesión</h1>
+        <p>Esta página limpia completamente el localStorage del navegador para eliminar cualquier dato de sesión corrupto.</p>
+        
+        <button onclick="limpiarSesion()">Limpiar LocalStorage</button>
+        <button onclick="mostrarDatos()">Ver Datos Actuales</button>
+        <button onclick="window.location.href='/'" class="success">Ir al Login</button>
+        
+        <div id="resultado" style="margin-top: 20px;"></div>
+        <div id="datos" style="margin-top: 20px; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px;"></div>
+    </div>
+
+    <script>
+        function limpiarSesion() {
+            // Limpiar completamente el localStorage
+            localStorage.clear();
+            
+            // También limpiar sessionStorage por si acaso
+            sessionStorage.clear();
+            
+            document.getElementById('resultado').innerHTML = 
+                '<div style="background: #2ed573; padding: 10px; border-radius: 5px; margin-top: 10px;">' +
+                '✅ LocalStorage y SessionStorage limpiados completamente</div>';
+                
+            console.log('🧹 Sesión limpiada completamente');
+        }
+        
+        function mostrarDatos() {
+            const datosDiv = document.getElementById('datos');
+            let html = '<h3>📋 Datos en LocalStorage:</h3>';
+            
+            if (localStorage.length === 0) {
+                html += '<p>✅ LocalStorage está vacío</p>';
+            } else {
+                html += '<ul>';
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    html += `<li><strong>${key}:</strong> ${value}</li>`;
+                }
+                html += '</ul>';
+            }
+            
+            datosDiv.innerHTML = html;
+        }
+        
+        // Mostrar datos automáticamente al cargar
+        window.onload = function() {
+            mostrarDatos();
+        }
+    </script>
+</body>
+</html>

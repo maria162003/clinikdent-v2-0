@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Técnico - Sistema Clinikdent v2.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #E74C3C;
+            --success-color: #27AE60;
+            --warning-color: #F39C12;
+            --info-color: #16A085;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F5F7FA;
+            overflow-x: hidden;
+        }
+
+        /* BARRA DE NAVEGACIÓN SUPERIOR */
+        .top-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+
+        .top-navbar h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .top-navbar .version {
+            background: var(--accent-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .top-navbar .actions {
+            margin-left: auto;
+            display: flex;
+            gap: 15px;
+        }
+
+        .top-navbar .btn {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            top: 70px;
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - 70px);
+            background: white;
+            overflow-y: auto;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.08);
+            z-index: 999;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #CBD5E0;
+            border-radius: 10px;
+        }
+
+        /* Búsqueda en sidebar */
+        .sidebar-search {
+            padding: 20px;
+            background: #F7FAFC;
+            border-bottom: 2px solid #E2E8F0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-search input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-search input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+
+        /* Menú de navegación */
+        .nav-menu {
+            padding: 10px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 8px;
+        }
+
+        .nav-section-title {
+            padding: 12px 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #718096;
+            letter-spacing: 0.5px;
+            background: #F7FAFC;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s;
+        }
+
+        .nav-section-title:hover {
+            background: #EDF2F7;
+            color: var(--secondary-color);
+        }
+
+        .nav-section-title i {
+            transition: transform 0.3s;
+        }
+
+        .nav-section.collapsed .nav-section-title i {
+            transform: rotate(-90deg);
+        }
+
+        .nav-section-content {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .nav-section.collapsed .nav-section-content {
+            max-height: 0;
+        }
+
+        .nav-link-custom {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px 12px 35px;
+            color: #4A5568;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link-custom:hover {
+            background: #EBF8FF;
+            color: var(--secondary-color);
+            border-left-color: var(--secondary-color);
+        }
+
+        .nav-link-custom.active {
+            background: #EBF8FF;
+            color: var(--secondary-color);
+            border-left-color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        .nav-link-custom i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* CONTENIDO PRINCIPAL */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: 70px;
+            padding: 40px;
+            min-height: calc(100vh - 70px);
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* CARDS Y COMPONENTES */
+        .doc-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .doc-card h2 {
+            color: var(--primary-color);
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .doc-card h3 {
+            color: var(--primary-color);
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #E2E8F0;
+        }
+
+        .doc-card h4 {
+            color: #2D3748;
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .doc-card p {
+            color: #4A5568;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .doc-card ul, .doc-card ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .doc-card li {
+            color: #4A5568;
+            line-height: 1.8;
+            margin-bottom: 8px;
+        }
+
+        /* Badges y etiquetas */
+        .badge-custom {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .badge-tech {
+            background: #EBF8FF;
+            color: #2C5282;
+        }
+
+        .badge-version {
+            background: #FFF5F5;
+            color: #C53030;
+        }
+
+        .badge-status {
+            background: #F0FFF4;
+            color: #22543D;
+        }
+
+        .badge-warning {
+            background: #FFFAF0;
+            color: #C05621;
+        }
+
+        /* Tablas */
+        .table-custom {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .table-custom thead {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .table-custom th {
+            padding: 15px;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .table-custom td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #E2E8F0;
+            color: #4A5568;
+        }
+
+        .table-custom tr:hover {
+            background: #F7FAFC;
+        }
+
+        /* Bloques de código */
+        .code-block {
+            background: #2D3748;
+            color: #E2E8F0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 11px;
+            color: #A0AEC0;
+            text-transform: uppercase;
+        }
+
+        /* Alertas */
+        .alert-custom {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .alert-info {
+            background: #EBF8FF;
+            border-left: 4px solid #3182CE;
+            color: #2C5282;
+        }
+
+        .alert-warning {
+            background: #FFFAF0;
+            border-left: 4px solid #DD6B20;
+            color: #7C2D12;
+        }
+
+        .alert-success {
+            background: #F0FFF4;
+            border-left: 4px solid #38A169;
+            color: #22543D;
+        }
+
+        .alert-danger {
+            background: #FFF5F5;
+            border-left: 4px solid #E53E3E;
+            color: #742A2A;
+        }
+
+        /* Diagrama de arquitectura */
+        .architecture-diagram {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin: 20px 0;
+        }
+
+        .arch-layer {
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 2px solid #E2E8F0;
+        }
+
+        .arch-layer h4 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .arch-components {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .arch-component {
+            background: #F7FAFC;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #E2E8F0;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .arch-component:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--secondary-color);
+        }
+
+        .arch-component i {
+            font-size: 32px;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+        }
+
+        .arch-component h5 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 5px;
+        }
+
+        .arch-component p {
+            font-size: 12px;
+            color: #718096;
+            margin: 0;
+        }
+
+        /* Endpoints API */
+        .api-endpoint {
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .api-endpoint-header {
+            background: #F7FAFC;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .api-endpoint-header:hover {
+            background: #EDF2F7;
+        }
+
+        .api-method {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .method-get { background: #C6F6D5; color: #22543D; }
+        .method-post { background: #BEE3F8; color: #2C5282; }
+        .method-put { background: #FEEBC8; color: #7C2D12; }
+        .method-delete { background: #FED7D7; color: #742A2A; }
+        .method-patch { background: #E9D8FD; color: #44337A; }
+
+        .api-path {
+            font-family: 'Courier New', monospace;
+            color: #2D3748;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .api-endpoint-body {
+            padding: 20px;
+            border-top: 1px solid #E2E8F0;
+            display: none;
+        }
+
+        .api-endpoint.expanded .api-endpoint-body {
+            display: block;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb-custom {
+            background: none;
+            padding: 0;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .breadcrumb-custom a {
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+
+        .breadcrumb-custom a:hover {
+            text-decoration: underline;
+        }
+
+        /* Botones de acción */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary-custom {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-primary-custom:hover {
+            background: #2980B9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-secondary-custom {
+            background: #718096;
+            color: white;
+        }
+
+        .btn-secondary-custom:hover {
+            background: #4A5568;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .top-navbar .btn {
+                font-size: 0;
+                padding: 8px;
+            }
+
+            .top-navbar .btn i {
+                margin: 0 !important;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            .sidebar, .top-navbar, .action-buttons {
+                display: none;
+            }
+
+            .main-content {
+                margin: 0;
+                padding: 20px;
+            }
+
+            .doc-card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .stat-info h3 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .stat-info p {
+            margin: 0;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--secondary-color);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+            padding-left: 20px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -36px;
+            top: 5px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px var(--secondary-color);
+        }
+
+        .timeline-item h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .timeline-item p {
+            margin: 0;
+            color: #4A5568;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BARRA SUPERIOR -->
+    <div class="top-navbar">
+        <h1>
+            <i class="fas fa-tooth"></i>
+            Manual Técnico - Clinikdent
+            <span class="version">v2.0</span>
+        </h1>
+        <div class="actions">
+            <button class="btn btn-light" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-light" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-search">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar en el manual..." onkeyup="searchContent()">
+        </div>
+        
+        <nav class="nav-menu">
+            <!-- Introducción -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-home"></i> Introducción</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom active" data-section="overview">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Visión General</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="features">
+                        <i class="fas fa-star"></i>
+                        <span>Características</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="requirements">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Requisitos</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Arquitectura -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-sitemap"></i> Arquitectura</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="architecture">
+                        <i class="fas fa-diagram-project"></i>
+                        <span>Estructura General</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="technologies">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Stack Tecnológico</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="database">
+                        <i class="fas fa-database"></i>
+                        <span>Base de Datos</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Backend -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-server"></i> Backend</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="server">
+                        <i class="fas fa-cogs"></i>
+                        <span>Servidor</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="api">
+                        <i class="fas fa-plug"></i>
+                        <span>API REST</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="authentication">
+                        <i class="fas fa-lock"></i>
+                        <span>Autenticación</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="security">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Seguridad</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Módulos -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-puzzle-piece"></i> Módulos</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="module-citas">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Citas</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-pacientes">
+                        <i class="fas fa-user-injured"></i>
+                        <span>Pacientes</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-historiales">
+                        <i class="fas fa-file-medical"></i>
+                        <span>Historiales Clínicos</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-tratamientos">
+                        <i class="fas fa-tooth"></i>
+                        <span>Tratamientos</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-inventario">
+                        <i class="fas fa-boxes"></i>
+                        <span>Inventario</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-pagos">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Pagos</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-reportes">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Reportes</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="module-comunicaciones">
+                        <i class="fas fa-comments"></i>
+                        <span>Comunicaciones</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Frontend -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-desktop"></i> Frontend</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="frontend-structure">
+                        <i class="fas fa-folder-tree"></i>
+                        <span>Estructura</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="frontend-dashboards">
+                        <i class="fas fa-th-large"></i>
+                        <span>Dashboards</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="frontend-components">
+                        <i class="fas fa-cubes"></i>
+                        <span>Componentes</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Integraciones -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-link"></i> Integraciones</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="supabase">
+                        <i class="fas fa-cloud"></i>
+                        <span>Supabase</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="mercadopago">
+                        <i class="fas fa-credit-card"></i>
+                        <span>MercadoPago</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="email">
+                        <i class="fas fa-envelope"></i>
+                        <span>Email (Nodemailer)</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Despliegue -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-rocket"></i> Despliegue</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="installation">
+                        <i class="fas fa-download"></i>
+                        <span>Instalación</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="configuration">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Configuración</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="deployment">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Producción</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mantenimiento -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-wrench"></i> Mantenimiento</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="backup">
+                        <i class="fas fa-hdd"></i>
+                        <span>Respaldos</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="monitoring">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>Monitoreo</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="troubleshooting">
+                        <i class="fas fa-bug"></i>
+                        <span>Solución de Problemas</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Apéndices -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <span><i class="fas fa-book"></i> Apéndices</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nav-section-content">
+                    <a href="#" class="nav-link-custom" data-section="api-reference">
+                        <i class="fas fa-code"></i>
+                        <span>Referencia API</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="database-schema">
+                        <i class="fas fa-table"></i>
+                        <span>Esquema BD</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="changelog">
+                        <i class="fas fa-history"></i>
+                        <span>Historial de Cambios</span>
+                    </a>
+                    <a href="#" class="nav-link-custom" data-section="glossary">
+                        <i class="fas fa-spell-check"></i>
+                        <span>Glosario</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
+        
+        <!-- SECCIÓN: VISIÓN GENERAL -->
+        <div id="section-overview" class="content-section active">
+            <div class="breadcrumb-custom">
+                <a href="#" onclick="showSection('overview')">Inicio</a> / Visión General
+            </div>
+
+            <div class="doc-card">
+                <h2><i class="fas fa-tooth"></i> Sistema de Gestión Odontológica Clinikdent v2.0</h2>
+                
+                <div class="alert-custom alert-info">
+                    <i class="fas fa-info-circle" style="font-size: 24px;"></i>
+                    <div>
+                        <strong>Documento Técnico Oficial</strong><br>
+                        Este manual técnico describe la arquitectura, componentes, funcionalidades y procedimientos del Sistema de Gestión Odontológica Clinikdent v2.0.
+                        <br><strong>Última actualización:</strong> Noviembre 2025
+                    </div>
+                </div>
+
+                <h3>📋 Descripción del Sistema</h3>
+                <p>
+                    <strong>Clinikdent v2.0</strong> es un sistema integral de gestión para clínicas odontológicas que permite administrar 
+                    de manera eficiente todos los aspectos operativos, clínicos y financieros de una o múltiples sedes dentales.
+                </p>
+
+                <p>
+                    El sistema fue diseñado con arquitectura moderna, escalable y segura, utilizando tecnologías web de última generación 
+                    y mejores prácticas de desarrollo de software.
+                </p>
+
+                <h3>🎯 Objetivos del Sistema</h3>
+                <ul>
+                    <li>Centralizar la gestión de pacientes, citas y tratamientos odontológicos</li>
+                    <li>Automatizar procesos administrativos y reducir errores manuales</li>
+                    <li>Mejorar la comunicación entre odontólogos, personal administrativo y pacientes</li>
+                    <li>Proporcionar reportes y analíticas para la toma de decisiones</li>
+                    <li>Garantizar la seguridad y privacidad de datos médicos sensibles</li>
+                    <li>Facilitar la gestión de inventarios y control financiero</li>
+                </ul>
+
+                <h3>👥 Usuarios del Sistema</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #EBF8FF; color: #2C5282;">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Admin</h3>
+                            <p>Administradores</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #F0FFF4; color: #22543D;">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Maestro</h3>
+                            <p>Coordinadores</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FFFAF0; color: #C05621;">
+                            <i class="fas fa-user-nurse"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Odontólogos</h3>
+                            <p>Profesionales</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FFF5F5; color: #C53030;">
+                            <i class="fas fa-user-injured"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Pacientes</h3>
+                            <p>Usuarios finales</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>📊 Información del Proyecto</h3>
+                <table class="table-custom">
+                    <tr>
+                        <th style="width: 30%;">Atributo</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Nombre del Proyecto</strong></td>
+                        <td>Clinikdent - Sistema de Gestión Odontológica</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Versión</strong></td>
+                        <td>2.0 (Supabase Integration)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Autor</strong></td>
+                        <td>Daniel Rayo</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Repositorio</strong></td>
+                        <td>clinikdent-v2-0 (maria162003)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Rama Activa</strong></td>
+                        <td>feature/sistema-reportes-postgresql</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Licencia</strong></td>
+                        <td>ISC</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Estado</strong></td>
+                        <td><span class="badge-custom badge-status">En Producción</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: CARACTERÍSTICAS -->
+        <div id="section-features" class="content-section">
+            <div class="breadcrumb-custom">
+                <a href="#" onclick="showSection('overview')">Inicio</a> / Características
+            </div>
+
+            <div class="doc-card">
+                <h2><i class="fas fa-star"></i> Características Principales</h2>
+
+                <div class="alert-custom alert-success">
+                    <i class="fas fa-check-circle" style="font-size: 24px;"></i>
+                    <div>
+                        El sistema Clinikdent v2.0 incluye más de <strong>15 módulos integrados</strong> con 
+                        más de <strong>200 funcionalidades</strong> para la gestión completa de clínicas odontológicas.
+                    </div>
+                </div>
+
+                <h3>🔐 Gestión de Usuarios y Seguridad</h3>
+                <ul>
+                    <li><strong>Autenticación robusta con Supabase Auth</strong>
+                        <ul>
+                            <li>Registro y login seguro con bcrypt</li>
+                            <li>Autenticación multifactor (MFA)</li>
+                            <li>Tokens JWT para sesiones</li>
+                            <li>Recuperación de contraseña vía email</li>
+                        </ul>
+                    </li>
+                    <li><strong>Sistema de roles y permisos</strong>
+                        <ul>
+                            <li>4 roles: Admin, Maestro, Odontólogo, Paciente</li>
+                            <li>Control de acceso basado en roles (RBAC)</li>
+                            <li>Permisos granulares por módulo</li>
+                        </ul>
+                    </li>
+                    <li><strong>Seguridad avanzada</strong>
+                        <ul>
+                            <li>Rate limiting para prevenir ataques</li>
+                            <li>Sanitización de inputs</li>
+                            <li>Headers de seguridad con Helmet.js</li>
+                            <li>Protección CSRF</li>
+                            <li>Sesiones seguras con PostgreSQL</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h3>📅 Gestión de Citas</h3>
+                <ul>
+                    <li>Agenda interactiva con calendario visual</li>
+                    <li>Agendar, reagendar y cancelar citas</li>
+                    <li>Asignación automática de odontólogos</li>
+                    <li>Notificaciones y recordatorios automáticos</li>
+                    <li>Historial completo de cambios de estado</li>
+                    <li>Vista por odontólogo, paciente o sede</li>
+                    <li>Filtros avanzados (fecha, estado, tipo)</li>
+                </ul>
+
+                <h3>👨‍⚕️ Gestión de Pacientes</h3>
+                <ul>
+                    <li>Registro completo de información personal</li>
+                    <li>Historiales clínicos digitales</li>
+                    <li>Seguimiento de tratamientos activos</li>
+                    <li>Planes de tratamiento personalizados</li>
+                    <li>Consentimientos informados digitales</li>
+                    <li>Relaciones familiares y responsables</li>
+                    <li>Odontogramas interactivos</li>
+                </ul>
+
+                <h3>🦷 Historiales Clínicos</h3>
+                <ul>
+                    <li>Registro detallado de consultas</li>
+                    <li>Diagnósticos y observaciones</li>
+                    <li>Prescripciones médicas</li>
+                    <li>Radiografías y documentos adjuntos</li>
+                    <li>Estados: Borrador, Finalizado, Cancelado</li>
+                    <li>Firma digital del odontólogo</li>
+                    <li>Historial de modificaciones</li>
+                </ul>
+
+                <h3>💊 Tratamientos y Servicios</h3>
+                <ul>
+                    <li>Catálogo de tratamientos odontológicos</li>
+                    <li>Planes de tratamiento complejos</li>
+                    <li>Presupuestos y cotizaciones</li>
+                    <li>Seguimiento de progreso</li>
+                    <li>Facturación por tratamiento</li>
+                    <li>Descuentos y promociones</li>
+                </ul>
+
+                <h3>📦 Gestión de Inventario</h3>
+                <ul>
+                    <li>Control de insumos y materiales</li>
+                    <li>Equipos odontológicos</li>
+                    <li>Registro de proveedores</li>
+                    <li>Movimientos de entrada/salida</li>
+                    <li>Alertas de stock mínimo</li>
+                    <li>Valoración de inventario</li>
+                    <li>Reportes de consumo</li>
+                    <li>Gestión multi-sede</li>
+                </ul>
+
+                <h3>💳 Pagos y Facturación</h3>
+                <ul>
+                    <li>Integración con MercadoPago</li>
+                    <li>Pagos en línea seguros</li>
+                    <li>Múltiples métodos de pago</li>
+                    <li>Honorarios a odontólogos</li>
+                    <li>Pagos a proveedores</li>
+                    <li>Control de cuentas por cobrar</li>
+                    <li>Facturas electrónicas</li>
+                </ul>
+
+                <h3>📊 Reportes y Analytics</h3>
+                <ul>
+                    <li>Dashboard con métricas en tiempo real</li>
+                    <li>Reportes financieros (ingresos, egresos)</li>
+                    <li>Estadísticas de citas y tratamientos</li>
+                    <li>Análisis de rendimiento por odontólogo</li>
+                    <li>Comparativas entre sedes</li>
+                    <li>Exportación a Excel, PDF, DOCX</li>
+                    <li>Gráficos interactivos</li>
+                </ul>
+
+                <h3>💬 Comunicaciones</h3>
+                <ul>
+                    <li>Sistema de mensajería interna</li>
+                    <li>Chat en tiempo real</li>
+                    <li>Notificaciones push</li>
+                    <li>Emails automáticos</li>
+                    <li>Recordatorios de citas</li>
+                    <li>Plantillas personalizables</li>
+                    <li>Comunicación familiar</li>
+                </ul>
+
+                <h3>🏢 Multi-Sede</h3>
+                <ul>
+                    <li>Gestión de múltiples sedes</li>
+                    <li>Inventario independiente por sede</li>
+                    <li>Odontólogos asignados a sedes</li>
+                    <li>Reportes consolidados</li>
+                    <li>Configuración individual</li>
+                </ul>
+
+                <h3>🤖 Automatización e IA</h3>
+                <ul>
+                    <li>Chatbot inteligente para pacientes</li>
+                    <li>Predicciones de demanda</li>
+                    <li>Recomendaciones personalizadas</li>
+                    <li>Tareas programadas (cron jobs)</li>
+                    <li>Recordatorios automáticos</li>
+                </ul>
+
+                <h3>🔗 Integraciones</h3>
+                <ul>
+                    <li>Supabase (Auth + Database)</li>
+                    <li>MercadoPago (Pagos)</li>
+                    <li>Nodemailer (Emails)</li>
+                    <li>PostgreSQL (Base de datos)</li>
+                    <li>APIs RESTful</li>
+                    <li>Webhooks</li>
+                </ul>
+
+                <h3>📱 Responsive Design</h3>
+                <ul>
+                    <li>Compatible con desktop, tablet y móvil</li>
+                    <li>Interfaz adaptativa</li>
+                    <li>Experiencia optimizada por dispositivo</li>
+                </ul>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #EBF8FF; color: #2C5282;">
+                            <i class="fas fa-cubes"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>15+</h3>
+                            <p>Módulos</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #F0FFF4; color: #22543D;">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>200+</h3>
+                            <p>Endpoints API</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FFFAF0; color: #C05621;">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>50+</h3>
+                            <p>Tablas BD</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FFF5F5; color: #C53030;">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>100%</h3>
+                            <p>Seguro</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: REQUISITOS -->
+        <div id="section-requirements" class="content-section"></div>
+
+        <!-- SECCIÓN: ARQUITECTURA -->
+        <div id="section-architecture" class="content-section"></div>
+
+        <!-- SECCIÓN: TECNOLOGÍAS -->
+        <div id="section-technologies" class="content-section"></div>
+
+        <!-- SECCIÓN: BASE DE DATOS -->
+        <div id="section-database" class="content-section">
+            <div class="breadcrumb-custom">
+                <a href="#" onclick="showSection('overview')">Inicio</a> / Base de Datos
+            </div>
+
+            <div class="doc-card">
+                <h2><i class="fas fa-database"></i> Base de Datos PostgreSQL</h2>
+
+                <div class="alert-custom alert-info">
+                    <i class="fas fa-cloud" style="font-size: 24px;"></i>
+                    <div>
+                        <strong>Proveedor:</strong> Supabase - PostgreSQL 15.x<br>
+                        <strong>Tablas totales:</strong> 50+ tablas normalizadas<br>
+                        <strong>Conexión:</strong> Pool de conexiones con pg (node-postgres)
+                    </div>
+                </div>
+
+                <h3>📊 Esquema Principal de Tablas</h3>
+
+                <h4>👤 Usuarios y Autenticación</h4>
+                <div class="code-block" data-lang="sql">
+-- Tabla principal de usuarios
+CREATE TABLE usuarios (
+    id_usuario SERIAL PRIMARY KEY,
+    supabase_user_id UUID UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    telefono VARCHAR(20),
+    rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin', 'maestro', 'odontologo', 'paciente')),
+    estado VARCHAR(20) DEFAULT 'activo',
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ultima_conexion TIMESTAMP
+);
+
+-- Tokens de recuperación de contraseña
+CREATE TABLE password_reset_tokens (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES usuarios(id_usuario),
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expiracion TIMESTAMP NOT NULL,
+    usado BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                </div>
+
+                <h4>📅 Citas y Agenda</h4>
+                <div class="code-block" data-lang="sql">
+CREATE TABLE citas (
+    id_cita SERIAL PRIMARY KEY,
+    paciente_id INTEGER REFERENCES usuarios(id_usuario),
+    odontologo_id INTEGER REFERENCES usuarios(id_usuario),
+    sede_id INTEGER REFERENCES sedes(id_sede),
+    servicio_id INTEGER REFERENCES servicios(id_servicio),
+    fecha DATE NOT NULL,
+    hora TIME NOT NULL,
+    estado VARCHAR(20) DEFAULT 'pendiente' 
+        CHECK (estado IN ('pendiente', 'confirmada', 'en_curso', 'completada', 'cancelada', 'no_asistio')),
+    motivo TEXT,
+    observaciones TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Historial de cambios de estado de citas
+CREATE TABLE cita_historial_estados (
+    id SERIAL PRIMARY KEY,
+    cita_id INTEGER REFERENCES citas(id_cita),
+    estado_anterior VARCHAR(20),
+    estado_nuevo VARCHAR(20),
+    usuario_modificador_id INTEGER REFERENCES usuarios(id_usuario),
+    razon TEXT,
+    fecha_cambio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                </div>
+
+                <h4>🦷 Historiales Clínicos</h4>
+                <div class="code-block" data-lang="sql">
+CREATE TABLE historiales_clinicos (
+    id_historial SERIAL PRIMARY KEY,
+    paciente_id INTEGER REFERENCES usuarios(id_usuario),
+    cita_id INTEGER REFERENCES citas(id_cita),
+    odontologo_id INTEGER REFERENCES usuarios(id_usuario),
+    diagnostico TEXT NOT NULL,
+    tratamiento_realizado TEXT,
+    observaciones TEXT,
+    prescripciones TEXT,
+    proxima_cita DATE,
+    estado VARCHAR(20) DEFAULT 'borrador' 
+        CHECK (estado IN ('borrador', 'finalizado', 'cancelado')),
+    firma_digital VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Documentos adjuntos (radiografías, etc)
+CREATE TABLE historial_documentos (
+    id SERIAL PRIMARY KEY,
+    historial_id INTEGER REFERENCES historiales_clinicos(id_historial),
+    tipo_documento VARCHAR(50),
+    nombre_archivo VARCHAR(255),
+    ruta_archivo VARCHAR(500),
+    tamaño_kb INTEGER,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                </div>
+
+                <h4>💰 Pagos y Transacciones</h4>
+                <div class="code-block" data-lang="sql">
+CREATE TABLE transacciones_mercadopago (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES usuarios(id_usuario),
+    tipo_transaccion VARCHAR(50) CHECK (tipo_transaccion IN ('pago_paciente', 'pago_odontologo', 'pago_proveedor')),
+    preference_id VARCHAR(255),
+    payment_id VARCHAR(255) UNIQUE,
+    external_reference VARCHAR(255),
+    monto DECIMAL(10,2) NOT NULL,
+    moneda VARCHAR(10) DEFAULT 'COP',
+    estado VARCHAR(50),
+    metodo_pago VARCHAR(100),
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_aprobacion TIMESTAMP,
+    datos_pago JSONB
+);
+                </div>
+
+                <h4>📦 Inventario</h4>
+                <div class="code-block" data-lang="sql">
+CREATE TABLE inventario (
+    id_item SERIAL PRIMARY KEY,
+    sede_id INTEGER REFERENCES sedes(id_sede),
+    categoria_id INTEGER REFERENCES categorias_inventario(id_categoria),
+    proveedor_id INTEGER REFERENCES proveedores(id_proveedor),
+    nombre VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    cantidad INTEGER DEFAULT 0,
+    stock_minimo INTEGER DEFAULT 10,
+    precio_unitario DECIMAL(10,2),
+    unidad_medida VARCHAR(50),
+    lote VARCHAR(100),
+    fecha_vencimiento DATE,
+    estado VARCHAR(20) DEFAULT 'activo',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE movimientos_inventario (
+    id_movimiento SERIAL PRIMARY KEY,
+    inventario_id INTEGER REFERENCES inventario(id_item),
+    tipo_movimiento VARCHAR(20) CHECK (tipo_movimiento IN ('entrada', 'salida', 'ajuste', 'traspaso')),
+    cantidad INTEGER NOT NULL,
+    usuario_id INTEGER REFERENCES usuarios(id_usuario),
+    motivo TEXT,
+    fecha_movimiento TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                </div>
+
+                <h4>📊 Reportes y Analytics</h4>
+                <div class="code-block" data-lang="sql">
+CREATE TABLE reportes_generados (
+    id SERIAL PRIMARY KEY,
+    usuario_generador_id INTEGER REFERENCES usuarios(id_usuario),
+    tipo_reporte VARCHAR(100),
+    parametros JSONB,
+    formato VARCHAR(20) CHECK (formato IN ('pdf', 'excel', 'word', 'json')),
+    ruta_archivo VARCHAR(500),
+    fecha_generacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE metricas_sistema (
+    id SERIAL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    total_citas INTEGER DEFAULT 0,
+    citas_completadas INTEGER DEFAULT 0,
+    ingresos_dia DECIMAL(12,2) DEFAULT 0,
+    nuevos_pacientes INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                </div>
+
+                <h3>🔐 Índices y Optimización</h3>
+                <div class="code-block" data-lang="sql">
+-- Índices para mejorar performance
+CREATE INDEX idx_usuarios_email ON usuarios(email);
+CREATE INDEX idx_usuarios_rol ON usuarios(rol);
+CREATE INDEX idx_citas_fecha ON citas(fecha);
+CREATE INDEX idx_citas_paciente ON citas(paciente_id);
+CREATE INDEX idx_citas_odontologo ON citas(odontologo_id);
+CREATE INDEX idx_historiales_paciente ON historiales_clinicos(paciente_id);
+CREATE INDEX idx_transacciones_usuario ON transacciones_mercadopago(usuario_id);
+CREATE INDEX idx_inventario_sede ON inventario(sede_id);
+                </div>
+
+                <h3>📈 Estadísticas de la Base de Datos</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #EBF8FF; color: #2C5282;">
+                            <i class="fas fa-table"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>50+</h3>
+                            <p>Tablas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #F0FFF4; color: #22543D;">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>100+</h3>
+                            <p>Índices</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FFFAF0; color: #C05621;">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>80+</h3>
+                            <p>Relaciones FK</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FFF5F5; color: #C53030;">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>20+</h3>
+                            <p>Triggers</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: SERVIDOR -->
+        <div id="section-server" class="content-section">
+            <div class="breadcrumb-custom">
+                <a href="#" onclick="showSection('overview')">Inicio</a> / Servidor Backend
+            </div>
+
+            <div class="doc-card">
+                <h2><i class="fas fa-server"></i> Servidor Backend</h2>
+
+                <h3>🚀 Configuración del Servidor</h3>
+                <p>El servidor backend está implementado en <strong>serverSecure.js</strong> utilizando Express.js:</p>
+
+                <div class="code-block" data-lang="javascript">
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware de seguridad
+app.use(helmet()); // Headers de seguridad
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    credentials: true
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100 // límite de 100 requests
+});
+app.use('/api/', limiter);
+
+// Parseo de JSON
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Archivos estáticos
+app.use(express.static('public'));
+
+// Rutas
+app.use('/api/auth', require('./routes/authSecureRoutes'));
+app.use('/api/citas', require('./routes/citaRoutes'));
+app.use('/api/pacientes', require('./routes/pacienteRoutes'));
+// ... más rutas
+
+// Iniciar servidor
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+});
+                </div>
+
+                <h3>🔐 Middleware de Seguridad</h3>
+                <ul>
+                    <li><strong>Helmet.js</strong> - Headers HTTP seguros</li>
+                    <li><strong>CORS</strong> - Control de orígenes permitidos</li>
+                    <li><strong>Rate Limiting</strong> - Prevención de ataques DDoS</li>
+                    <li><strong>Sanitización de inputs</strong> - XSS prevention</li>
+                    <li><strong>JWT Authentication</strong> - Tokens seguros</li>
+                    <li><strong>Express Session</strong> - Sesiones en PostgreSQL</li>
+                </ul>
+
+                <h3>📂 Estructura del Backend</h3>
+                <div class="code-block" data-lang="text">
+Backend/
+├── serverSecure.js          → Servidor principal
+├── config/
+│   ├── databaseSecure.js    → Configuración BD segura
+│   └── constants.js         → Constantes del sistema
+├── middleware/
+│   ├── authSecure.js        → Autenticación JWT
+│   ├── security.js          → Seguridad general
+│   └── validation.js        → Validación de datos
+├── routes/
+│   ├── authSecureRoutes.js  → Autenticación
+│   ├── citaRoutes.js        → Gestión de citas
+│   ├── pacienteRoutes.js    → Gestión de pacientes
+│   ├── historialRoutes.js   → Historiales clínicos
+│   ├── inventarioRoutes.js  → Inventario
+│   ├── mercadoPagoRoutes.js → Pagos
+│   └── ... (15+ archivos de rutas)
+├── controllers/
+│   ├── authController.js
+│   ├── citaController.js
+│   ├── pacienteController.js
+│   └── ... (15+ controladores)
+├── services/
+│   ├── emailService.js      → Envío de emails
+│   ├── mercadoPagoService.js → Integración pagos
+│   └── siteContentService.js
+└── scripts/
+    └── ... (scripts SQL de migración)
+                </div>
+
+                <h3>🌐 Puerto y Configuración</h3>
+                <table class="table-custom">
+                    <tr>
+                        <th>Parámetro</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Puerto por defecto</td>
+                        <td>3000</td>
+                    </tr>
+                    <tr>
+                        <td>Entorno</td>
+                        <td>development / production</td>
+                    </tr>
+                    <tr>
+                        <td>Max payload size</td>
+                        <td>10 MB</td>
+                    </tr>
+                    <tr>
+                        <td>Session timeout</td>
+                        <td>24 horas</td>
+                    </tr>
+                    <tr>
+                        <td>Rate limit</td>
+                        <td>100 req/15min</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: API REST -->
+        <div id="section-api" class="content-section">
+            <div class="breadcrumb-custom">
+                <a href="#" onclick="showSection('overview')">Inicio</a> / API REST
+            </div>
+
+            <div class="doc-card">
+                <h2><i class="fas fa-plug"></i> API REST</h2>
+
+                <div class="alert-custom alert-success">
+                    <i class="fas fa-check-circle" style="font-size: 24px;"></i>
+                    <div>
+                        La API de Clinikdent cuenta con más de <strong>200 endpoints</strong> organizados 
+                        en <strong>15+ módulos</strong> con autenticación JWT y documentación completa.
+                    </div>
+                </div>
+
+                <h3>🔗 Endpoints Principales</h3>
+
+                <h4><i class="fas fa-user-lock"></i> Autenticación (/api/auth)</h4>
+                
+                <div class="api-endpoint expanded">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/auth/register</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Registrar nuevo usuario</p>
+                        <p><strong>Body:</strong></p>
+                        <div class="code-block" data-lang="json">
+{
+  "nombre": "Juan",
+  "apellido": "Pérez",
+  "email": "juan@example.com",
+  "password": "Password123!",
+  "telefono": "+57 3001234567",
+  "rol": "paciente"
+}
+                        </div>
+                        <p><strong>Respuesta exitosa (201):</strong></p>
+                        <div class="code-block" data-lang="json">
+{
+  "success": true,
+  "message": "Usuario registrado exitosamente",
+  "usuario": { "id": 1, "email": "juan@example.com", "rol": "paciente" }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/auth/login</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Iniciar sesión</p>
+                        <p><strong>Body:</strong></p>
+                        <div class="code-block" data-lang="json">
+{
+  "email": "juan@example.com",
+  "password": "Password123!"
+}
+                        </div>
+                        <p><strong>Respuesta (200):</strong></p>
+                        <div class="code-block" data-lang="json">
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "usuario": {
+    "id": 1,
+    "nombre": "Juan",
+    "email": "juan@example.com",
+    "rol": "paciente"
+  }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <h4><i class="fas fa-calendar-check"></i> Citas (/api/citas)</h4>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/citas/:id_usuario</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Obtener citas de un usuario</p>
+                        <p><strong>Headers:</strong> <code>Authorization: Bearer {token}</code></p>
+                        <p><strong>Respuesta (200):</strong> Array de citas</p>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/citas</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Agendar nueva cita</p>
+                        <p><strong>Body:</strong></p>
+                        <div class="code-block" data-lang="json">
+{
+  "paciente_id": 5,
+  "odontologo_id": 2,
+  "sede_id": 1,
+  "servicio_id": 3,
+  "fecha": "2025-12-01",
+  "hora": "10:00",
+  "motivo": "Limpieza dental"
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-put">PUT</span>
+                        <span class="api-path">/api/citas/:id_cita</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Reagendar cita existente</p>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-delete">DELETE</span>
+                        <span class="api-path">/api/citas/:id_cita</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Cancelar cita</p>
+                    </div>
+                </div>
+
+                <h4><i class="fas fa-file-medical"></i> Historiales (/api/historiales)</h4>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/historiales/paciente/:paciente_id</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Obtener historial clínico de un paciente</p>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/historiales</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Registrar nuevo historial clínico</p>
+                        <div class="code-block" data-lang="json">
+{
+  "paciente_id": 5,
+  "cita_id": 12,
+  "odontologo_id": 2,
+  "diagnostico": "Caries en molar superior derecho",
+  "tratamiento_realizado": "Obturación con resina",
+  "prescripciones": "Ibuprofeno 400mg cada 8h por 3 días"
+}
+                        </div>
+                    </div>
+                </div>
+
+                <h4><i class="fas fa-money-bill-wave"></i> Pagos (/api/mercadopago)</h4>
+
+                <div class="api-endpoint">
+                    <div class="api-endpoint-header" onclick="toggleEndpoint(this)">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/mercadopago/crear-preferencia</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="api-endpoint-body">
+                        <p><strong>Descripción:</strong> Crear preferencia de pago para MercadoPago</p>
+                    </div>
+                </div>
+
+                <h3>🔒 Autenticación</h3>
+                <p>La mayoría de endpoints requieren autenticación mediante <strong>JSON Web Token (JWT)</strong>:</p>
+                <div class="code-block" data-lang="text">
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbCI6InBhY2llbnRlIiwiaWF0IjoxNzAwMDAwMDAwfQ.signature
+                </div>
+
+                <h3>📊 Códigos de Respuesta HTTP</h3>
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Significado</th>
+                            <th>Uso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge-custom badge-status">200</span></td>
+                            <td>OK</td>
+                            <td>Petición exitosa</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-custom badge-status">201</span></td>
+                            <td>Created</td>
+                            <td>Recurso creado exitosamente</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-custom badge-warning">400</span></td>
+                            <td>Bad Request</td>
+                            <td>Datos inválidos o incompletos</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-custom badge-warning">401</span></td>
+                            <td>Unauthorized</td>
+                            <td>No autenticado o token inválido</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-custom badge-warning">403</span></td>
+                            <td>Forbidden</td>
+                            <td>Sin permisos suficientes</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-custom badge-warning">404</span></td>
+                            <td>Not Found</td>
+                            <td>Recurso no encontrado</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-custom badge-version">500</span></td>
+                            <td>Internal Server Error</td>
+                            <td>Error del servidor</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Secciones dinámicas cargadas desde JS -->
+        <div id="section-authentication" class="section-content"></div>
+        <div id="section-security" class="section-content"></div>
+        <div id="section-installation" class="section-content"></div>
+        <div id="section-deployment" class="section-content"></div>
+        <div id="section-backup" class="section-content"></div>
+        <div id="section-module-citas" class="section-content"></div>
+        <div id="section-module-pacientes" class="section-content"></div>
+        <div id="section-module-historiales" class="section-content"></div>
+        <div id="section-module-inventario" class="section-content"></div>
+        <div id="section-module-pagos" class="section-content"></div>
+        <div id="section-module-reportes" class="section-content"></div>
+        <div id="section-module-comunicaciones" class="section-content"></div>
+        <div id="section-module-tratamientos" class="section-content"></div>
+        <div id="section-frontend-structure" class="section-content"></div>
+        <div id="section-supabase" class="section-content"></div>
+        <div id="section-troubleshooting" class="section-content"></div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="js/manual-tecnico-content.js"></script>
+    <script>
+        // Toggle sidebar en móvil
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        // Toggle secciones del menú
+        function toggleSection(element) {
+            const section = element.parentElement;
+            section.classList.toggle('collapsed');
+        }
+
+        // Mostrar sección
+        function showSection(sectionId) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Mostrar la sección seleccionada
+            const targetSection = document.getElementById('section-' + sectionId);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            // Actualizar navegación activa
+            document.querySelectorAll('.nav-link-custom').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-section') === sectionId) {
+                    link.classList.add('active');
+                }
+            });
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+
+            // Cerrar sidebar en móvil
+            if (window.innerWidth <= 992) {
+                document.getElementById('sidebar').classList.remove('show');
+            }
+        }
+
+        // Event listeners para navegación
+        document.querySelectorAll('.nav-link-custom').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.getAttribute('data-section');
+                showSection(sectionId);
+            });
+        });
+
+        // Búsqueda
+        function searchContent() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const links = document.querySelectorAll('.nav-link-custom');
+
+            links.forEach(link => {
+                const text = link.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    link.style.display = 'flex';
+                } else {
+                    link.style.display = searchTerm === '' ? 'flex' : 'none';
+                }
+            });
+        }
+
+        // Expandir API endpoints
+        function toggleEndpoint(element) {
+            const endpoint = element.closest('.api-endpoint');
+            endpoint.classList.toggle('expanded');
+        }
+
+        // Export to PDF (requiere biblioteca externa en producción)
+        function exportToPDF() {
+            alert('Función de exportación a PDF. En producción usar html2pdf o similar.');
+            window.print();
+        }
+
+        // Inicializar tooltips de Bootstrap si existen
+        document.addEventListener('DOMContentLoaded', function() {
+            // Código de inicialización adicional
+            console.log('Manual Técnico Clinikdent v2.0 - Cargado');
+        });
+    </script>
+</body>
+</html>
