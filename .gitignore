@@ -54,3 +54,6 @@ config/credentials.json
 *.pem
 *.key
 *.cert
+
+# Local Netlify folder
+.netlify
