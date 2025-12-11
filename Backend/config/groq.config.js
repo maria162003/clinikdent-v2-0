@@ -1,7 +1,7 @@
 // Configuración de Groq AI (Llama 3.2)
 module.exports = {
     // API Key de Groq - Obtener en https://console.groq.com/keys
-    apiKey: process.env.GROQ_API_KEY || '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',
+    apiKey: process.env.GROQ_API_KEY,
     
     // Modelo a usar (Llama 3.3 70B es el mejor balance calidad/velocidad)
     model: 'llama-3.3-70b-versatile',
